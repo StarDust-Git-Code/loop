@@ -1,29 +1,37 @@
 'use client';
 
 import { useId, useRef, useState, type KeyboardEvent } from 'react';
+import { useRouter } from 'next/navigation';
+import { api } from '../../lib/api';
+import { useSettings } from '../../lib/hooks';
 import { AGENT, BRAND } from '../../lib/dashboard/brand';
 import { Mate } from './Mate';
 import s from './dashboard.module.css';
 
-const SAMPLE_TASK =
-  'Research SkillCourt and compare it with SmartCourt. Save sources and give me a short report.';
-
 export function TaskComposer() {
   const fieldId = useId();
   const fileInput = useRef<HTMLInputElement>(null);
-  const [task, setTask] = useState(SAMPLE_TASK);
-  const [askFirst, setAskFirst] = useState(true);
+  const router = useRouter();
+  const { settings } = useSettings();
+  const [task, setTask] = useState('');
+  const [askOverride, setAskOverride] = useState<boolean | null>(null);
+  const askFirst = askOverride ?? settings?.askBeforeRisky ?? true;
+  const [busy, setBusy] = useState(false);
   const [files, setFiles] = useState<File[]>([]);
   const [sent, setSent] = useState<string | null>(null);
 
   const canRun = task.trim().length > 0;
 
-  function run() {
-    if (!canRun) return;
-    // TODO: POST { task, files, askFirst } to the runs API once the backend exists.
-    setSent(
-      `Sent to the Planner ${AGENT}${askFirst ? '. It will ask before risky actions.' : '.'}`,
-    );
+  async function run() {
+    if (!canRun || busy) return;
+    setBusy(true);
+    try {
+      const r = await api.runs.start({ prompt: task.trim(), askFirst, files });
+      router.push(`/run?id=${r.id}`);
+    } catch (e) {
+      setSent(e instanceof Error ? e.message : 'Could not start the run.');
+      setBusy(false);
+    }
   }
 
   function onKeyDown(e: KeyboardEvent<HTMLTextAreaElement>) {
@@ -99,30 +107,25 @@ export function TaskComposer() {
           type="button"
           aria-pressed={askFirst}
           className={`${s.chip} ${s.chipBtn} ${askFirst ? s.chipOn : ''}`}
-          onClick={() => setAskFirst((v) => !v)}
+          onClick={() => setAskOverride(!askFirst)}
         >
           Ask before risky actions
         </button>
 
         <div className={s.grow} />
 
-        <button
-          type="button"
-          aria-label="Voice input (coming soon)"
-          className={s.iconBtn}
-          disabled
-        >
+        <button type="button" aria-label="Voice input (not available yet)" className={s.iconBtn} disabled>
           <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true">
             <rect x="9" y="3" width="6" height="12" rx="3" />
             <path d="M5 11a7 7 0 0 0 14 0M12 18v3" />
           </svg>
         </button>
 
-        <button type="button" className={s.runBtn} disabled={!canRun} onClick={run}>
+        <button type="button" className={s.runBtn} disabled={!canRun || busy} onClick={run}>
           <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
             <path d="M6 4l14 8-14 8z" />
           </svg>
-          Run in {BRAND}
+          {busy ? 'Starting…' : `Run in ${BRAND}`}
         </button>
       </div>
 

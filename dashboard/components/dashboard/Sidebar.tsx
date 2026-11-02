@@ -3,7 +3,10 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { BRAND } from '../../lib/dashboard/brand';
-import { GEAR_PATH, MATES, NAV, SIDEBAR_MATES } from '../../lib/dashboard/data';
+import { GEAR_PATH, NAV } from '../../lib/dashboard/data';
+import { api } from '../../lib/api';
+import { useRepo, useSession, useSettings } from '../../lib/hooks';
+import { MATES } from '../../lib/mates';
 import { Icon } from './Icon';
 import { Mate } from './Mate';
 import { LogoMark } from '../Logo';
@@ -21,6 +24,11 @@ function isActive(pathname: string, href?: string) {
 
 export function Sidebar() {
   const pathname = usePathname();
+  const { items: cfgs } = useRepo(api.mateConfigs);
+  const { settings } = useSettings();
+  const session = useSession();
+  const name = session?.name || settings?.displayName || 'Guest';
+  const agents = cfgs.filter((c) => c.enabled);
 
   return (
     <nav aria-label="Primary" className={s.sidebar}>
@@ -50,12 +58,8 @@ export function Sidebar() {
                 >
                   {content}
                 </Link>
-              ) : (
-                // Screen not built yet.
-                <a href="#" className={s.navItem}>
-                  {content}
-                </a>
-              )}
+              
+              ) : null}
             </li>
           );
         })}
@@ -63,9 +67,9 @@ export function Sidebar() {
 
       <div className={s.sectionLabel}>AGENTS</div>
       <ul className={s.navList}>
-        {SIDEBAR_MATES.map((key) => (
+        {agents.map(({ mate: key }) => (
           <li key={key}>
-            <Link href="/agents" className={`${s.navItem} ${s.agentItem}`}>
+            <Link href={`/agents?mate=${key}`} className={`${s.navItem} ${s.agentItem}`}>
               <Mate mate={key} size={26} />
               <span className={s.navLabel}>{MATES[key].name}</span>
             </Link>
@@ -81,11 +85,11 @@ export function Sidebar() {
       </Link>
       <div className={s.profile}>
         <div className={s.avatar} aria-hidden="true">
-          I
+          {name[0]?.toUpperCase()}
         </div>
         <div className={s.profileText}>
-          <div className={s.profileName}>Irshad</div>
-          <div className={s.profilePlan}>Personal Plan</div>
+          <div className={s.profileName}>{name}</div>
+          <div className={s.profilePlan}>{session?.signedIn ? (session.plan ?? 'Signed in') : 'Not signed in'}</div>
         </div>
       </div>
     </nav>

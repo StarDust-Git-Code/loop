@@ -4,3 +4,6 @@ the standalone app in `dashboard/` is the hand-built Home. The other 12 screens 
 
 ### Update: dashboard is now a separate app
 Moved to `dashboard/` with its own `package.json`. Routes drop the `/dashboard` prefix (`/`, `/chat`, `/run`...). Deploy it as a second Vercel project with Root Directory = `dashboard` and the domain `dashboard.loopmates.com` (the landing page already links there). The landing project (root `./`) no longer contains it.
+
+### Update: no mock data in the dashboard
+All 14 screens are real React components over `dashboard/lib/api` (see `dashboard/BACKEND.md`). Data starts empty. The marketing demo on the landing page still uses its own scripted screens.
