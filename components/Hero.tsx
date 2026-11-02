@@ -16,7 +16,6 @@ export default function Hero() {
 
       // nav drops in
       tl.from(document.querySelector(".nav-inner"), { y: -60, opacity: 0, duration: 0.8 }, 0);
-      tl.to(".hero-tag", { opacity: 1, y: 0, filter: "blur(0px)", duration: 0.7 }, 0.15);
 
       SplitText.create(h1, {
         type: "lines",
@@ -50,13 +49,6 @@ export default function Hero() {
       <div className="hero-blob" aria-hidden="true" style={{ width: 520, height: 520, right: "-8%", top: "4%", background: "rgba(106,77,244,.16)" }} />
       <div className="hero-blob" aria-hidden="true" style={{ width: 460, height: 460, left: "-6%", top: "14%", background: "rgba(255,170,200,.35)" }} />
       <div className="hero-blob" aria-hidden="true" style={{ width: 760, height: 300, left: "calc(50% - 380px)", top: "52%", background: "rgba(255,226,150,.38)" }} />
-
-      <a href="#features" className="tag hero-tag" data-reveal>
-        <i>
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#6A4DF4" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M7 17L17 7M8 7h9v9" /></svg>
-        </i>
-        An agentic workspace
-      </a>
 
       <h1 className="hero-h1">
         A workspace for your <span className="v">fluffy</span> agents.
