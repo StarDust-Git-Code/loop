@@ -10,6 +10,7 @@ import { putFile, artifactsReady } from './files.js';
 
 import { hooks, setToolHooks } from './toolhooks.js';
 import { MONITOR_TOOLS } from './monitor.js';
+import { TOOLKIT, bindWeb } from './toolkit.js';
 export { setToolHooks };
 
 const cap = (s, n = 4000) => (s.length > n ? `${s.slice(0, n)}\n…[truncated]` : s);
@@ -109,9 +110,12 @@ const WF_TOOLS = {
     } },
 };
 
+bindWeb({ safeFetch });
+
 /** name -> { group, desc, args, run(ctx, args) }  ctx = { uid, settings } */
 export const TOOLS = {
   ...MONITOR_TOOLS,
+  ...TOOLKIT,
   ...WF_TOOLS,
   web_search: { group: 'Web Search', net: true, desc: 'Search the web. Returns titles, URLs and snippets.', args: '{"query": "text"}', run: async (_c, a) => cap(await search(String(a.query ?? '').slice(0, 200))) },
   fetch_url: { group: 'Web Search', net: true, desc: 'Open a public web page and read its text.', args: '{"url": "https://..."}', run: async (_c, a) => {
@@ -185,9 +189,10 @@ export const TOOLS = {
 
 /** Which tools a Mate may use, given its configured tool groups and the workspace settings. */
 /** Always-on extras per Mate (on top of what its config lists). */
-const EXTRA_GROUPS = { ops: ['Run Control'], halo: ['Run Control'], planner: ['Run Control'] };
+const DELEGATORS = ['Delegation', 'Run Control'];
+const EXTRA_GROUPS = { '*': ['Utilities'], ops: DELEGATORS, halo: DELEGATORS, planner: DELEGATORS, flow: ['Delegation'], research: ['Delegation'] };
 export function toolsFor(groups = [], settings = {}, mateKey = '') {
-  const g = new Set([...groups, ...(EXTRA_GROUPS[mateKey] ?? [])]);
+  const g = new Set([...groups, ...EXTRA_GROUPS['*'], ...(EXTRA_GROUPS[mateKey] ?? [])]);
   return Object.entries(TOOLS).filter(([, t]) => (t.group === '*' || g.has(t.group)) && !(t.net && settings.allowNetwork === false) && !(t.needsApproval && settings.permissionMode !== 'auto')).map(([name, t]) => ({ name, ...t }));
 }
 

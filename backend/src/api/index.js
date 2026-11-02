@@ -19,7 +19,7 @@ import { hooks as schedHooks, startScheduler, tick } from './sched.js';
 import { indexKnowledge, searchKnowledge } from './knowledge.js';
 import { verifyMcp } from './mcp.js';
 import { putFile, getFileStream, deleteDriveFile } from './files.js';
-import { telegramReady, send as tgSend, linkCode, handleUpdate, setWebhook } from './telegram.js';
+import { telegramReady, notify as tgNotify, send as tgSend, linkCode, handleUpdate, setWebhook } from './telegram.js';
 import { startWhatsApp, waStatus, waChats, waRecent, resumeWhatsApp } from './whatsapp.js';
 import { open } from '../lib/crypto.js';
 
@@ -27,7 +27,17 @@ captureConsole();
 for (const k of ['SERVICE_SECRET', 'MASTER_KEY']) need(k);
 if (env('MEMORY_DB') !== '1' || env('NODE_ENV') === 'production') need('FIREBASE_SERVICE_ACCOUNT_B64');
 
-setToolHooks({ events: schedHooks.events, tasks: schedHooks.tasks, control, liveRuns });
+setToolHooks({
+  events: schedHooks.events, tasks: schedHooks.tasks, control, liveRuns, startRun, steer, notify: tgNotify,
+  // ask_mate: one focused, read-only, tool-less answer from another Mate.
+  ask: async (uid, mateKey, question) => {
+    const cfgs = Object.fromEntries((await userCol(uid, 'mates').get()).docs.map((d) => [d.id, d.data()]));
+    if (!MATE[mateKey]) throw Object.assign(new Error(`No Mate called "${mateKey}"`), { tool: true });
+    if (cfgs[mateKey]?.enabled === false) throw Object.assign(new Error(`${MATE[mateKey].name} is switched off`), { tool: true });
+    const r = await converse({ uid, mateKey, cfg: cfgs[mateKey] ?? {}, settings: await getSettings(uid), mode: 'chat', history: [{ role: 'user', content: question }], emit: () => {}, maxTokens: 700, readOnly: true, noTools: true, ctx: { depth: 1 } });
+    return `${MATE[mateKey].name} says:\n${r.text}`;
+  },
+});
 const app = await createServer('api', { bodyLimit: 4 * 1024 * 1024 });
 const same = (a, b) => { const x = Buffer.from(String(a)), y = Buffer.from(String(b)); return x.length === y.length && timingSafeEqual(x, y); };
 const originOk = (o) => !!o && env('ALLOWED_ORIGINS').split(',').map((s) => s.trim()).includes(o);

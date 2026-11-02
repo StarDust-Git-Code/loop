@@ -149,6 +149,8 @@ try {
   assert.ok(!sys.includes('web_search'), 'Mimo has no web tool');
   const sent = llmTools.at(-1); assert.ok(Array.isArray(sent), 'tools are sent as native schemas');
   const names = sent.map((t) => t.function.name); assert.ok(names.includes('memory_save') && names.includes('watchdog') && names.includes('calculate') && !names.includes('web_search'));
+  assert.ok(names.includes('unit_convert') && names.includes('json_query') && names.includes('scratch_write') && !names.includes('spawn_run') && !names.includes('ask_mate'), 'utilities for all, delegation only for coordinators');
+  assert.ok(sent.length >= 50, `Mimo gets a rich toolset (${sent.length})`);
   const ms = sent.find((t) => t.function.name === 'memory_save').function.parameters; assert.deepEqual(ms.required, ['text']); assert.deepEqual(ms.properties.kind.enum.slice(0, 2), ['note', 'idea']);
   ev = await sse(conv.id, 'please remember I love chai');
   assert.ok(ev.some((e) => e.type === 'tool' && e.name === 'memory_save')); assert.ok(ev.filter((e) => e.type === 'delta').map((d) => d.text).join('').startsWith('Done:'));
