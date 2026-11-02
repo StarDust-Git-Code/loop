@@ -26,12 +26,12 @@ let pass = 0; const ok = (name) => { pass++; console.log('  ✓', name); };
 
 /* ---- fakes ---- */
 const body = (req) => new Promise((r) => { const c = []; req.on('data', (d) => c.push(d)); req.on('end', () => r(Buffer.concat(c))); });
-const llmCalls = []; const llmSys = []; let toolsOff = false; const llmTools = [];
+const llmCalls = []; const llmSys = []; let toolsOff = false; const llmTools = []; const llmMsgs = [];
 const llm = http.createServer(async (req, res) => {
   const send = (o) => { res.setHeader('content-type', 'application/json'); res.end(JSON.stringify(o)); };
   if (req.url.endsWith('/__tools_off')) { toolsOff = true; return send({ ok: true }); }
   if (req.url.endsWith('/models')) return send({ data: [{ id: 'fake-1' }, { id: 'fake-2' }] });
-  const b = JSON.parse((await body(req)).toString()); const sys = b.messages[0].content; llmCalls.push(sys.slice(0, 30)); llmSys.push(sys); llmTools.push(b.tools ?? null);
+  const b = JSON.parse((await body(req)).toString()); const sys = b.messages[0].content; llmCalls.push(sys.slice(0, 30)); llmSys.push(sys); llmTools.push(b.tools ?? null); llmMsgs.push(b.messages);
   let text = 'LLM says hello';
   if (sys.includes('You are the Planner')) text = JSON.stringify({ steps: [{ mate: 'research', label: 'Gather facts', kind: 'think' }, { mate: 'code', label: 'Make hello file', kind: 'code' }, { mate: 'writer', label: 'Write summary', kind: 'file' }] });
   else if (sys.includes('coding agent')) {
@@ -51,6 +51,7 @@ const llm = http.createServer(async (req, res) => {
     else if (ask.includes('show console')) want.push(['console_tail', { n: 5 }]);
     else if (ask.includes('who is failing')) want.push(['runs_failed', {}]);
     else if (ask.includes('build me a workflow')) want.push(['workflow_save', { name: 'Daily brief', description: 'Morning brief', steps: [{ type: 'trigger', label: 'Every weekday 9am' }, { type: 'mate', mate: 'research', label: 'Gather overnight news' }, { type: 'mate', mate: 'writer', label: 'Write the brief' }, { type: 'output', label: 'Save brief.md' }] }]);
+    else if (ask.includes('look back')) want.push(['chat_history', { which: 'start', n: 2 }]);
     else if (ask.includes('check both')) want.push(['runs_failed', {}], ['runs_active', {}]);
     else if (ask.includes('math')) want.push(['calculate', { expression: '(12.5*4)/2' }]);
     const gotResult = native ? lastMsg.role === 'tool' : lastUser.startsWith('Tool result');
@@ -177,6 +178,15 @@ try {
   assert.equal(wf.nodes.length, 4); assert.equal(wf.edges.length, 3); assert.equal(wf.nodes[1].mate, 'research'); assert.ok(wf.nodes[2].x > wf.nodes[1].x);
   assert.ok(llmSys.some((x) => x.includes('FLOW PLAYBOOK') && x.includes('workflow_save')), 'Flow gets its playbook');
   assert.ok(llmTools.some((t) => t?.some((x) => x.function.name === 'workflow_save' && x.function.parameters.properties.steps.type === 'array')), 'steps is an array schema');
+  const lc = (await call('POST', '/v1/conversations', { title: 'long', mate: 'mimo', messages: [] })).json;
+  await call('POST', `/v1/conversations/${lc.id}/messages`, { text: `FIRSTMSG ${'x'.repeat(9000)}` });
+  for (let i = 0; i < 3; i++) await call('POST', `/v1/conversations/${lc.id}/messages`, { text: `filler ${i} ${'y'.repeat(9000)}` });
+  ev = await sse(lc.id, 'please look back');
+  const hist = llmMsgs.at(-2); // the request that triggered the tool (the last one is the follow-up)
+  assert.ok(hist[1].content.includes('earlier message(s) are not shown') && hist[1].content.includes('FIRSTMSG'), 'trimmed history keeps a note with the opener');
+  assert.ok(hist.reduce((n, m) => n + String(m.content).length, 0) < 40000, 'history is bounded');
+  assert.ok(ev.some((e) => e.type === 'tool' && e.name === 'chat_history') && ev.filter((e) => e.type === 'delta').map((d) => d.text).join('').includes('FIRSTMSG'), 'chat_history reaches the start of the chat');
+  assert.ok(llmSys.at(-1).includes('Runtime: you are being served through'), 'runtime model line');
   ev = await sse(conv.id, 'check both please');
   assert.equal(ev.filter((e) => e.type === 'tool').map((e) => e.name).sort().join(), 'runs_active,runs_failed', 'two calls in one turn');
   assert.equal(ev.filter((e) => e.type === 'tool_result').length, 2);

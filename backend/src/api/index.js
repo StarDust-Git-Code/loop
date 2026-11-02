@@ -102,8 +102,17 @@ await app.register(async (v1) => {
     const responders = mates.length ? mates : (asked.length ? [] : [home]);
     const members = [...new Set([...(conv.members ?? []), ...mates])];
     const nameOf = (k) => MATE[k]?.name ?? k;
-    const historyFor = (me) => messages.slice(-16).filter((m) => m.role !== 'system').map((m) => (m.role === 'user' ? { role: 'user', content: m.text } : (m.mate ?? home) === me ? { role: 'assistant', content: m.text } : { role: 'user', content: `[${nameOf(m.mate ?? home)}]: ${m.text}` }));
-    const turn = (mate, emit, signal) => converse({ uid, mateKey: mate, cfg: cfgs[mate] ?? {}, settings, mode: conv.mode ?? 'chat', history: historyFor(mate), emit, signal, others: [...new Set([home, ...members])].filter((k) => k !== mate).map(nameOf) });
+    const HIST_CHARS = 28_000; // about 7k tokens of history; older turns stay reachable through the chat_history tool
+    const historyFor = (me) => {
+      const all = messages.filter((m) => m.role !== 'system' && m.state !== 'error').map((m) => (m.role === 'user' ? { role: 'user', content: m.text } : (m.mate ?? home) === me ? { role: 'assistant', content: m.text } : { role: 'user', content: `[${nameOf(m.mate ?? home)}]: ${m.text}` }));
+      let used = 0, from = all.length;
+      while (from > 0 && used + all[from - 1].content.length <= HIST_CHARS) used += all[--from].content.length;
+      if (from === all.length && all.length) from = all.length - 1; // always keep the newest message
+      const kept = all.slice(from);
+      if (from > 0) { const first = all.find((m) => m.role === 'user')?.content ?? ''; kept.unshift({ role: 'user', content: `[Note: ${from} earlier message(s) are not shown here. The chat began with the owner saying: "${first.slice(0, 300)}". Use the chat_history tool to look further back.]` }); }
+      return kept;
+    };
+    const turn = (mate, emit, signal) => converse({ uid, mateKey: mate, cfg: cfgs[mate] ?? {}, settings, mode: conv.mode ?? 'chat', history: historyFor(mate), emit, signal, ctx: { convId: req.params.id }, others: [...new Set([home, ...members])].filter((k) => k !== mate).map(nameOf) });
     const sysNote = (t) => ({ id: rid(), role: 'system', text: t, at: now(), state: 'sent' });
     const stream = req.query?.stream === '1';
     const save = () => ref.set({ messages, updatedAt: now(), ...(members.length ? { members } : {}) }, { merge: true });

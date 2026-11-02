@@ -1,6 +1,6 @@
 // Dynamic system prompt: rebuilt on every turn from the Mate, the owner's settings, memories, skills and knowledge.
 import { MATE, PLANNER_GUIDE, FLOW_GUIDE } from './mates.js';
-import { effortOf } from './llm.js';
+import { effortOf, providerSummary } from './llm.js';
 import { userCol } from './db.js';
 import { searchKnowledge } from './knowledge.js';
 
@@ -64,6 +64,8 @@ export async function buildSystem({ uid, mateKey, cfg = {}, mode = 'chat', query
   }
   if (mode === 'plan') parts.push('Mode: PLAN. Do not carry out the work. Reply with a short numbered plan: steps, who/what does each, and what could go wrong.');
   if (mode === 'ultracode') parts.push('Mode: ULTRACODE. Treat this as a careful engineering task: restate the goal, list assumptions, then give complete, working code with brief notes on how to run and test it.');
+  const prov = (await providerSummary(uid).catch(() => []))[0];
+  if (prov) parts.push(`Runtime: you are being served through ${prov.name} (model ${prov.model}); requests can fail over to another provider. If asked what model you are, say this and that you cannot verify anything beyond it.`);
   const [mem, skills, know] = await Promise.all([
     memoriesFor(uid, query, cfg.memoryScope || settings.memoryScope, mateKey).catch(() => []),
     skillsFor(uid, mateKey).catch(() => []),

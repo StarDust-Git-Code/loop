@@ -166,6 +166,14 @@ export const TOOLS = {
     const f = await putFile(c.uid, { name, mime: name.endsWith('.md') ? 'text/markdown' : 'text/plain', buf: Buffer.from(content, 'utf8'), source: 'run', runId: c.runId });
     return `Saved ${name} (${f.size} bytes) to Drive.`;
   } },
+  chat_history: { group: '*', desc: 'Look back in THIS chat beyond what is shown: the first messages, the latest ones, or messages matching words.', args: '{"which?": "start|end", "query?": "words to find", "n?": "how many, max 20"}', run: async (c, a) => {
+    if (!c.convId) throw bad('No chat is open');
+    const conv = (await userCol(c.uid, 'conversations').doc(c.convId).get()).data(); const msgs = (conv?.messages ?? []).filter((m) => m.role !== 'system');
+    const n = Math.min(Number(a.n) || 8, 20); let rows;
+    if (a.query) { const t = termsOf(a.query); rows = msgs.map((m, i) => ({ m, i, s: score(m.text, t) })).filter((x) => x.s).sort((x, y) => y.s - x.s).slice(0, n).sort((x, y) => x.i - y.i); }
+    else rows = (a.which === 'end' ? msgs.slice(-n) : msgs.slice(0, n)).map((m, i) => ({ m, i: a.which === 'end' ? msgs.length - n + i : i }));
+    return rows.length ? rows.map(({ m, i }) => `#${i + 1} ${m.role === 'user' ? 'owner' : m.mate ?? 'mate'} (${m.at?.slice(0, 16)}): ${m.text.slice(0, 400)}`).join('\n') : 'Nothing found.';
+  } },
   calculate: { group: '*', desc: 'Evaluate an arithmetic expression exactly (numbers, + - * / % ** and parentheses).', args: '{"expression": "(12.5*4)/3"}', run: async (_c, a) => {
     const e = String(a.expression ?? '');
     if (!/^[\d\s+\-*/%().]+$/.test(e) || e.length > 200) throw bad('Only numbers and + - * / % ** ( ) are allowed');

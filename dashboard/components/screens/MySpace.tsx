@@ -1,5 +1,6 @@
 'use client';
-import { useEffect, useRef, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { useState } from 'react';
 import { api } from '../../lib/api';
 import { day } from '../../lib/format';
 import { useRepo, useSettings } from '../../lib/hooks';
@@ -18,21 +19,20 @@ const TAG = { event: ['You', '#ECE7FF', '#4F34D6'], reminder: ['You', '#ECE7FF',
 const QUICK = ['Plan my day', 'What did I forget?', 'Add a memory', 'Summarise my week'];
 
 export function MySpace() {
+  const router = useRouter();
   const mem = useRepo(api.memories), ev = useRepo(api.events), convs = useRepo(api.conversations);
   const { settings, update } = useSettings(); const toast = useToast();
-  const [tab, setTab] = useState<'talk' | 'journal' | 'recall'>('talk'); const [f, setF] = useState<Filter>('all'); const [q, setQ] = useState('');
+  const [tab, setTab] = useState<'journal' | 'recall'>('journal'); const [f, setF] = useState<Filter>('all'); const [q, setQ] = useState('');
   const [text, setText] = useState(''); const [sched, setSched] = useState(''); const [add, setAdd] = useState<MemoryIn | null>(null); const [recall, setRecall] = useState('');
-  const end = useRef<HTMLDivElement>(null);
   const today = day(new Date());
   const todays = ev.items.filter((e) => day(new Date(e.start)) === today).sort((a, b) => a.start.localeCompare(b.start));
-  const conv = convs.items.find((c) => c.mate === 'mimo' && c.title === 'Mimo');
+  const conv = convs.items.find((c) => c.mate === 'mimo');
   const shown = mem.items.filter((m) => (f === 'all' || m.kind === f) && m.text.toLowerCase().includes(q.toLowerCase())).sort((a, b) => Number(!!b.pinned) - Number(!!a.pinned) || b.createdAt.localeCompare(a.createdAt));
   const found = recall.trim() ? mem.items.filter((m) => m.text.toLowerCase().includes(recall.toLowerCase())) : [];
-  useEffect(() => { end.current?.scrollIntoView({ behavior: 'smooth', block: 'end' }); }, [conv?.messages.length, tab]);
 
-  const talk = async (t: string) => {
-    if (!t.trim()) return; let c = conv; if (!c) c = await convs.create({ title: 'Mimo', mate: 'mimo', messages: [] });
-    setText(''); await api.conversations.send(c.id, t.trim(), 'mimo');
+  const openMimo = async (draft?: string) => {
+    let c = conv; if (!c) c = await convs.create({ title: 'Chat with Mimo', mate: 'mimo', messages: [], mode: 'chat', members: [] });
+    router.push(`/chat?c=${c.id}${draft ? `&draft=${encodeURIComponent(draft)}` : ''}`);
   };
   const journal = async () => { if (!text.trim()) return; await mem.create({ kind: 'journal', text: text.trim(), scope: 'private' }); setText(''); toast('Saved to your journal'); };
   const addEvent = async () => { const p = parseWhen(sched); await ev.create({ title: p.title, start: p.start.toISOString(), end: p.end.toISOString(), kind: 'event', notes: '' }); setSched(''); toast(`Added for ${p.start.toLocaleString([], { weekday: 'short', hour: '2-digit', minute: '2-digit' })}`); };
@@ -40,7 +40,7 @@ export function MySpace() {
   const scopeLine = (m: MemoryIn) => (m.scope === 'shared' ? 'Shared with Mates' : 'Only Mimo');
 
   return (
-    <Page fill title="My Space" sub="Your private second brain: memories, info and schedule, with Mimo to talk it through." actions={<><span style={{ background: '#F1ECFF', color: '#4F34D6', borderRadius: 99, padding: '8px 16px', fontSize: 13, fontWeight: 600 }}>🔒 Private. Other Mates see only what you share.</span><Btn variant="primary" onClick={() => setAdd({ kind: 'idea', text: '', scope: 'private' })}>+ Add memory</Btn></>}>
+    <Page fill title="My Space" sub="Your private second brain: today's schedule, memories, journal and recall. Talk to Mimo in Chat." actions={<><span style={{ background: '#F1ECFF', color: '#4F34D6', borderRadius: 99, padding: '8px 16px', fontSize: 13, fontWeight: 600 }}>🔒 Private. Other Mates see only what you share.</span><Btn variant="primary" onClick={() => setAdd({ kind: 'idea', text: '', scope: 'private' })}>+ Add memory</Btn></>}>
       <ErrorNote message={mem.error ?? ev.error} />
       <div style={{ flex: 1, minHeight: 0, display: 'grid', gridTemplateColumns: 'minmax(260px,330px) minmax(0,1fr) minmax(280px,380px)', gap: 18 }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14, minHeight: 0 }}>
@@ -67,26 +67,18 @@ export function MySpace() {
           <div style={{ background: 'linear-gradient(160deg,#FFE6EE,#FFF3F6)', padding: '14px 20px', display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
             <img src={mateImg('mimo')} alt="" width={46} height={46} style={{ display: 'block', margin: '0 auto 6px', animation: 'lm-bob 3.6s ease-in-out infinite' }} />
             <div style={{ flex: 1, minWidth: 180 }}><b style={{ fontSize: 18 }}>Mimo</b><div style={{ color: '#6B6572', fontSize: 13 }}>Your second-brain buddy. Remembers, reminds, and talks things through.</div></div>
-            <Tabs value={tab} onChange={setTab} options={[{ id: 'talk', label: 'Talk' }, { id: 'journal', label: 'Journal' }, { id: 'recall', label: 'Recall' }]} />
+            <Tabs value={tab} onChange={setTab} options={[{ id: 'journal', label: 'Journal' }, { id: 'recall', label: 'Recall' }]} />
           </div>
           <div key={tab} style={{ flex: 1, minHeight: 0, overflow: 'auto', padding: 20, display: 'flex', flexDirection: 'column', gap: 14, animation: 'lm-up .3s ease both' }}>
-            {tab === 'talk' && (!conv || conv.messages.length === 0 ? <div style={{ margin: 'auto', textAlign: 'center', color: '#6B6572', maxWidth: 360 }}><p style={{ lineHeight: 1.6 }}>Say hi to Mimo. Ask it to plan your day, remember a decision, or find something you noted.</p></div> : conv.messages.map((m) => m.role === 'user' ? (
-              <div key={m.id} style={{ alignSelf: 'flex-end', maxWidth: '75%', background: '#F2E4FF', border: '1px solid rgba(160,100,230,.3)', borderRadius: 16, padding: '12px 16px', fontSize: 14.5, lineHeight: 1.5 }}>{m.text}</div>) : (
-              <div key={m.id} style={{ display: 'flex', gap: 12, maxWidth: '85%' }}><img src={mateImg('mimo')} alt="" width={34} height={34} /><div style={{ background: '#F4F2FA', borderRadius: 16, padding: '12px 16px', fontSize: 14.5, lineHeight: 1.5 }}>{m.text}</div></div>)))}
-            {tab === 'talk' && conv?.messages.some((m) => m.state === 'pending') && <span style={{ alignSelf: 'center', fontSize: 12.5, color: '#6B6572' }}>{api.capabilities.backend ? 'Mimo is thinking…' : 'Saved. Mimo replies once a backend is connected.'}</span>}
             {tab === 'journal' && <><p style={{ color: '#6B6572', margin: 0, fontSize: 14 }}>A private place to write. Entries are saved as Journal memories, visible only to you.</p><Textarea style={{ minHeight: 180 }} value={text} onChange={(e) => setText(e.target.value)} placeholder="How did today go?" aria-label="Journal entry" /><Btn variant="primary" style={{ alignSelf: 'flex-start' }} disabled={!text.trim()} onClick={journal}>Save entry</Btn>
               {mem.items.filter((m) => m.kind === 'journal').slice(0, 5).map((m) => <div key={m.id} style={{ borderTop: '1px solid rgba(31,26,23,.08)', paddingTop: 10, fontSize: 14, lineHeight: 1.5 }}><span style={{ color: '#6B6572', fontSize: 12.5 }}>{new Date(m.createdAt).toLocaleDateString()}</span><div>{m.text}</div></div>)}</>}
             {tab === 'recall' && <><input value={recall} onChange={(e) => setRecall(e.target.value)} aria-label="Recall" placeholder="What are you trying to remember?" style={{ height: 44, border: '1px solid rgba(27,24,34,.17)', borderRadius: 10, padding: '0 14px', font: 'inherit', fontSize: 14.5 }} />
               {recall.trim() && (found.length === 0 ? <p style={{ color: '#6B6572' }}>Nothing matches “{recall}”. Meaning-based recall arrives with the backend; this searches your words.</p> : found.map((m) => <div key={m.id} style={{ borderRadius: 12, background: '#F4F2FA', padding: 12, fontSize: 14 }}><span style={{ background: KC[m.kind][0], color: KC[m.kind][1], borderRadius: 6, padding: '2px 8px', fontSize: 12, marginRight: 8 }}>{m.kind}</span>{m.text}</div>))}</>}
-            <div ref={end} />
           </div>
-          {tab === 'talk' && <div style={{ borderTop: '1px solid rgba(31,26,23,.08)', padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: 10 }}>
-            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>{QUICK.map((s) => <button key={s} onClick={() => (s === 'Add a memory' ? setAdd({ kind: 'note', text: '', scope: 'private' }) : void talk(s))} style={{ border: '1px solid rgba(27,24,34,.17)', borderRadius: 99, padding: '7px 14px', background: '#F7F5FB', font: 'inherit', fontSize: 13.5, cursor: 'pointer', transition: 'background .15s' }}>{s}</button>)}</div>
-            <form onSubmit={(e) => { e.preventDefault(); void talk(text); }} style={{ display: 'flex', gap: 10, alignItems: 'center', border: '1px solid rgba(27,24,34,.17)', borderRadius: 14, padding: '6px 6px 6px 16px' }}>
-              <input value={text} onChange={(e) => setText(e.target.value)} aria-label="Talk to Mimo" placeholder="Talk to Mimo…" style={{ flex: 1, border: 0, outline: 0, font: 'inherit', fontSize: 14.5, height: 38, background: 'none' }} />
-              <button type="submit" aria-label="Send" disabled={!text.trim()} style={{ width: 40, height: 40, borderRadius: 10, border: 0, background: '#6A4DF4', color: '#fff', opacity: text.trim() ? 1 : 0.4, cursor: 'pointer' }}>↑</button>
-            </form>
-          </div>}
+          <div style={{ borderTop: '1px solid rgba(31,26,23,.08)', padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <p style={{ margin: 0, fontSize: 12.5, color: '#6B6572' }}>Want to talk it through? Mimo lives in Chat, with the same memories you see here.</p>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>{QUICK.map((q2) => <button key={q2} onClick={() => (q2 === 'Add a memory' ? setAdd({ kind: 'note', text: '', scope: 'private' }) : void openMimo(q2))} style={{ border: '1px solid rgba(27,24,34,.17)', borderRadius: 99, padding: '7px 14px', background: '#F7F5FB', font: 'inherit', fontSize: 13.5, cursor: 'pointer', transition: 'background .15s' }}>{q2}</button>)}<button onClick={() => void openMimo()} style={{ border: 0, borderRadius: 99, padding: '7px 14px', background: '#6A4DF4', color: '#fff', font: 'inherit', fontSize: 13.5, cursor: 'pointer' }}>Open chat with Mimo →</button></div>
+          </div>
         </section>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14, minHeight: 0 }}>
