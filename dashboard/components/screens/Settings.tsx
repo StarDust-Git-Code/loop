@@ -108,7 +108,7 @@ function Data() {
       <div className={s.card}>
         <h2 style={{ margin: '0 0 6px', fontSize: 18 }}>Backend</h2>
         <Row label={api.capabilities.backend ? 'Connected' : 'Not connected'} sub={api.capabilities.backend ? 'Your data and runs live on your backend.' : 'Everything is saved in this browser only, and nothing runs yet. Set NEXT_PUBLIC_API_URL to connect one.'}><span style={{ width: 10, height: 10, borderRadius: '50%', background: api.capabilities.backend ? '#2FA562' : '#D79A2B' }} /></Row>
-        <Row label="Account" sub={session?.signedIn ? `Signed in as ${session.name ?? ''}` : 'Not signed in. Sign-in arrives with the backend.'}>{session?.signedIn && <Btn onClick={() => api.auth.signOut().then(() => location.reload())}>Sign out</Btn>}</Row>
+        <Row label="Account" sub={session?.signedIn ? `Signed in as ${session.name ?? ''}` : 'Not signed in.'}>{session?.signedIn && <Btn onClick={() => api.auth.signOut().then(() => location.reload())}>Sign out</Btn>}</Row>
       </div>
       <div className={s.card}>
         <h2 style={{ margin: '0 0 6px', fontSize: 18 }}>Your data</h2>

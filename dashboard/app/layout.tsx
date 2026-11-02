@@ -6,6 +6,8 @@ import '@fontsource/inter/600.css';
 import '@fontsource/inter/700.css';
 import '@fontsource/jetbrains-mono/400.css';
 import '@fontsource/jetbrains-mono/500.css';
+import { AuthProvider } from '../lib/auth';
+import { AuthGate } from '../components/auth/SignIn';
 import { Sidebar } from '../components/dashboard/Sidebar';
 import s from '../components/dashboard/dashboard.module.css';
 import { CommandPalette } from '../components/ui/CommandPalette';
@@ -23,6 +25,8 @@ export default function Root({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
       <body>
+        <AuthProvider>
+        <AuthGate>
         <ToastProvider>
         <CommandPalette />
         <div className={s.shell}>
@@ -30,6 +34,8 @@ export default function Root({ children }: { children: React.ReactNode }) {
           <div className={s.content}>{children}</div>
         </div>
         </ToastProvider>
+        </AuthGate>
+        </AuthProvider>
       </body>
     </html>
   );

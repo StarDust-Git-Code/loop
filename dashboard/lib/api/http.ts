@@ -1,5 +1,6 @@
 import type { Api, Repo } from './contract';
 import type { ID, RunEvent } from '../types';
+import { idToken } from '../auth';
 
 /** REST + SSE adapter. Set NEXT_PUBLIC_API_URL to switch the dashboard to it. Endpoints: see BACKEND.md. */
 export function createHttpApi(base: string): Api {
@@ -7,9 +8,10 @@ export function createHttpApi(base: string): Api {
   const emit = () => subs.forEach((s) => s());
 
   async function call<T>(method: string, path: string, body?: unknown): Promise<T> {
+    const tok = await idToken();
     const res = await fetch(`${base}/v1${path}`, {
-      method, credentials: 'include',
-      headers: body instanceof FormData ? undefined : { 'content-type': 'application/json' },
+      method,
+      headers: { ...(body instanceof FormData ? {} : { 'content-type': 'application/json' }), ...(tok ? { authorization: `Bearer ${tok}` } : {}) },
       body: body === undefined ? undefined : body instanceof FormData ? body : JSON.stringify(body),
     });
     if (!res.ok) throw new Error((await res.text().catch(() => '')) || `${method} ${path} failed (${res.status})`);
@@ -58,7 +60,7 @@ export function createHttpApi(base: string): Api {
 
   return {
     capabilities: { backend: true },
-    auth: { session: () => call('GET', '/auth/session'), signOut: () => call('POST', '/auth/sign-out') },
+    auth: { session: async () => ({ signedIn: true }), signOut: async () => {} },
     tasks: repo('/tasks'), workflows: repo('/workflows'), automations: repo('/automations'), knowledge: repo('/knowledge'),
     memories: repo('/memories'), skills: repo('/skills'), mcp, connections, conversations, events: repo('/events'), files,
     mateConfigs: repo('/mates'), runs, providers,
