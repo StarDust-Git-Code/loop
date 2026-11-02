@@ -5,10 +5,10 @@ import { PRESET, PRESETS, modelKey } from '../../lib/providers';
 import { Select } from './ui';
 
 /** Grouped by provider. Providers without a key are listed (disabled) so you can see what exists. */
-export function ModelPicker({ value, onChange, allowDefault = true }: { value: string; onChange: (v: string) => void; allowDefault?: boolean }) {
+export function ModelPicker({ value: raw, onChange, allowDefault = true }: { value: string; onChange: (v: string) => void; allowDefault?: boolean }) {
   const { items } = useRepo(api.providers);
   const active = items.filter((p) => p.enabled);
-  value = value.includes('::') ? value : ''; // old plain model names mean "workspace default"
+  const value = raw.includes('::') ? raw : ''; // old plain model names mean "workspace default"
   const unused = PRESETS.filter((p) => p.id !== 'custom' && !items.some((x) => x.preset === p.id));
   return (
     <Select value={value} onChange={(e) => onChange(e.target.value)} aria-label="Model">
