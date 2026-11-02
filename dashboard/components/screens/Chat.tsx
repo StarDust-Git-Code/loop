@@ -191,6 +191,11 @@ export function Chat() {
             </form>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 6, flexWrap: 'wrap' }}>
               <Tabs value={mode} onChange={(m) => patch({ mode: m })} options={[{ id: 'chat', label: 'Chat' }, { id: 'plan', label: 'Plan' }, { id: 'ultracode', label: 'Ultracode' }]} />
+              <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12.5, color: '#3D3946' }}>Thinking
+                <select value={conv.thinking ?? 'default'} onChange={(e) => void patch({ thinking: e.target.value as Conversation['thinking'] })} aria-label="Thinking level" style={{ height: 34, borderRadius: 10, border: '1px solid rgba(31,26,23,.16)', background: '#fff', padding: '0 8px', font: 'inherit', fontSize: 12.5 }}>
+                  {[['default', 'Default'], ['low', 'Low'], ['medium', 'Medium'], ['high', 'High'], ['xhigh', 'XHigh']].map(([k, n]) => <option key={k} value={k}>{n}</option>)}
+                </select>
+              </label>
               <span style={{ fontSize: 12, color: '#6B6572' }}>{MODE_NOTE[mode]}</span>
             </div>
           </div>

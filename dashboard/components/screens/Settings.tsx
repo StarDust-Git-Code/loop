@@ -11,8 +11,8 @@ import { useToast } from '../ui/toast';
 import { Btn, confirmThen, Loading, Page, Tabs, Toggle } from '../ui/ui';
 import s from './settings.module.css';
 
-type Sec = 'general' | 'models' | 'safety' | 'notify' | 'data';
-const SECS: { id: Sec; label: string; icon: string }[] = [{ id: 'general', label: 'General', icon: '◐' }, { id: 'models', label: 'Models & providers', icon: '✦' }, { id: 'safety', label: 'Safety & limits', icon: '⛨' }, { id: 'notify', label: 'Notifications', icon: '◔' }, { id: 'data', label: 'Data & account', icon: '▤' }];
+type Sec = 'general' | 'models' | 'safety' | 'notify' | 'data' | 'dev';
+const SECS: { id: Sec; label: string; icon: string }[] = [{ id: 'general', label: 'General', icon: '◐' }, { id: 'models', label: 'Models & providers', icon: '✦' }, { id: 'safety', label: 'Safety & limits', icon: '⛨' }, { id: 'notify', label: 'Notifications', icon: '◔' }, { id: 'data', label: 'Data & account', icon: '▤' }, { id: 'dev', label: 'Developer options', icon: '⌘' }];
 const TINT = ['#ECE7FF', '#FFF3D6', '#E3F0FF', '#E6F4EA', '#FDE8EE', '#E4EAFF'];
 const tint = (id: string) => TINT[[...id].reduce((a, c) => a + c.charCodeAt(0), 0) % TINT.length];
 
@@ -39,6 +39,7 @@ export function Settings() {
             {sec === 'safety' && <Safety st={settings} set={update} />}
             {sec === 'notify' && <Notify st={settings} set={update} />}
             {sec === 'data' && <Data />}
+            {sec === 'dev' && <Dev st={settings} set={update} />}
           </div>
         </div>)}
     </Page>
@@ -78,6 +79,28 @@ function Safety({ st, set }: P) {
         <h2 style={{ margin: '0 0 6px', fontSize: 18 }}>Limits</h2>
         {num('maxSteps', 'Max steps per run', 'A run stops after this many steps.')}{num('retriesOnFailure', 'Retries on failure', 'How often a failed step is tried again.')}{num('stopAfterMinutes', 'Stop after minutes without progress', '0 turns it off.')}
         <p style={{ margin: '12px 0 0', fontSize: 13.5 }}>Hooks and guardrails live in <Link href="/skills" style={{ color: '#4F34D6' }}>Skills & MCP → Agent harness</Link>.</p>
+      </div>
+    </div>
+  );
+}
+
+function Dev({ st, set }: P) {
+  const numRow = (k: 'maxContextTokens' | 'maxOutputTokens', label: string, sub: string, ph: string) => (
+    <Row label={label} sub={sub}><input type="number" min={0} step={256} className={s.inp} style={{ width: 120 }} defaultValue={st[k] || ''} placeholder={ph} aria-label={label} onBlur={(e) => void set({ [k]: Math.max(0, Number(e.target.value) || 0) })} /></Row>
+  );
+  return (
+    <div style={{ display: 'grid', gap: 16 }}>
+      <div className={s.card}>
+        <h2 style={{ margin: '0 0 6px', fontSize: 18 }}>Model limits</h2>
+        {numRow('maxContextTokens', 'Max context window (tokens)', 'How much chat history is sent with each message. Older messages are dropped (Mates can still look them up). Empty = automatic. Allowed: 1,000 to 2,000,000. Set it at or below what your model supports.', 'Auto')}
+        {numRow('maxOutputTokens', 'Max output (tokens)', 'The longest answer a Mate may write. Empty = automatic (grows with the thinking level). Allowed: 64 to 64,000. When set, it is used exactly, and models that think before answering spend part of it on thinking.', 'Auto')}
+        <p style={{ margin: '12px 0 0', fontSize: 13, color: 'var(--muted)' }}>Tokens are estimated at about 4 characters each, so treat the context limit as approximate.</p>
+      </div>
+      <div className={s.card}>
+        <h2 style={{ margin: '0 0 6px', fontSize: 18 }}>Thinking</h2>
+        <Row label="Default thinking level" sub="Used when neither the chat nor the Mate sets one. Change it per chat from the composer, or per Mate in Agents.">
+          <Tabs value={st.defaultThinking} onChange={(v) => void set({ defaultThinking: v })} options={[{ id: 'low', label: 'Low' }, { id: 'medium', label: 'Medium' }, { id: 'high', label: 'High' }, { id: 'xhigh', label: 'XHigh' }]} />
+        </Row>
       </div>
     </div>
   );

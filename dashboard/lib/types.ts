@@ -56,7 +56,7 @@ export type ConnectionIn = { provider: Provider; label: string; status: 'disconn
 export type Connection = Entity<ConnectionIn>;
 
 export type Message = { id: ID; role: 'user' | 'mate' | 'system'; mate?: MateKey; text: string; at: string; state: 'sent' | 'pending' | 'error' };
-export type ConversationIn = { title: string; mate?: MateKey; messages: Message[]; mode?: 'chat' | 'plan' | 'ultracode'; detached?: ID[]; members?: MateKey[] };
+export type ConversationIn = { title: string; mate?: MateKey; messages: Message[]; mode?: 'chat' | 'plan' | 'ultracode'; detached?: ID[]; members?: MateKey[]; /** Thinking level for this chat. Empty or 'default' uses the Mate's own, then the workspace default. */ thinking?: 'default' | 'low' | 'medium' | 'high' | 'xhigh' };
 export type Conversation = Entity<ConversationIn>;
 
 export type CalEventIn = { title: string; start: string; end: string; kind: 'event' | 'reminder' | 'run' | 'automation'; notes: string };
@@ -80,6 +80,8 @@ export type SettingsData = {
   guardContainer: boolean; guardPurchases: boolean; guardLog: boolean;
   chunkSize: number; overlap: number; topK: number; hybrid: boolean; rerank: boolean; citeAlways: boolean; memoryScope: 'private' | 'shared' | 'project';
   prefersShort: boolean; shareSchedule: boolean;
+  /** Developer options. 0 = automatic. Tokens, roughly 4 characters each. */
+  maxContextTokens: number; maxOutputTokens: number; defaultThinking: 'low' | 'medium' | 'high' | 'xhigh';
 };
 
 export type Session = { signedIn: boolean; name?: string; email?: string; plan?: string };

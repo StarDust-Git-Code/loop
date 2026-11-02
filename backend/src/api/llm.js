@@ -59,7 +59,7 @@ export async function plan(uid, model = '') {
 }
 
 /** Single completion with failover. Returns { text, provider, model }. */
-export async function chat(uid, { model = '', messages, temperature = 0.4, maxTokens = 2048, json = false, effort, signal } = {}) {
+export async function chat(uid, { model = '', messages, temperature = 0.4, maxTokens = 2048, json = false, effort, fixedMax = false, signal } = {}) {
   const attempts = await plan(uid, model);
   if (!attempts.length) throw Object.assign(new Error('No LLM provider configured. Add one in Settings, or set NVIDIA_API_KEY / GEMINI_API_KEY on the API service.'), { statusCode: 424 });
   const errors = [];
@@ -68,7 +68,7 @@ export async function chat(uid, { model = '', messages, temperature = 0.4, maxTo
   for (const a of live.length ? live : attempts) {
     try {
       const ex = extrasFor(a, effort);
-      const body = { model: a.model, messages, temperature, max_tokens: effort ? Math.min(8000, Math.round(maxTokens * (TOKEN_MULT[effort] ?? 1))) : maxTokens, stream: false, ...(json ? { response_format: { type: 'json_object' } } : {}), ...(ex ?? {}) };
+      const body = { model: a.model, messages, temperature, max_tokens: effort && !fixedMax ? Math.min(8000, Math.round(maxTokens * (TOKEN_MULT[effort] ?? 1))) : maxTokens, stream: false, ...(json ? { response_format: { type: 'json_object' } } : {}), ...(ex ?? {}) };
       let res = await fetch(`${a.baseUrl}/chat/completions`, { method: 'POST', headers: { 'content-type': 'application/json', ...authHeaders(a.baseUrl, a.key) }, body: JSON.stringify(body), signal: signal ?? AbortSignal.timeout(num('LLM_TIMEOUT_MS', 90_000)) });
       if ((res.status === 400 || res.status === 422) && ex) { // provider does not know the reasoning parameters
         noExtras.add(a.id); for (const k of Object.keys(ex)) delete body[k];
@@ -123,7 +123,7 @@ const parseArgs = (raw) => { if (raw && typeof raw === 'object') return raw; try
  *  otherwise `textMessages` (which carry the text tool protocol) are sent and `mode` comes back as 'text'.
  *  onStart({mode}) fires once, right before the first output arrives. Returns { text, toolCalls:[{id,name,args}], mode, provider, model }.
  */
-export async function chatStream(uid, { model = '', messages, textMessages, tools, temperature = 0.4, maxTokens = 2048, effort, signal } = {}, onDelta = () => {}, onStart = () => {}) {
+export async function chatStream(uid, { model = '', messages, textMessages, tools, temperature = 0.4, maxTokens = 2048, effort, fixedMax = false, signal } = {}, onDelta = () => {}, onStart = () => {}) {
   const attempts = await plan(uid, model);
   if (!attempts.length) throw Object.assign(new Error('No LLM provider configured. Add one in Settings, or set NVIDIA_API_KEY / GEMINI_API_KEY on the API service.'), { statusCode: 424 });
   const errors = []; const t = Date.now();
@@ -136,7 +136,7 @@ export async function chatStream(uid, { model = '', messages, textMessages, tool
       const ex = extrasFor(a, effort);
       const send = (extra, withTools) => fetch(`${a.baseUrl}/chat/completions`, {
         method: 'POST', headers: { 'content-type': 'application/json', ...authHeaders(a.baseUrl, a.key) },
-        body: JSON.stringify({ model: a.model, messages: withTools ? messages : (textMessages ?? messages), temperature, max_tokens: effort ? Math.min(8000, Math.round(maxTokens * (TOKEN_MULT[effort] ?? 1))) : maxTokens, stream: true, ...(withTools ? { tools, tool_choice: 'auto' } : {}), ...(extra ?? {}) }),
+        body: JSON.stringify({ model: a.model, messages: withTools ? messages : (textMessages ?? messages), temperature, max_tokens: effort && !fixedMax ? Math.min(8000, Math.round(maxTokens * (TOKEN_MULT[effort] ?? 1))) : maxTokens, stream: true, ...(withTools ? { tools, tool_choice: 'auto' } : {}), ...(extra ?? {}) }),
         signal: signal ?? AbortSignal.timeout(num('LLM_STREAM_TIMEOUT_MS', 180_000)),
       });
       let res = await send(ex, native);

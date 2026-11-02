@@ -26,12 +26,12 @@ let pass = 0; const ok = (name) => { pass++; console.log('  ✓', name); };
 
 /* ---- fakes ---- */
 const body = (req) => new Promise((r) => { const c = []; req.on('data', (d) => c.push(d)); req.on('end', () => r(Buffer.concat(c))); });
-const llmCalls = []; const llmSys = []; let toolsOff = false; const llmTools = []; const llmMsgs = [];
+const llmCalls = []; const llmSys = []; let toolsOff = false; const llmTools = []; const llmMsgs = []; const llmMax = [];
 const llm = http.createServer(async (req, res) => {
   const send = (o) => { res.setHeader('content-type', 'application/json'); res.end(JSON.stringify(o)); };
   if (req.url.endsWith('/__tools_off')) { toolsOff = true; return send({ ok: true }); }
   if (req.url.endsWith('/models')) return send({ data: [{ id: 'fake-1' }, { id: 'fake-2' }] });
-  const b = JSON.parse((await body(req)).toString()); const sys = b.messages[0].content; llmCalls.push(sys.slice(0, 30)); llmSys.push(sys); llmTools.push(b.tools ?? null); llmMsgs.push(b.messages);
+  const b = JSON.parse((await body(req)).toString()); const sys = b.messages[0].content; llmCalls.push(sys.slice(0, 30)); llmSys.push(sys); llmTools.push(b.tools ?? null); llmMsgs.push(b.messages); llmMax.push(b.max_tokens);
   let text = 'LLM says hello';
   if (sys.includes('You are the Planner')) text = JSON.stringify({ steps: [{ mate: 'research', label: 'Gather facts', kind: 'think' }, { mate: 'code', label: 'Make hello file', kind: 'code' }, { mate: 'writer', label: 'Write summary', kind: 'file' }] });
   else if (sys.includes('coding agent')) {
@@ -187,6 +187,15 @@ try {
   assert.ok(hist.reduce((n, m) => n + String(m.content).length, 0) < 40000, 'history is bounded');
   assert.ok(ev.some((e) => e.type === 'tool' && e.name === 'chat_history') && ev.filter((e) => e.type === 'delta').map((d) => d.text).join('').includes('FIRSTMSG'), 'chat_history reaches the start of the chat');
   assert.ok(llmSys.at(-1).includes('Runtime: you are being served through'), 'runtime model line');
+  /* developer options + per-chat thinking */
+  await call('PATCH', '/v1/settings', { maxOutputTokens: 500, maxContextTokens: 3000, defaultThinking: 'medium' });
+  await sse(lc.id, 'hello again');
+  assert.equal(llmMax.at(-1), 500, 'max output tokens is exact when set'); assert.ok(llmSys.at(-1).includes('Thinking level: MEDIUM'), 'workspace default thinking applies');
+  assert.ok(llmMsgs.at(-1).reduce((n, m) => n + String(m.content ?? '').length, 0) < 12000, 'context window setting trims history');
+  await call('PATCH', `/v1/conversations/${lc.id}`, { thinking: 'xhigh' });
+  await sse(lc.id, 'hello once more'); assert.ok(llmSys.at(-1).includes('Thinking level: XHIGH'), 'per-chat thinking wins');
+  const bad = (await call('PATCH', '/v1/settings', { maxOutputTokens: 5, defaultThinking: 'bogus' })).json; assert.equal(bad.maxOutputTokens, 64); assert.equal(bad.defaultThinking, 'medium');
+  await call('PATCH', '/v1/settings', { maxOutputTokens: 0, maxContextTokens: 0, defaultThinking: 'high' });
   ev = await sse(conv.id, 'check both please');
   assert.equal(ev.filter((e) => e.type === 'tool').map((e) => e.name).sort().join(), 'runs_active,runs_failed', 'two calls in one turn');
   assert.equal(ev.filter((e) => e.type === 'tool_result').length, 2);

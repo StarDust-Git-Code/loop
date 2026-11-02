@@ -20,18 +20,21 @@ const clean = (msgs) => msgs.map((m) => (m.role === 'tool' ? { role: 'tool', too
  * converse: one assistant turn. history = [{role:'user'|'assistant', content}]
  * emit({type:'delta'|'reset'|'tool'|'tool_result'}) ; returns { text, tools:[{name,ok}] }
  */
-export async function converse({ uid, mateKey, cfg = {}, settings, mode = 'chat', history, emit = () => {}, signal, ctx = {}, others = [] }) {
-  const effort = effortOf(cfg.thinking);
+export async function converse({ uid, mateKey, cfg = {}, settings, mode = 'chat', history, emit = () => {}, signal, ctx = {}, others = [], thinking }) {
+  // thinking level: this chat's choice, else the Mate's own, else the workspace default (high)
+  const pick = [thinking, cfg.thinking].find((v) => v && v !== 'default');
+  const effort = effortOf(pick ?? settings.defaultThinking);
   const allowed = mode === 'plan' ? [] : toolsFor(cfg.tools ?? [], settings, mateKey);
   const known = new Set(allowed.map((t) => t.name));
   const last = [...history].reverse().find((m) => m.role === 'user')?.content ?? '';
-  const system = await buildSystem({ uid, mateKey, cfg, mode, query: last, settings, tools: allowed, others });
+  const system = await buildSystem({ uid, mateKey, cfg, mode, query: last, settings, tools: allowed, others, effort });
   const schemas = toOpenAI(allowed);
   const msgs = [...history]; // canonical (native) conversation, without the system message
   const used = []; const gathered = []; const cache = new Map();
   const toolCtx = { uid, settings, mate: mateKey, ...ctx };
   const maxTurns = allowed.length ? TOOL_TURNS[effort] : 0;
-  const maxTokens = mode === 'ultracode' ? 3000 : 1500;
+  const fixedMax = settings.maxOutputTokens > 0; // developer option: an exact output cap, no automatic scaling
+  const maxTokens = fixedMax ? settings.maxOutputTokens : mode === 'ultracode' ? 3000 : 1500;
   let dupes = 0, forced = false;
 
   const finalMsgs = () => [{ role: 'system', content: system }, ...clean(toTextMessages(msgs))];
@@ -42,7 +45,7 @@ export async function converse({ uid, mateKey, cfg = {}, settings, mode = 'chat'
     if (!canCall && used.length && !forced) { forced = true; msgs.push({ role: 'user', content: 'Tool budget reached. Write your final answer to the owner now, in plain text. Do not call any tool and do not output JSON.' }); }
     let modeNow = 'native', head = '', hide = null;
     const r = await chatStream(uid, {
-      model: cfg.model || settings.model, effort, maxTokens, signal,
+      model: cfg.model || settings.model, effort, maxTokens, fixedMax, signal,
       messages: canCall ? [{ role: 'system', content: system }, ...clean(msgs)] : finalMsgs(),
       textMessages: canCall ? textMsgs() : finalMsgs(),
       tools: canCall ? schemas : undefined,

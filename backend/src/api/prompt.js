@@ -46,7 +46,7 @@ export const THINK_TEXT = {
   xhigh: 'Thinking level: XHIGH. Think very thoroughly: draft an answer, critique the draft for errors and gaps, then revise it. Verify facts with your tools whenever you can. Keep your reasoning private and output only the final, polished answer.',
 };
 
-export async function buildSystem({ uid, mateKey, cfg = {}, mode = 'chat', query = '', settings, tools = [], others = [] }) {
+export async function buildSystem({ uid, mateKey, cfg = {}, mode = 'chat', query = '', settings, tools = [], others = [], effort }) {
   const m = MATE[mateKey] ?? MATE.planner;
   const parts = [];
   parts.push(`You are ${m.name}, a Loopmates mate. ${cfg.description || m.blurb}\nThe owner is ${settings.displayName || 'your owner'}. Current time: ${clock(settings.timezone)}.\nBe concise, concrete and honest. If you are unsure, say so. Never claim to have done something you did not do.`);
@@ -56,7 +56,7 @@ export async function buildSystem({ uid, mateKey, cfg = {}, mode = 'chat', query
   if (settings.prefersShort) style.push('Keep answers short: a few sentences unless asked for more.');
   if (settings.citeAlways) style.push('When you use web pages, knowledge or memories, cite the source (URL or name).');
   if (style.length) parts.push(style.join(' '));
-  parts.push(THINK_TEXT[effortOf(cfg.thinking)]);
+  parts.push(THINK_TEXT[effort ?? effortOf(cfg.thinking)]);
   if (others.length) parts.push(`This is a shared chat. Other Mates present: ${others.join(', ')}. The owner can @mention any of them; lines shown as "[Name]: ..." are their words. Answer only for yourself and do not repeat what they said.`);
   if (mateKey === 'planner' || mateKey === 'flow') {
     const cfgs = Object.fromEntries((await userCol(uid, 'mates').get().catch(() => ({ docs: [] }))).docs.map((d) => [d.id, d.data()]));
