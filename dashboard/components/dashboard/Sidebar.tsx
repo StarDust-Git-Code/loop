@@ -1,5 +1,7 @@
 'use client';
 
+import { useEffect, useRef } from 'react';
+
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { BRAND } from '../../lib/dashboard/brand';
@@ -29,6 +31,22 @@ export function Sidebar() {
   const session = useSession();
   const name = session?.name || settings?.displayName || 'Guest';
   const agents = cfgs.filter((c) => c.enabled);
+  const listRef = useRef<HTMLUListElement>(null);
+  const barRef = useRef<HTMLSpanElement>(null);
+  useEffect(() => {
+    const place = () => {
+      const a = listRef.current?.querySelector<HTMLElement>('[aria-current=page]');
+      const bar = barRef.current;
+      if (!bar) return;
+      if (!a) { bar.style.opacity = '0'; return; }
+      bar.style.opacity = '1';
+      bar.style.height = `${a.offsetHeight}px`;
+      bar.style.transform = `translateY(${a.offsetTop}px)`;
+    };
+    place();
+    window.addEventListener('resize', place);
+    return () => window.removeEventListener('resize', place);
+  }, [pathname]);
 
   return (
     <nav aria-label="Primary" className={s.sidebar}>
@@ -39,7 +57,8 @@ export function Sidebar() {
         </span>
       </div>
 
-      <ul className={s.navList}>
+      <ul className={`${s.navList} ${s.navRel}`} ref={listRef}>
+        <span ref={barRef} className={s.navBar} aria-hidden="true" />
         {NAV.map((item) => {
           const active = isActive(pathname, item.href);
           const content = (
@@ -84,6 +103,7 @@ export function Sidebar() {
         <span className={s.navLabel}>Settings</span>
       </Link>
       <div className={s.profile}>
+        <button type="button" className={s.kbd} onClick={() => window.dispatchEvent(new Event('lm:palette'))} aria-label="Open command palette">⌘K</button>
         <div className={s.avatar} aria-hidden="true">
           {name[0]?.toUpperCase()}
         </div>

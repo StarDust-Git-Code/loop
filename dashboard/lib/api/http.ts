@@ -35,6 +35,7 @@ export function createHttpApi(base: string): Api {
     return act('/runs', { ...rest, fileIds: ids });
   };
   runs.control = (id, action) => act(`/runs/${id}/${action}`);
+  runs.steer = (id, text) => act(`/runs/${id}/steer`, { text });
   runs.decide = (runId, approvalId, decision) => act(`/runs/${runId}/approvals/${approvalId}`, { decision });
   runs.stream = (id, onEvent) => {
     const es = new EventSource(`${base}/v1/runs/${id}/events`, { withCredentials: true });
@@ -46,17 +47,21 @@ export function createHttpApi(base: string): Api {
   const mcp = repo('/mcp-servers') as Api['mcp'];
   mcp.verify = (id) => act(`/mcp-servers/${id}/verify`);
   const connections = repo('/connections') as Api['connections'];
+  connections.chats = (id) => call("GET", `/connections/${id}/chats`);
   connections.test = (id) => act(`/connections/${id}/test`);
   const files = repo('/files') as Api['files'];
   files.upload = async (file) => { const fd = new FormData(); fd.append('file', file); return act('/files', fd); };
   files.downloadUrl = (id) => `${base}/v1/files/${id}/content`;
+
+  const providers = repo('/providers') as Api['providers'];
+  providers.fetchModels = (id) => act(`/providers/${id}/fetch-models`);
 
   return {
     capabilities: { backend: true },
     auth: { session: () => call('GET', '/auth/session'), signOut: () => call('POST', '/auth/sign-out') },
     tasks: repo('/tasks'), workflows: repo('/workflows'), automations: repo('/automations'), knowledge: repo('/knowledge'),
     memories: repo('/memories'), skills: repo('/skills'), mcp, connections, conversations, events: repo('/events'), files,
-    mateConfigs: repo('/mates'), runs,
+    mateConfigs: repo('/mates'), runs, providers,
     search: { knowledge: (q) => call('GET', `/knowledge/search?q=${encodeURIComponent(q)}`) },
     settings: {
       get: () => call('GET', '/settings'),

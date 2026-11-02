@@ -8,16 +8,16 @@ import u from './ui.module.css';
 
 const cx = (...a: (string | false | undefined)[]) => a.filter(Boolean).join(' ');
 
-export function Page({ title, sub, actions, children }: { title: string; sub?: string; actions?: ReactNode; children: ReactNode }) {
+export function Page({ title, sub, crumb, actions, children, fill }: { title: ReactNode; sub?: string; crumb?: ReactNode; actions?: ReactNode; children: ReactNode; fill?: boolean }) {
   return (
-    <main className={u.page}>
+    <main className={cx(u.page, fill && u.fill)}>
       {!api.capabilities.backend && (
         <div className={u.banner} role="status">
           <b>Backend not connected.</b> Your data is saved in this browser only, and nothing runs yet.
         </div>
       )}
       <header className={u.head}>
-        <div><h1>{title}</h1>{sub && <p>{sub}</p>}</div>
+        <div>{crumb && <div className={u.crumb}>{crumb}</div>}<h1>{title}</h1>{sub && <p>{sub}</p>}</div>
         <div className={u.grow} />
         {actions && <div className={u.actions}>{actions}</div>}
       </header>
@@ -49,7 +49,7 @@ export function Item({ lead, title, sub, right, onClick }: { lead?: ReactNode; t
 export function Empty({ title, text, action, mate = 'mimo' }: { title: string; text: string; action?: ReactNode; mate?: MateKey }) {
   return (
     <div className={u.empty}>
-      {/* eslint-disable-next-line @next/next/no-img-element */}
+      { }
       <img src={mateImg(mate)} alt="" />
       <h3>{title}</h3><p>{text}</p>{action}
     </div>
@@ -61,7 +61,7 @@ export const ErrorNote = ({ message }: { message: string | null }) => (message ?
 export const Loading = () => <p className={u.sub} role="status">Loading…</p>;
 
 export function MateAvatar({ mate, size = 32 }: { mate: MateKey; size?: number }) {
-  // eslint-disable-next-line @next/next/no-img-element
+   
   return <img className={u.avatar} src={mateImg(mate)} width={size} height={size} alt={`${MATES[mate].name} Mate`} />;
 }
 
@@ -70,10 +70,25 @@ export function Toggle({ checked, onChange, label }: { checked: boolean; onChang
 }
 
 export function Tabs<T extends string>({ value, onChange, options }: { value: T; onChange: (v: T) => void; options: { id: T; label: string }[] }) {
+  const wrap = useRef<HTMLDivElement>(null);
+  const bar = useRef<HTMLSpanElement>(null);
+  useEffect(() => {
+    const place = () => {
+      const el = wrap.current?.querySelector<HTMLElement>('[aria-selected=true]');
+      if (!el || !bar.current) return;
+      bar.current.style.width = `${el.offsetWidth}px`;
+      bar.current.style.transform = `translateX(${el.offsetLeft}px)`;
+    };
+    place();
+    const ro = new ResizeObserver(place);
+    if (wrap.current) ro.observe(wrap.current);
+    return () => ro.disconnect();
+  }, [value, options.length]);
   return (
-    <div className={u.tabs} role="tablist">
+    <div className={u.tabs} role="tablist" ref={wrap}>
+      <span ref={bar} className={u.tabBar} aria-hidden="true" />
       {options.map((o) => (
-        <button key={o.id} role="tab" aria-selected={o.id === value} className={cx(u.tab, o.id === value && u.tabOn)} onClick={() => onChange(o.id)}>{o.label}</button>
+        <button key={o.id} type="button" role="tab" aria-selected={o.id === value} className={cx(u.tab, o.id === value && u.tabOn)} onClick={() => onChange(o.id)}>{o.label}</button>
       ))}
     </div>
   );
@@ -110,8 +125,8 @@ export function Modal({ title, onClose, onSubmit, submitLabel = 'Save', canSubmi
     return () => { document.removeEventListener('keydown', onKey); prev?.focus(); };
   }, [onClose]);
   return (
-    <div className={u.overlay} onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
-      <form ref={ref} className={u.modal} role="dialog" aria-modal="true" aria-labelledby={id} onSubmit={(e) => { e.preventDefault(); if (canSubmit) void onSubmit(); }}>
+    <div className={cx(u.overlay, u.sheetWrap)} onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
+      <form ref={ref} className={cx(u.modal, u.sheet)} role="dialog" aria-modal="true" aria-labelledby={id} onSubmit={(e) => { e.preventDefault(); if (canSubmit) void onSubmit(); }}>
         <h2 id={id}>{title}</h2>
         <div className={u.stack}>{children}</div>
         <div className={u.modalFoot}>
@@ -124,3 +139,13 @@ export function Modal({ title, onClose, onSubmit, submitLabel = 'Save', canSubmi
 }
 
 export function confirmThen(message: string, fn: () => void) { if (window.confirm(message)) fn(); }
+
+export function Pill({ children, tone }: { children: ReactNode; tone?: 'ok' | 'bad' | 'live' | 'warn' | 'violet' }) {
+  const c = { ok: ['#E6F5EC', '#1E7A46'], bad: ['#FDECEB', '#B3261E'], live: ['#ECE7FF', '#4F34D6'], violet: ['#ECE7FF', '#4F34D6'], warn: ['#FFF1D6', '#8A5A00'] }[tone ?? 'live'];
+  return <span style={{ fontSize: 12, fontWeight: 600, color: c[1], background: c[0], borderRadius: 999, padding: '3px 10px', whiteSpace: 'nowrap' }}>{children}</span>;
+}
+
+export function MateTile({ mate, size = 44, tint = true }: { mate: MateKey; size?: number; tint?: boolean }) {
+   
+  return <span style={{ width: size, height: size, borderRadius: size * 0.3, background: tint ? MATES[mate].tint : 'transparent', display: 'grid', placeItems: 'center', flex: 'none' }}><img src={mateImg(mate)} alt="" width={size * 0.82} height={size * 0.82} /></span>;
+}

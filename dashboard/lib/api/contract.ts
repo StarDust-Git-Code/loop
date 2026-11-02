@@ -1,7 +1,7 @@
 import type {
   Approval, Automation, AutomationIn, CalEvent, CalEventIn, Connection, ConnectionIn, Conversation, ConversationIn,
   FileIn, FileItem, ID, Knowledge, KnowledgeIn, McpIn, McpServer, MateConfig, MateConfigIn, Memory, MemoryIn,
-  Message, Run, RunEvent, RunIn, Session, SettingsData, Skill, SkillIn, Task, TaskIn, Workflow, WorkflowIn,
+  Message, ProviderCfg, ProviderIn, Run, RunEvent, RunIn, Session, SettingsData, Skill, SkillIn, Task, TaskIn, Workflow, WorkflowIn,
 } from '../types';
 
 /**
@@ -33,14 +33,18 @@ export interface Api {
   memories: Repo<Memory, MemoryIn>;
   skills: Repo<Skill, SkillIn>;
   mcp: Repo<McpServer, McpIn> & { verify(id: ID): Promise<McpServer> };
-  connections: Repo<Connection, ConnectionIn> & { test(id: ID): Promise<Connection> };
+  connections: Repo<Connection, ConnectionIn> & { test(id: ID): Promise<Connection>; /** Chats the bridge can see (WhatsApp). Empty until the backend lists them. */ chats(id: ID): Promise<{ id: string; name: string; meta: string }[]> };
   conversations: Repo<Conversation, ConversationIn> & { send(id: ID, text: string, mate?: string): Promise<Message> };
   events: Repo<CalEvent, CalEventIn>;
   files: Repo<FileItem, FileIn> & { upload(file: File): Promise<FileItem>; downloadUrl(id: ID): string };
   mateConfigs: Repo<MateConfig, MateConfigIn>;
+  /** LLM providers. `fetchModels` asks the provider for its model list and stores it on the provider. */
+  providers: Repo<ProviderCfg, ProviderIn> & { fetchModels(id: ID): Promise<string[]> };
   runs: Repo<Run, RunIn> & {
     start(input: StartRun): Promise<Run>;
     control(id: ID, action: RunControl): Promise<Run>;
+    /** Send a steering message to a live run. */
+    steer(id: ID, text: string): Promise<Run>;
     decide(runId: ID, approvalId: ID, decision: Approval['status']): Promise<Run>;
     /** Live events for one run (SSE / WebSocket on the http adapter). */
     stream(id: ID, onEvent: (e: RunEvent) => void): () => void;

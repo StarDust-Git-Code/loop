@@ -8,6 +8,8 @@ import '@fontsource/jetbrains-mono/400.css';
 import '@fontsource/jetbrains-mono/500.css';
 import { Sidebar } from '../components/dashboard/Sidebar';
 import s from '../components/dashboard/dashboard.module.css';
+import { CommandPalette } from '../components/ui/CommandPalette';
+import { ToastProvider } from '../components/ui/toast';
 import './globals.css';
 
 export const metadata: Metadata = {
@@ -21,10 +23,13 @@ export default function Root({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
       <body>
+        <ToastProvider>
+        <CommandPalette />
         <div className={s.shell}>
           <Sidebar />
           <div className={s.content}>{children}</div>
         </div>
+        </ToastProvider>
       </body>
     </html>
   );

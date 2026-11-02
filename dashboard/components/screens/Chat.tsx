@@ -1,60 +1,202 @@
 'use client';
+import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 import { api } from '../../lib/api';
 import { ago } from '../../lib/format';
-import { useItem, useRepo } from '../../lib/hooks';
-import { MATE_DEFS } from '../../lib/mates';
-import { Badge, Btn, Empty, Input, Page, Select, confirmThen } from '../ui/ui';
+import { useRepo, useSettings } from '../../lib/hooks';
+import { GRAD, MATES, MATE_DEFS, mateImg, mateName } from '../../lib/mates';
+import type { Conversation, MateKey } from '../../lib/types';
+import { useToast } from '../ui/toast';
+import { Badge, Btn, Pill, Tabs, Toggle, confirmThen } from '../ui/ui';
+
+const SLASH = [
+  { cmd: '/btw', desc: 'Ask a side question without stopping the run' }, { cmd: '/ultracode', desc: 'Hand a coding task to a Mate for a long run' },
+  { cmd: '/plan', desc: 'Only plan, do not execute' }, { cmd: '/skill', desc: 'Pick a skill to use in this chat' },
+  { cmd: '/whatsapp', desc: 'Let agents read selected chats' }, { cmd: '/telegram', desc: 'Ping me when this run needs me' },
+];
+type Mode = 'chat' | 'plan' | 'ultracode';
+const MODE_NOTE: Record<Mode, string> = { chat: 'Chat: talk it through, the Mate answers.', plan: 'Plan: the Mate plans the work and waits for you.', ultracode: 'Ultracode: long autonomous coding run with checkpoints and tests' };
+const Dot = ({ k, s = 42 }: { k: MateKey; s?: number }) => <img src={mateImg(k)} alt="" width={s} height={s} style={{ flex: 'none' }} />;  
 
 export function Chat() {
   const router = useRouter();
-  const cid = useSearchParams().get('c');
-  const { items, remove } = useRepo(api.conversations);
-  const { item: conv } = useItem(api.conversations, cid);
+  const toast = useToast();
+  const sp = useSearchParams();
+  const { items, update, remove, create } = useRepo(api.conversations);
+  const cfgs = useRepo(api.mateConfigs).items, know = useRepo(api.knowledge).items, skills = useRepo(api.skills).items;
+  const { settings } = useSettings();
+  const cid = sp.get('c') ?? (sp.get('new') ? null : items[0]?.id ?? null);
+  const conv = items.find((c) => c.id === cid);
   const [text, setText] = useState('');
-  const [mate, setMate] = useState('planner');
+  const [menu, setMenu] = useState(false);
+  const [sel, setSel] = useState(0);
+  const [list, setList] = useState(false);
   const end = useRef<HTMLDivElement>(null);
-  useEffect(() => { end.current?.scrollIntoView({ block: "end" }); }, [conv?.messages.length]);
+  const fileIn = useRef<HTMLInputElement>(null);
+  useEffect(() => { end.current?.scrollIntoView({ block: 'end', behavior: 'smooth' }); }, [conv?.messages.length]);
 
-  const newChat = async () => { const c = await api.conversations.create({ title: 'New chat', messages: [] }); router.push(`/chat?c=${c.id}`); };
+  const mate: MateKey = conv?.mate ?? 'planner';
+  const mode = conv?.mode ?? 'chat';
+  const members = [...new Set<MateKey>([mate, ...(conv?.members ?? [])])];
+  const slash = text.startsWith('/') && !text.includes(' ') ? SLASH.filter((s) => s.cmd.startsWith(text.toLowerCase())) : [];
+  const showMenu = menu && slash.length > 0;
+
+  const start = async (m: MateKey) => { const c = await create({ title: `Chat with ${MATES[m].name}`, mate: m, messages: [], mode: 'chat', members: [] }); router.push(`/chat?c=${c.id}`); };
+  const patch = (p: Partial<Conversation>) => conv && update(conv.id, p);
+  const pickCmd = (cmd: string) => {
+    if (cmd === '/plan') { void patch({ mode: 'plan' }); setText(''); toast('Plan mode on'); }
+    else if (cmd === '/ultracode') { void patch({ mode: 'ultracode' }); setText(''); toast('Ultracode mode on'); }
+    else if (cmd === '/skill') { setText(''); router.push('/skills'); }
+    else if (cmd === '/whatsapp' || cmd === '/telegram') { setText(''); router.push('/connections'); }
+    else setText(`${cmd} `);
+    setMenu(false);
+  };
   const send = async () => {
-    const t = text.trim(); if (!t) return;
-    let id = cid;
-    if (!id) { const c = await api.conversations.create({ title: t.slice(0, 40), messages: [] }); id = c.id; router.replace(`/chat?c=${id}`); }
-    else if (conv && conv.messages.length === 0) await api.conversations.update(id, { title: t.slice(0, 40) });
-    setText(''); await api.conversations.send(id, t, mate);
+    const t = text.trim(); if (!t || !conv) return;
+    setText(''); setMenu(false);
+    if (conv.messages.length === 0) await update(conv.id, { title: t.replace(/^\/btw\s*/, '').slice(0, 42) });
+    await api.conversations.send(conv.id, t, mate);
+  };
+  const startRun = async () => {
+    const last = [...(conv?.messages ?? [])].reverse().find((m) => m.role === 'user' && !m.text.startsWith('/btw'));
+    if (!last) return toast('Send a message first', 'bad');
+    const r = await api.runs.start({ prompt: last.text, askFirst: settings?.permissionMode !== 'auto' });
+    router.push(`/run?id=${r.id}`);
   };
 
+  if (!conv) {
+    return (
+      <main style={{ padding: '0 32px 40px', minHeight: '100dvh' }}>
+        <header style={{ minHeight: 96, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}><div><h1 style={{ margin: 0, fontSize: 26, fontWeight: 600 }}>Chat</h1><p style={{ margin: '4px 0 0', color: '#6B6572' }}>Who do you want to talk to?</p></div>
+          {items.length > 0 && <Btn href={`/chat?c=${items[0].id}`}>Open latest chat</Btn>}</header>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(190px,1fr))', gap: 14 }}>
+          {[...MATE_DEFS].sort((a, b) => Number(!!cfgs.find((c) => c.mate === b.key)?.enabled) - Number(!!cfgs.find((c) => c.mate === a.key)?.enabled)).map((m, i) => (
+            <button key={m.key} type="button" onClick={() => start(m.key)} style={{ border: '1px solid rgba(27,24,34,.17)', background: GRAD[m.key], borderRadius: 18, padding: 16, textAlign: 'left', animation: `lm-pop .4s ${Math.min(i, 14) * 30}ms cubic-bezier(.22,1,.36,1) both`, transition: 'transform .2s' }}
+              onMouseEnter={(e) => (e.currentTarget.style.transform = 'translateY(-4px)')} onMouseLeave={(e) => (e.currentTarget.style.transform = '')}>
+              <Dot k={m.key} s={72} /><div style={{ fontWeight: 600, fontSize: 15, marginTop: 8 }}>{mateName(m.key)}</div><div style={{ fontSize: 12, color: '#3D3946', marginTop: 2 }}>{m.blurb}</div>
+            </button>))}
+        </div>
+      </main>
+    );
+  }
+
   return (
-    <Page title="Chat" sub="Talk to any Mate. Chat is where you start; the Mates can hand work to runs." actions={<Btn variant="primary" onClick={newChat}>New chat</Btn>}>
-      <div style={{ display: 'grid', gridTemplateColumns: '240px minmax(0,1fr)', gap: 16, minHeight: 520 }}>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-          {items.length === 0 && <p style={{ color: 'var(--muted)', fontSize: 13 }}>No chats yet.</p>}
-          {items.map((c) => (
-            <div key={c.id} style={{ display: 'flex', gap: 4 }}>
-              <Btn small className="" onClick={() => router.push(`/chat?c=${c.id}`)} style={{ flex: 1, justifyContent: 'flex-start', borderColor: c.id === cid ? 'var(--accent)' : undefined, overflow: 'hidden' }}>{c.title}</Btn>
-              <Btn small variant="danger" aria-label={`Delete ${c.title}`} onClick={() => confirmThen('Delete this chat?', () => { void remove(c.id); if (c.id === cid) router.replace('/chat'); })}>×</Btn>
-            </div>
-          ))}
-        </div>
-        <div style={{ display: 'flex', flexDirection: 'column', border: '1px solid var(--line-soft)', borderRadius: 16, minHeight: 520 }}>
-          <div style={{ flex: 1, padding: 16, display: 'flex', flexDirection: 'column', gap: 10, overflow: 'auto', maxHeight: 520 }}>
-            {!conv || conv.messages.length === 0 ? <Empty mate="planner" title="Start a conversation" text="Ask a Mate anything or describe a job. Messages are saved to this chat." /> :
-              conv.messages.map((m) => (
-                <div key={m.id} style={{ alignSelf: m.role === 'user' ? 'flex-end' : 'flex-start', maxWidth: '75%' }}>
-                  <div style={{ background: m.role === 'user' ? 'var(--chip)' : '#fff', border: '1px solid var(--line-soft)', borderRadius: 14, padding: '9px 13px', whiteSpace: 'pre-wrap', lineHeight: 1.5 }}>{m.text}</div>
-                  <small style={{ color: 'var(--muted)' }}>{ago(m.at)} {m.state === 'pending' && <Badge>{api.capabilities.backend ? 'Sending…' : 'Waiting for backend'}</Badge>}{m.state === 'error' && <Badge tone="bad">Failed</Badge>}</small>
-                </div>))}
-            <div ref={end} />
+    <main style={{ display: 'flex', height: '100dvh', minWidth: 0 }}>
+      <section style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', padding: '0 32px 24px' }}>
+        <header style={{ minHeight: 88, flex: 'none', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, position: 'relative' }}>
+          <div style={{ minWidth: 0 }}>
+            <button type="button" onClick={() => setList((o) => !o)} aria-expanded={list} style={{ border: 0, background: 'none', padding: 0, display: 'flex', alignItems: 'center', gap: 8, maxWidth: '100%' }}>
+              <h1 style={{ margin: 0, fontSize: 22, fontWeight: 600, letterSpacing: '-.01em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{conv.title}</h1>
+              <span style={{ color: '#6B6572', transition: 'transform .2s', transform: list ? 'rotate(180deg)' : 'none' }}>▾</span>
+            </button>
+            <div style={{ marginTop: 4, fontSize: 13, color: '#6B6572' }}>{settings?.workspaceName} · started {new Date(conv.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
           </div>
-          <form onSubmit={(e) => { e.preventDefault(); void send(); }} style={{ display: 'flex', gap: 8, padding: 12, borderTop: '1px solid var(--line-soft)' }}>
-            <Select style={{ width: 130 }} value={mate} onChange={(e) => setMate(e.target.value)} aria-label="Mate">{MATE_DEFS.map((m) => <option key={m.key} value={m.key}>{m.name}</option>)}</Select>
-            <Input value={text} onChange={(e) => setText(e.target.value)} placeholder="Message a Mate…" aria-label="Message" />
-            <Btn variant="primary" type="submit" disabled={!text.trim()}>Send</Btn>
-          </form>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+            <div style={{ display: 'flex', paddingLeft: 10 }}>{members.map((m) => <span key={m} style={{ marginLeft: -10 }}><Dot k={m} s={36} /></span>)}</div>
+            <Btn onClick={startRun}>Start a run</Btn><Btn href="/studio">Open in Studio</Btn>
+          </div>
+          {list && (
+            <div style={{ position: 'absolute', top: 76, left: 0, width: 360, maxHeight: 420, overflow: 'auto', background: '#fff', border: '1px solid rgba(31,26,23,.14)', borderRadius: 16, boxShadow: '0 16px 40px rgba(31,26,23,.16)', padding: 8, zIndex: 20, animation: 'lm-pop .2s ease both' }}>
+              <button type="button" onClick={() => { setList(false); router.push('/chat?new=1'); }} style={{ width: '100%', textAlign: 'left', padding: '10px 12px', border: 0, background: '#F4F0FF', color: '#4F34D6', borderRadius: 10, fontWeight: 600 }}>+ New chat</button>
+              {items.map((c) => (
+                <div key={c.id} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <Link href={`/chat?c=${c.id}`} onClick={() => setList(false)} style={{ flex: 1, minWidth: 0, display: 'flex', gap: 10, alignItems: 'center', padding: '8px 10px', borderRadius: 10, textDecoration: 'none', background: c.id === conv.id ? '#F3F1F8' : 'transparent' }}>
+                    <Dot k={c.mate ?? 'planner'} s={30} /><span style={{ minWidth: 0 }}><b style={{ display: 'block', fontSize: 13.5, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.title}</b><small style={{ color: '#6B6572' }}>{ago(c.messages.at(-1)?.at ?? c.createdAt)}</small></span>
+                  </Link>
+                  <button type="button" aria-label={`Delete ${c.title}`} onClick={() => confirmThen('Delete this chat?', () => { void remove(c.id); setList(false); if (c.id === conv.id) router.replace('/chat'); })} style={{ border: 0, background: 'none', color: '#B3261E', fontSize: 16, width: 32 }}>×</button>
+                </div>))}
+            </div>)}
+        </header>
+
+        <div style={{ flex: 1, minHeight: 0, overflow: 'auto', display: 'flex', flexDirection: 'column', gap: 18, paddingBottom: 12 }}>
+          {conv.messages.length === 0 && (
+            <div style={{ margin: 'auto', textAlign: 'center', color: '#6B6572', animation: 'lm-up .5s ease both' }}>
+              <div style={{ display: 'inline-block', animation: 'lm-bob 3.6s ease-in-out infinite' }}><Dot k={mate} s={96} /></div>
+              <p style={{ margin: '10px 0 0', fontSize: 15 }}><b style={{ color: '#1B1822' }}>{mateName(mate)}</b>. {MATES[mate].blurb}</p><p style={{ margin: '4px 0 0', fontSize: 13 }}>Type <code>/</code> for commands.</p>
+            </div>)}
+          {conv.messages.map((m) => {
+            const mine = m.role === 'user', side = m.text.startsWith('/btw');
+            if (side) return (
+              <div key={m.id} style={{ marginLeft: 56, maxWidth: 600, background: '#fff', border: '1.5px dashed rgba(106,77,244,.5)', borderRadius: 16, padding: '12px 16px', animation: 'lm-pop .3s ease both' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}><span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.06em', color: '#4F34D6', background: '#ECE7FF', borderRadius: 6, padding: '3px 8px' }}>/BTW</span><span style={{ fontSize: 12, color: '#6B6572' }}>Side question. A running task keeps going.</span></div>
+                <div style={{ fontSize: 14, color: '#2A2631' }}><b>You:</b> {m.text.replace(/^\/btw\s*/, '')}</div>
+                {m.state === 'pending' && <div style={{ fontSize: 12, color: '#6B6572', marginTop: 4 }}>{api.capabilities.backend ? 'Answering…' : 'Waiting for backend'}</div>}
+              </div>);
+            return mine ? (
+              <div key={m.id} style={{ alignSelf: 'flex-end', maxWidth: 560, animation: 'lm-pop .3s cubic-bezier(.22,1,.36,1) both' }}>
+                <div style={{ background: '#ECE7FF', border: '1px solid rgba(106,77,244,.25)', borderRadius: '18px 18px 4px 18px', padding: '14px 18px', fontSize: 15, lineHeight: 1.55, whiteSpace: 'pre-wrap' }}>{m.text}</div>
+                <small style={{ color: '#6B6572', display: 'flex', gap: 6, justifyContent: 'flex-end', marginTop: 4 }}>{ago(m.at)}{m.state === 'pending' && <Badge>{api.capabilities.backend ? 'Sending…' : 'Waiting for backend'}</Badge>}{m.state === 'error' && <Badge tone="bad">Failed</Badge>}</small>
+              </div>
+            ) : (
+              <div key={m.id} style={{ display: 'flex', gap: 14, maxWidth: 820, animation: 'lm-pop .3s ease both' }}>
+                <Dot k={m.mate ?? mate} /><div style={{ flex: 1, minWidth: 0 }}><div style={{ fontSize: 13, fontWeight: 600, marginBottom: 6 }}>{mateName(m.mate ?? mate)}</div><div style={{ fontSize: 15, lineHeight: 1.6, color: '#2A2631', whiteSpace: 'pre-wrap' }}>{m.text}</div></div>
+              </div>);
+          })}
+          <div ref={end} />
         </div>
-      </div>
-    </Page>
+
+        <div style={{ flex: 'none', position: 'relative' }}>
+          {showMenu && (
+            <div style={{ position: 'absolute', left: 0, bottom: '100%', marginBottom: 8, width: 460, maxWidth: '100%', background: '#fff', border: '1px solid rgba(31,26,23,.16)', borderRadius: 14, padding: 6, boxShadow: '0 16px 40px rgba(31,26,23,.14)', animation: 'lm-pop .18s ease both', zIndex: 5 }}>
+              {slash.map((s, i) => (
+                <button key={s.cmd} type="button" onMouseEnter={() => setSel(i)} onClick={() => pickCmd(s.cmd)} style={{ display: 'flex', width: '100%', alignItems: 'center', gap: 12, minHeight: 44, padding: '4px 10px', border: 0, borderRadius: 9, background: i === sel % slash.length ? '#ECE7FF' : 'transparent', textAlign: 'left' }}>
+                  <span className="mono" style={{ fontSize: 13, fontWeight: 500, color: '#4F34D6', width: 96 }}>{s.cmd}</span><span style={{ fontSize: 13, color: '#3D3946' }}>{s.desc}</span>
+                </button>))}
+            </div>)}
+          <div style={{ background: '#fff', border: '1px solid rgba(31,26,23,.16)', borderRadius: 18, padding: '12px 14px', boxShadow: '0 8px 24px rgba(106,77,244,.08)' }}>
+            <form onSubmit={(e) => { e.preventDefault(); if (showMenu) pickCmd(slash[sel % slash.length].cmd); else void send(); }} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <input ref={fileIn} type="file" hidden onChange={async (e) => { const f = e.target.files?.[0]; if (f) { await api.files.upload(f); await api.conversations.send(conv.id, `📎 ${f.name}`, mate); } e.target.value = ''; }} />
+              <button type="button" aria-label="Attach" onClick={() => fileIn.current?.click()} style={{ width: 44, height: 44, borderRadius: 12, background: '#F3F1F8', border: '1px solid rgba(31,26,23,.1)', fontSize: 20 }}>+</button>
+              <input value={text} aria-label="Message" placeholder={`Message ${MATES[mate].name}, or type / for commands`} autoComplete="off"
+                onChange={(e) => { setText(e.target.value); setMenu(true); setSel(0); }}
+                onKeyDown={(e) => { if (showMenu && e.key === 'ArrowDown') { e.preventDefault(); setSel((x) => x + 1); } if (showMenu && e.key === 'ArrowUp') { e.preventDefault(); setSel((x) => x + slash.length - 1); } if (e.key === 'Escape') setMenu(false); }}
+                style={{ flex: 1, minWidth: 0, height: 44, background: 'none', border: 0, outline: 0, fontSize: 15, fontFamily: 'inherit' }} />
+              <button type="submit" aria-label="Send" disabled={!text.trim()} style={{ width: 44, height: 44, borderRadius: 12, background: '#6A4DF4', border: 0, color: '#fff', fontSize: 20, opacity: text.trim() ? 1 : 0.4, transition: 'opacity .15s, transform .15s' }}>↑</button>
+            </form>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 6, flexWrap: 'wrap' }}>
+              <Tabs value={mode} onChange={(m) => patch({ mode: m })} options={[{ id: 'chat', label: 'Chat' }, { id: 'plan', label: 'Plan' }, { id: 'ultracode', label: 'Ultracode' }]} />
+              <span style={{ fontSize: 12, color: '#6B6572' }}>{MODE_NOTE[mode]}</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <aside aria-label="Chat context" style={{ width: 360, flex: 'none', background: '#FAF9FD', borderLeft: '1px solid rgba(31,26,23,.1)', padding: '24px 20px', display: 'flex', flexDirection: 'column', gap: 20, overflow: 'auto' }}>
+        <Sec title="AGENTS IN THIS CHAT">
+          {members.map((m) => { const on = cfgs.find((c) => c.mate === m)?.enabled; return (
+            <Link key={m} href={`/agents?mate=${m}`} style={{ display: 'flex', alignItems: 'center', gap: 12, height: 48, background: '#fff', border: '1px solid rgba(31,26,23,.1)', borderRadius: 12, padding: '0 12px', textDecoration: 'none', color: 'inherit', marginBottom: 6, transition: 'transform .15s' }}>
+              <Dot k={m} s={30} /><span style={{ flex: 1, fontWeight: 500 }}>{mateName(m)}</span><span style={{ fontSize: 12, fontWeight: 600, color: on ? '#1E7A46' : '#6B6572' }}>{on ? 'Ready' : 'Off'}</span></Link>); })}
+          <select aria-label="Invite a Mate" value="" onChange={(e) => e.target.value && patch({ members: [...(conv.members ?? []), e.target.value as MateKey] })} style={{ width: '100%', height: 40, borderRadius: 10, border: '1px dashed rgba(106,77,244,.5)', background: '#fff', color: '#4F34D6', fontWeight: 600, padding: '0 10px' }}>
+            <option value="">+ Invite a Mate</option>{MATE_DEFS.filter((m) => !members.includes(m.key)).map((m) => <option key={m.key} value={m.key}>{m.name}</option>)}
+          </select>
+        </Sec>
+        <Sec title="KNOWLEDGE ATTACHED">
+          <div style={{ background: '#fff', border: '1px solid rgba(31,26,23,.1)', borderRadius: 12, padding: '4px 12px' }}>
+            {know.length === 0 ? <p style={{ fontSize: 13, color: '#6B6572', lineHeight: 1.5 }}>Nothing yet. <Link href="/knowledge" style={{ color: '#4F34D6' }}>Add sources</Link> and toggle them here.</p> :
+              know.slice(0, 8).map((k) => { const on = !(conv.detached ?? []).includes(k.id); return (
+                <div key={k.id} style={{ display: 'flex', alignItems: 'center', gap: 10, height: 44, borderBottom: '1px solid rgba(31,26,23,.07)', fontSize: 13 }}>
+                  <span style={{ flex: 1, color: '#2A2631', minWidth: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{k.name}</span>
+                  <Toggle label={k.name} checked={on} onChange={(v) => patch({ detached: v ? (conv.detached ?? []).filter((x) => x !== k.id) : [...(conv.detached ?? []), k.id] })} /></div>); })}
+          </div>
+        </Sec>
+        <Sec title="SKILLS ACTIVE">
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+            {skills.filter((s) => s.enabled && (s.mates.length === 0 || s.mates.includes(mate))).map((s) => <span key={s.id} style={{ fontSize: 12.5, color: '#4F34D6', background: '#ECE7FF', borderRadius: 8, padding: '6px 10px', fontWeight: 500 }}>{s.name}</span>)}
+            {skills.filter((s) => s.enabled).length === 0 && <span style={{ fontSize: 13, color: '#6B6572' }}>None. <Link href="/skills" style={{ color: '#4F34D6' }}>Add a skill</Link>.</span>}
+          </div>
+        </Sec>
+        <div style={{ background: '#F4F0FF', border: '1px solid rgba(106,77,244,.35)', borderRadius: 14, padding: 14 }}>
+          <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 4 }}>Harness: {settings?.permissionMode === 'auto' ? 'auto-edit' : settings?.permissionMode === 'plan' ? 'plan only' : 'ask before risky actions'}</div>
+          <div style={{ fontSize: 13, lineHeight: 1.5, color: '#3D3946', marginBottom: 10 }}>File writes and external messages wait for your OK. Reading and searching run freely.</div>
+          <Btn href="/skills" style={{ width: '100%', justifyContent: 'center' }}>Change permissions</Btn>
+        </div>
+        <Pill tone="violet">{conv.messages.length} messages</Pill>
+      </aside>
+    </main>
   );
 }
+
+const Sec = ({ title, children }: { title: string; children: React.ReactNode }) => (
+  <div><h2 style={{ margin: '0 0 10px', fontSize: 13, fontWeight: 600, letterSpacing: '.06em', color: '#6B6572' }}>{title}</h2>{children}</div>
+);

@@ -2,6 +2,7 @@ import type { Api, Repo } from './contract';
 import type { ID, Run, SettingsData, Message, Connection, McpServer, FileItem } from '../types';
 import { now, uid } from '../format';
 import { MATE_DEFS } from '../mates';
+import { PRESET, fetchModelList } from '../providers';
 
 /** Browser-only adapter: persists to localStorage, starts empty, executes nothing. */
 const listeners = new Set<() => void>();
@@ -39,7 +40,12 @@ function repo<T extends { id: ID; createdAt: string; updatedAt: string }, In>(na
 
 const DEFAULT_SETTINGS: SettingsData = {
   displayName: '', email: '', workspaceName: 'Personal workspace', timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-  model: 'Claude Sonnet 5.5', askBeforeRisky: true, maxSteps: 40, allowNetwork: true, stopAfterMinutes: 20, notifyTelegram: false, notifyEmail: false,
+  model: '', askBeforeRisky: true, maxSteps: 40, allowNetwork: true, stopAfterMinutes: 20, notifyTelegram: false, notifyEmail: false,
+  permissionMode: 'ask', retriesOnFailure: 2,
+  hookBeforeTool: 'Ask me before writing files outside /workspace or sending any message.', hookAfterStep: 'Save new findings to Knowledge with their source.', hookOnFinish: 'Send me a Telegram summary with links to the files.', hookOnFailure: 'Retry twice, then ping me and wait.',
+  guardContainer: true, guardPurchases: true, guardLog: true,
+  chunkSize: 800, overlap: 100, topK: 6, hybrid: true, rerank: true, citeAlways: true, memoryScope: 'shared',
+  prefersShort: true, shareSchedule: false,
 };
 
 export function createLocalApi(): Api {
@@ -55,10 +61,11 @@ export function createLocalApi(): Api {
     return runs.create({
       title: prompt.length > 48 ? `${prompt.slice(0, 48)}…` : prompt, prompt, workflowId, askFirst,
       status: 'queued', steps: [], log: [{ at: now(), source: 'system', text: 'Queued. No backend is connected, so nothing will run yet.' }],
-      approvals: [], fileIds: created.map((f) => f.id), sources: [],
+      approvals: [], fileIds: created.map((f) => f.id), sources: [], report: '', notes: '',
     } as never);
   };
   runs.control = async (id, action) => runs.update(id, { status: action === 'stop' ? 'stopped' : action === 'pause' ? 'queued' : 'queued' } as never);
+  runs.steer = async (id, text) => { const r = (await runs.get(id))!; return runs.update(id, { log: [...r.log, { at: now(), source: 'you', text }] } as never); };
   runs.decide = async (runId, approvalId, decision) => {
     const r = (await runs.get(runId))!;
     return runs.update(runId, { approvals: r.approvals.map((a) => (a.id === approvalId ? { ...a, status: decision } : a)) } as never);
@@ -72,13 +79,22 @@ export function createLocalApi(): Api {
     return m;
   };
   mcp.verify = async (id) => mcp.update(id, { status: 'unverified' } as never);
+  connections.chats = async () => [];
   connections.test = async (id) => connections.update(id, { status: 'pending' } as never);
   files.upload = async (file) => files.create({ name: file.name, size: file.size, mime: file.type || 'application/octet-stream', source: 'upload' } as never);
   files.downloadUrl = () => '#';
 
+  const providers = repo<never, never>('providers') as unknown as Api['providers'];
+  providers.fetchModels = async (id) => {
+    const p = (await providers.get(id))!;
+    const models = await fetchModelList({ baseUrl: p.baseUrl, apiKey: p.apiKey, auth: PRESET[p.preset]?.auth ?? 'bearer' });
+    await providers.update(id, { models, fetchedAt: now() } as never);
+    return models;
+  };
+
   const settingsSubs = new Set<() => void>();
   const defaultsFor = () => MATE_DEFS.map((m) => ({
-    id: m.key, createdAt: now(), updatedAt: now(), mate: m.key, enabled: m.core, instructions: '', model: 'Claude Sonnet 5.5', tools: m.tools,
+    id: m.key, createdAt: now(), updatedAt: now(), mate: m.key, enabled: m.core, instructions: '', model: '', tools: m.tools, description: m.blurb, outputFormat: 'Markdown', memoryScope: 'private' as const,
   }));
 
   return {
@@ -86,7 +102,7 @@ export function createLocalApi(): Api {
     auth: { session: async () => ({ signedIn: false }), signOut: async () => {} },
     tasks: repo('tasks'), workflows: repo('workflows'), automations: repo('automations'), knowledge: repo('knowledge'),
     memories: repo('memories'), skills: repo('skills'), mcp, connections, conversations, events: repo('events'), files,
-    mateConfigs: repo('mateConfigs', defaultsFor as never) as never, runs,
+    mateConfigs: repo('mateConfigs', defaultsFor as never) as never, runs, providers,
     search: { knowledge: async () => [] },
     settings: {
       get: async () => ({ ...DEFAULT_SETTINGS, ...read<Partial<SettingsData>>('settings', {}) }),

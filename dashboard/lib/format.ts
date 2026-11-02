@@ -11,4 +11,5 @@ export function ago(iso?: string) {
   return new Date(iso).toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
 }
 export const bytes = (n = 0) => (n < 1024 ? `${n} B` : n < 1048576 ? `${(n / 1024).toFixed(1)} KB` : `${(n / 1048576).toFixed(1)} MB`);
-export const day = (d: Date) => d.toISOString().slice(0, 10);
+/** Local calendar date, YYYY-MM-DD. */
+export const day = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
