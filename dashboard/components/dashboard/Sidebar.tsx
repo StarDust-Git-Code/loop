@@ -40,8 +40,11 @@ export function Sidebar() {
       if (!bar) return;
       if (!a) { bar.style.opacity = '0'; return; }
       bar.style.opacity = '1';
-      bar.style.height = `${a.offsetHeight}px`;
-      bar.style.transform = `translateY(${a.offsetTop}px)`;
+      // offsetTop is relative to the <li> (the items animate in), so measure against the list itself.
+      const list = listRef.current!.getBoundingClientRect();
+      const box = a.getBoundingClientRect();
+      bar.style.height = `${box.height}px`;
+      bar.style.transform = `translateY(${box.top - list.top}px)`;
     };
     place();
     window.addEventListener('resize', place);
