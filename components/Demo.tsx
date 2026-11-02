@@ -6,10 +6,10 @@ import SectionHead from "./SectionHead";
 import { DASH } from "@/lib/dashScreens";
 
 const STEPS = [
-  { title: "Ask", desc: "Describe the job in plain language. Chat is where you start, not where it ends.", url: "dashboard.loopdots.com/home" },
-  { title: "Plan", desc: "Planner Dot breaks it into steps and hands each one to the right Dot.", url: "dashboard.loopdots.com/chat" },
-  { title: "Watch it run", desc: "Every tool call is visible, and risky actions wait for your approval.", url: "dashboard.loopdots.com/run" },
-  { title: "Collect", desc: "You get files and a report, plus a Telegram ping when it is done.", url: "dashboard.loopdots.com/run" },
+  { title: "Ask", desc: "Describe the job in plain language. Chat is where you start, not where it ends.", url: "dashboard.loopmates.com/home" },
+  { title: "Plan", desc: "Planner Mate breaks it into steps and hands each one to the right Mate.", url: "dashboard.loopmates.com/chat" },
+  { title: "Watch it run", desc: "Every tool call is visible, and risky actions wait for your approval.", url: "dashboard.loopmates.com/run" },
+  { title: "Collect", desc: "You get files and a report, plus a Telegram ping when it is done.", url: "dashboard.loopmates.com/run" },
 ];
 const PROMPT = "Research SkillCourt and compare it with SmartCourt. Save sources and give me a short report.";
 /**
@@ -17,7 +17,7 @@ const PROMPT = "Research SkillCourt and compare it with SmartCourt. Save sources
  * (Home → Chat → Run) with a fake cursor and a camera that zooms to where the action is.
  * Screens are generated from the Loop design files (see lib/dashScreens.ts).
  */
-const W = 1760, H = 1000;
+const W = 1760;
 
 function Curtain({ cls, style }: { cls: string; style: React.CSSProperties }) {
   return <div className={`curtain ${cls}`} style={style} aria-hidden="true" />;
@@ -36,14 +36,12 @@ export default function Demo() {
       const ripple = el.querySelector<HTMLElement>(".ripple")!;
       const urlEl = el.querySelector<HTMLElement>(".win-url")!;
       const items = gsap.utils.toArray<HTMLElement>(".step-item", el);
-      const hint = el.querySelector<HTMLElement>(".scroll-hint")!;
+      const desc = el.querySelector<HTMLElement>(".step-desc")!;
       const L = (n: string) => el.querySelector<HTMLElement>(`.dash-layer[data-screen="${n}"]`)!;
       const home = L("home"), chat = L("chat"), run = L("run"), done = L("done");
       const task = el.querySelector<HTMLTextAreaElement>("#task")!;
       const dashRect = () => home.getBoundingClientRect();
       const bw = () => body.clientWidth;
-      const bh = () => body.clientHeight;
-      const k = () => (bw() < 560 ? 0.62 : 1); // zoom less on phones so more of the screen shows
 
       // fit view (reduced motion: static finished screen)
       const fit = () => bw() / W;
@@ -61,14 +59,8 @@ export default function Demo() {
         const sc = d.width / W;
         return { x: (t.left + t.width * fx - d.left) / sc, y: (t.top + t.height * fy - d.top) / sc };
       };
-      const view = (fx: number, fy: number, vw: number) => {
-        const S = bw() / (vw * k() > W ? W : vw * k());
-        const x = Math.min(0, Math.max(bw() - W * S, bw() / 2 - fx * S));
-        const y = Math.min(0, Math.max(bh() - H * S, bh() / 2 - fy * S));
-        return { scale: S, x, y };
-      };
-      const look = (tl: gsap.core.Timeline, at: number, dur: number, fx: number, fy: number, vw: number) =>
-        tl.to(cam, { scale: () => view(fx, fy, vw).scale, x: () => view(fx, fy, vw).x, y: () => view(fx, fy, vw).y, duration: dur, ease: "power2.inOut" }, at);
+      // always the full screen, scaled to fit the window (no cropping)
+      const view = () => ({ scale: fit(), x: 0, y: 0 });
       const moveTo = (tl: gsap.core.Timeline, at: number, dur: number, sel: string, fx = 0.5, fy = 0.5) =>
         tl.to(cursor, { x: () => pt(sel, fx, fy).x, y: () => pt(sel, fx, fy).y, duration: dur, ease: "power3.inOut" }, at);
       const click = (tl: gsap.core.Timeline, at: number, press?: string) => {
@@ -83,7 +75,7 @@ export default function Demo() {
       const wipe = (tl: gsap.core.Timeline, at: number, dur: number, sel: string, from = 0, to = 100) =>
         tl.fromTo(sel, { "--p": from }, { "--p": to, duration: dur, ease: "none", immediateRender: false }, at);
 
-      gsap.set(cam, { transformOrigin: "0 0", ...view(790, 400, 900) });
+      gsap.set(cam, { transformOrigin: "0 0", ...view() });
       gsap.set([chat, run, done], { opacity: 0 });
       gsap.set(".curtain", { "--p": 0 });
       gsap.set(cursor, { x: () => pt("#task", 0.9, 1.5).x, y: () => pt("#task", 0.9, 1.5).y, opacity: 0 });
@@ -96,6 +88,8 @@ export default function Demo() {
         active = i;
         items.forEach((it, n) => { it.classList.toggle("on", n === i); it.classList.toggle("done", n < i); });
         urlEl.textContent = STEPS[i].url;
+        desc.textContent = STEPS[i].desc;
+        gsap.fromTo(desc, { opacity: 0, y: 6, filter: "blur(4px)" }, { opacity: 1, y: 0, filter: "blur(0px)", duration: 0.5, overwrite: true });
       };
       setActive(0);
 
@@ -112,7 +106,6 @@ export default function Demo() {
           invalidateOnRefresh: true,
           onUpdate: (self) => {
             setActive(self.progress * 100);
-            hint.classList.toggle("gone", self.progress > 0.02);
           },
         },
       });
@@ -126,7 +119,6 @@ export default function Demo() {
       tl.to(typed, { n: PROMPT.length, duration: 9, ease: "none", onUpdate: () => { task.value = PROMPT.slice(0, Math.round(typed.n)); } }, 5);
       moveTo(tl, 14.4, 3, '[data-demo="run"]', 0.5, 0.5);
       click(tl, 17.6, '[data-demo="run"]');
-      look(tl, 18, 3, 700, 330, 1000);
       fade(tl, 19.2, chat);
 
       /* 2 · Plan — Chat screen (21–45) */
@@ -135,21 +127,17 @@ export default function Demo() {
       wipe(tl, 30, 6, ".curtain-chat", 62, 100);
       click(tl, 37.2);
       tl.to('[data-demo="plan-browse"]', { color: "#6A4DF4", duration: 0.5 }, 37.3);
-      look(tl, 38, 5, 760, 480, 1000);
       fade(tl, 41, run);
 
       /* 3 · Watch it run — Run screen (45–69) */
       wipe(tl, 46, 7, ".curtain-run", 0, 100);
-      look(tl, 53, 5, 1190, 300, 1150);
       moveTo(tl, 55, 4, '[data-demo="approve"]', 0.5, 0.5);
       click(tl, 60, '[data-demo="approve"]');
       fade(tl, 61, done, 2.6);
 
       /* 4 · Collect — finished run + Telegram ping (69–100) */
-      look(tl, 66, 6, 1440, 480, 780);
       wipe(tl, 67, 7, ".curtain-report", 0, 100);
       tl.fromTo(".tg-toast", { opacity: 0, y: 30, scale: 0.92 }, { opacity: 1, y: 0, scale: 1, duration: 2.6, ease: "back.out(1.6)", immediateRender: false }, 79);
-      look(tl, 83, 5, 1260, 760, 1100);
       moveTo(tl, 84, 4, '[data-demo="save2"]', 0.5, 0.5);
       click(tl, 89, '[data-demo="save2"]');
       tl.to({}, { duration: Math.max(0, 100 - tl.duration()) });
@@ -164,28 +152,28 @@ export default function Demo() {
     <section ref={root} id="demo" className="demo-sec">
       <div className="demo-pin">
         <div className="demo-grid">
-          <div className="demo-left">
-            <SectionHead align="left" sub="Keep scrolling. Loop does the clicking, so you can see the whole workflow, from the first prompt to the finished report.">
-              See one task run, <span className="v">start to finish</span>.
-            </SectionHead>
-            <ol className="steps-rail">
-              {STEPS.map((s, i) => (
-                <li key={s.title} className={`step-item${i === 0 ? " on" : ""}`}>
-                  <span className="n">{i + 1}</span>
-                  <div>
-                    <b>{s.title}</b>
-                    <p>{s.desc}</p>
-                  </div>
-                </li>
-              ))}
-            </ol>
-            <div className="scroll-hint" aria-hidden="true"><span /> Scroll to play</div>
+          <div className="demo-top">
+            <div className="demo-left">
+              <SectionHead align="left">
+                See one task run, <span className="v">start to finish</span>.
+              </SectionHead>
+            </div>
+            <div className="demo-steps">
+              <ol className="steps-rail">
+                {STEPS.map((s, i) => (
+                  <li key={s.title} className={`step-item${i === 0 ? " on" : ""}`}>
+                    <span className="n">{i + 1}</span>
+                    <div><b>{s.title}</b></div>
+                  </li>
+                ))}
+              </ol>
+              <p className="step-desc" aria-live="polite">{STEPS[0].desc}</p>
+            </div>
           </div>
 
           <div className="demo-shell">
             <div className="demo-window">
               <div className="win-bar">
-                <i style={{ background: "#ff5f57" }} /><i style={{ background: "#febc2e" }} /><i style={{ background: "#28c840" }} />
                 <span className="win-url mono">{STEPS[0].url}</span>
               </div>
               <div className="demo-body">
@@ -205,7 +193,7 @@ export default function Demo() {
                   </div>
                   <div className="fake-cursor" aria-hidden="true">
                     <span className="ripple" />
-                    <svg width="34" height="40" viewBox="0 0 26 30" fill="none"><path d="M3 2l18 13.5-8 1.2 4.6 9.3-3.9 1.9-4.6-9.4L3 24.5z" fill="#15121a" stroke="#fff" strokeWidth="2" strokeLinejoin="round" /></svg>
+                    <svg width="40" height="46" viewBox="0 0 26 30" fill="none"><path d="M3 2l18 13.5-8 1.2 4.6 9.3-3.9 1.9-4.6-9.4L3 24.5z" fill="#15121a" stroke="#fff" strokeWidth="2" strokeLinejoin="round" /></svg>
                   </div>
                 </div>
                 <div className="tg-toast tg" aria-hidden="true"><b>TG</b><span>Your report is ready. Open it in Loop or approve the sources from here.</span></div>

@@ -7,9 +7,9 @@ import SectionHead from "./SectionHead";
 
 const BULLETS = [
   "Memories you can search by meaning, not just keywords",
-  "A schedule your Dots can help you manage",
+  "A schedule your Mates can help you manage",
   "Talk to Mimo by text or voice, any time",
-  "Private by default. Other Dots see only what you share",
+  "Private by default. Other Mates see only what you share",
 ];
 
 export default function MySpace() {

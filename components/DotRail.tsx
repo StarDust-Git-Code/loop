@@ -138,7 +138,7 @@ export default function DotRail() {
 
   return (
     <div className="rail-wrap">
-      <div ref={rail} className="rail" tabIndex={0} role="region" aria-label="Meet the Dots. Drag sideways or use the arrow keys. It loops forever.">
+      <div ref={rail} className="rail" tabIndex={0} role="region" aria-label="Meet the Mates. Drag sideways or use the arrow keys. It loops forever.">
         <div ref={proxy} aria-hidden="true" style={{ position: "absolute", left: 0, top: 0, width: 1, height: 1, visibility: "hidden" }} />
         <div ref={track} className="track">
           {Array.from({ length: COPIES }).flatMap((_, c) =>
@@ -149,7 +149,7 @@ export default function DotRail() {
                 <div className="rc-wrap" key={`${c}-${k}`} aria-hidden={main ? undefined : true}>
                   <article className="rc" style={{ background: d.tint }}>
                     <span className="bubble" style={{ background: d.bubble }}>@{d.name.toLowerCase()}</span>
-                    <Image src={`/dots/${k}.png`} alt={main ? `${d.name} Dot: ${d.role}` : ""} width={384} height={384} priority={main && i < 6} draggable={false} />
+                    <Image src={`/dots/${k}.png`} alt={main ? `${d.name} Mate: ${d.role}` : ""} width={384} height={384} priority={main && i < 6} draggable={false} />
                   </article>
                 </div>
               );
@@ -157,10 +157,10 @@ export default function DotRail() {
           )}
         </div>
       </div>
-      <button className="arr" aria-label="Previous Dot" onClick={() => api.current?.go(-1)} style={{ left: "clamp(8px,2vw,24px)" }}>
+      <button className="arr" aria-label="Previous Mate" onClick={() => api.current?.go(-1)} style={{ left: "clamp(8px,2vw,24px)" }}>
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#15121A" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7" /></svg>
       </button>
-      <button className="arr" aria-label="Next Dot" onClick={() => api.current?.go(1)} style={{ right: "clamp(8px,2vw,24px)" }}>
+      <button className="arr" aria-label="Next Mate" onClick={() => api.current?.go(1)} style={{ right: "clamp(8px,2vw,24px)" }}>
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#15121A" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M9 5l7 7-7 7" /></svg>
       </button>
     </div>

@@ -31,7 +31,7 @@ export default function DotsGrid() {
     { scope: root }
   );
 
-  /** Reactive cards: 3D tilt toward the cursor, Dot parallax, cursor spotlight, neighbours dim + soften, click = bounce. */
+  /** Reactive cards: 3D tilt toward the cursor, Mate parallax, cursor spotlight, neighbours dim + soften, click = bounce. */
   useGSAP(
     () => {
       if (prefersReducedMotion()) return;
@@ -199,10 +199,10 @@ export default function DotsGrid() {
   return (
     <section ref={root} id="dots" className="sec sec-soft center">
       <div className="container">
-        <SectionHead tag="Meet the Dots" sub="Each Dot has its own instructions, model, tools and permissions. Mix them into a workflow, or talk to one directly.">
+        <SectionHead tag="Meet the Mates" sub="Each Mate has its own instructions, model, tools and permissions. Mix them into a workflow, or talk to one directly.">
           Eighteen specialists. Or <span className="v">build your own</span>.
         </SectionHead>
-        <div className="filters" role="group" aria-label="Filter Dots" data-reveal>
+        <div className="filters" role="group" aria-label="Filter Mates" data-reveal>
           {FILTERS.map((f) => (
             <button key={f} className="filter" aria-pressed={active === f} onClick={() => filter(f)}>
               {f}
@@ -212,7 +212,7 @@ export default function DotsGrid() {
         <div className="dotgrid">
           {DOTS.map((d) => (
             <article key={d.key} className="dotcard" data-key={d.key} data-cat={d.category} tabIndex={0} data-reveal style={{ background: d.tint }}>
-              <div className="pic"><Image src={`/dots/${d.key}.png`} alt={`${d.name} Dot`} width={256} height={256} /></div>
+              <div className="pic"><Image src={`/dots/${d.key}.png`} alt={`${d.name} Mate`} width={256} height={256} /></div>
               <b>{d.name}</b>
               <span className="r">{d.role}</span>
               <em>{d.category}</em>

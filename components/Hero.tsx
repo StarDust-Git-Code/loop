@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef } from "react";
+import Image from "next/image";
 import { gsap, useGSAP, SplitText, prefersReducedMotion } from "@/lib/gsap";
 import Magnetic from "./Magnetic";
 import DotRail from "./DotRail";
@@ -10,8 +11,26 @@ export default function Hero() {
 
   useGSAP(
     () => {
-      if (prefersReducedMotion()) return;
       const h1 = root.current!.querySelector<HTMLElement>(".hero-h1")!;
+      const hangs = gsap.utils.toArray<HTMLElement>(".hang", root.current!);
+
+      /** Pin each hanging Mate to the underside of the headline's first line, in the empty space beside line two. */
+      const place = (line: DOMRect) => {
+        const hr = root.current!.getBoundingClientRect();
+        const w = line.width;
+        const xs = [0.07, 0.925];
+        hangs.forEach((h, i) => {
+          h.style.left = `${line.left - hr.left + w * xs[i]}px`;
+          h.style.top = `${line.bottom - hr.top - 14}px`;
+        });
+      };
+
+      if (prefersReducedMotion()) {
+        const r = h1.getBoundingClientRect();
+        place(new DOMRect(r.left + Math.max(0, (r.width - 900) / 2), r.top, Math.min(900, r.width), r.height / 2));
+        gsap.set(hangs, { opacity: 1 });
+        return;
+      }
       const tl = gsap.timeline({ defaults: { ease: "power3.out" } });
 
       // nav drops in
@@ -23,6 +42,7 @@ export default function Hero() {
         autoSplit: true,
         onSplit: (self) => {
           gsap.set(h1, { visibility: "visible" });
+          place(self.lines[0].getBoundingClientRect());
           return tl.from(self.lines, { yPercent: 115, filter: "blur(16px)", duration: 1.2, stagger: 0.14, ease: "power4.out" }, 0.25);
         },
       });
@@ -30,11 +50,27 @@ export default function Hero() {
       tl.to(".hero-sub", { opacity: 1, y: 0, filter: "blur(0px)", duration: 0.8 }, 0.9);
       tl.to(".hero-cta > *", { opacity: 1, y: 0, filter: "blur(0px)", duration: 0.7, stagger: 0.1 }, 1.05);
 
+      // hanging Mates: drop in on a string, then swing like a pendulum; poke them for a bigger swing
+      hangs.forEach((h, i) => {
+        const dir = i === 0 ? 1 : -1;
+        const swing = h.querySelector<HTMLElement>(".hang-swing")!;
+        const kick = h.querySelector<HTMLElement>(".hang-kick")!;
+        gsap.set(h, { opacity: 0 });
+        tl.to(h, { opacity: 1, duration: 0.2 }, 1.5 + i * 0.25);
+        tl.from(h, { y: -170, duration: 1.3, ease: "bounce.out" }, 1.5 + i * 0.25);
+        gsap.fromTo(swing, { rotation: -9 * dir }, { rotation: 9 * dir, duration: 2.1 + i * 0.4, ease: "sine.inOut", yoyo: true, repeat: -1, delay: 2.6 });
+        // tiny secondary wobble on the Mate itself so it feels soft, not rigid
+        gsap.to(h.querySelector(".hang-mate"), { rotation: 5 * dir, duration: 1.3 + i * 0.3, ease: "sine.inOut", yoyo: true, repeat: -1, transformOrigin: "50% 0%" });
+        h.addEventListener("pointerenter", () => {
+          gsap.timeline().to(kick, { rotation: 22 * dir, duration: 0.28, ease: "power2.out" }).to(kick, { rotation: 0, duration: 1.4, ease: "elastic.out(1,0.3)" });
+        });
+      });
+
       // soft floating background blobs + scroll parallax
       gsap.utils.toArray<HTMLElement>(".hero-blob").forEach((b, i) => {
         gsap.to(b, { x: i % 2 ? -40 : 40, y: i % 2 ? 30 : -30, duration: 6 + i * 1.5, repeat: -1, yoyo: true, ease: "sine.inOut" });
       });
-      gsap.to(".hero-h1", {
+      gsap.to(".hero-h1, .hero-hangers", {
         yPercent: -14,
         opacity: 0.2,
         ease: "none",
@@ -53,6 +89,19 @@ export default function Hero() {
       <h1 className="hero-h1">
         A workspace for your <span className="v">fluffy</span> agents.
       </h1>
+
+      <div className="hero-hangers" aria-hidden="true">
+        {(["spark", "mimo"] as const).map((k) => (
+          <div className="hang" key={k}>
+            <div className="hang-swing">
+              <div className="hang-kick">
+                <span className="hang-string" />
+                <Image className="hang-mate" src={`/dots/${k}.png`} alt="" width={256} height={256} />
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
 
       <DotRail />
 

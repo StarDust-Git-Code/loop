@@ -7,10 +7,10 @@ import SectionHead from "./SectionHead";
 import { TINTS, type DotKey } from "@/lib/dots";
 
 const FEATURES: { k: DotKey; tint: string; title: string; text: string }[] = [
-  { k: "planner", tint: TINTS.yellow, title: "Agent Studio", text: "Connect triggers, knowledge, Dots and actions on a visual canvas. Test it, save it, run it again." },
+  { k: "planner", tint: TINTS.yellow, title: "Agent Studio", text: "Connect triggers, knowledge, Mates and actions on a visual canvas. Test it, save it, run it again." },
   { k: "browser", tint: TINTS.mint, title: "A workspace you can watch", text: "Browser, terminal, files and notes sit beside the canvas, so you can see what every agent is doing." },
-  { k: "recall", tint: TINTS.cyan, title: "Knowledge and memory", text: "A knowledge graph and retrieval with citations. Choose what is private to one Dot and what is shared." },
-  { k: "byte", tint: TINTS.violet, title: "Skills, MCP and Ultracode", text: "Teach Dots reusable skills, plug in MCP servers, and hand big coding jobs to long checkpointed runs." },
+  { k: "recall", tint: TINTS.cyan, title: "Knowledge and memory", text: "A knowledge graph and retrieval with citations. Choose what is private to one Mate and what is shared." },
+  { k: "byte", tint: TINTS.violet, title: "Skills, MCP and Ultracode", text: "Teach Mates reusable skills, plug in MCP servers, and hand big coding jobs to long checkpointed runs." },
   { k: "halo", tint: TINTS.blue, title: "Harness and approvals", text: "Permission modes, hooks, retries and guardrails. Anything risky waits for your OK." },
   { k: "mimo", tint: TINTS.pink, title: "Automations", text: "Run on a schedule or a trigger: scripts, images, videos and digests, with a Telegram ping when you are needed." },
 ];

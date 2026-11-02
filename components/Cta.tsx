@@ -28,7 +28,7 @@ export default function Cta() {
       });
       if (prefersReducedMotion()) return;
 
-      // each Dot drifts along its own curved motion path
+      // each Mate drifts along its own curved motion path
       gsap.utils.toArray<HTMLElement>(".cta-dot").forEach((d, i) => {
         const r = 26 + (i % 3) * 14;
         gsap.to(d, {
@@ -71,7 +71,7 @@ export default function Cta() {
           {FLOATERS.map((f) => (
             <Image key={f.k} className="cta-dot" src={`/dots/${f.k}.png`} alt="" width={128} height={128} style={{ left: f.left, top: f.top }} />
           ))}
-          <h2 className="h2">Ready to put the Dots to work?</h2>
+          <h2 className="h2">Ready to put the Mates to work?</h2>
           <p className="sub">Loop is in early access. Leave your email and we will let you in as spots open.</p>
           <form onSubmit={onSubmit}>
             <label htmlFor="em" className="sr">Email address</label>

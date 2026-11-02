@@ -9,15 +9,15 @@ import "@fontsource/jetbrains-mono/500.css";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://loopdots.com"),
+  metadataBase: new URL("https://loopmates.com"),
   title: "Loop — a workspace for your fluffy agents",
   description:
-    "Loop is an agentic workspace. Specialist agents (Dots) plan, research, browse and build together while you stay in control.",
+    "Loop is an agentic workspace. Specialist agents (Mates) plan, research, browse and build together while you stay in control.",
   openGraph: {
     title: "Loop — a workspace for your fluffy agents",
     description:
       "Specialist agents plan, research, browse and build together — while you stay in control.",
-    url: "https://loopdots.com",
+    url: "https://loopmates.com",
     siteName: "Loop",
     type: "website",
   },

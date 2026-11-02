@@ -9,7 +9,7 @@ import { TINTS } from "@/lib/dots";
 const ITEMS = [
   { title: "Approval before risky actions", text: "File writes outside the workspace and outgoing messages wait for your OK.", tint: TINTS.violet },
   { title: "Only the chats you choose", text: "Agents read WhatsApp chats you tick, read-only, through an opt-in local bridge.", tint: TINTS.mint },
-  { title: "Everything is logged", text: "Each tool call appears in the run log with a time and the Dot that made it.", tint: TINTS.yellow },
+  { title: "Everything is logged", text: "Each tool call appears in the run log with a time and the Mate that made it.", tint: TINTS.yellow },
   { title: "Stop any time", text: "Pause or cancel a run from the dashboard or from Telegram.", tint: TINTS.pink },
 ];
 
@@ -35,7 +35,7 @@ export default function Safety() {
   return (
     <section ref={root} id="safety" className="sec center">
       <div className="container">
-        <Image className="halo-big" src="/dots/halo.png" alt="Halo, the approvals Dot" width={256} height={256} />
+        <Image className="halo-big" src="/dots/halo.png" alt="Halo, the approvals Mate" width={256} height={256} />
         <SectionHead tag="Safety" sub="Agents are powerful, so Loop makes their actions visible and puts you in charge of the risky ones.">
           You stay in the <span className="v">driver’s seat</span>.
         </SectionHead>
