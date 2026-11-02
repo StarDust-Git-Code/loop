@@ -1,7 +1,7 @@
 import type {
   Approval, Automation, AutomationIn, CalEvent, CalEventIn, Connection, ConnectionIn, Conversation, ConversationIn,
   FileIn, FileItem, ID, Knowledge, KnowledgeIn, McpIn, McpServer, MateConfig, MateConfigIn, Memory, MemoryIn,
-  Message, ProviderCfg, ProviderIn, Run, RunEvent, RunIn, Session, SettingsData, Skill, SkillIn, Task, TaskIn, Workflow, WorkflowIn,
+  ChatEvent, Message, ProviderCfg, ProviderIn, Run, RunEvent, RunIn, Session, SettingsData, Skill, SkillIn, Task, TaskIn, Workflow, WorkflowIn,
 } from '../types';
 
 /**
@@ -34,7 +34,7 @@ export interface Api {
   skills: Repo<Skill, SkillIn>;
   mcp: Repo<McpServer, McpIn> & { verify(id: ID): Promise<McpServer> };
   connections: Repo<Connection, ConnectionIn> & { test(id: ID): Promise<Connection>; /** Chats the bridge can see (WhatsApp). Empty until the backend lists them. */ chats(id: ID): Promise<{ id: string; name: string; meta: string }[]> };
-  conversations: Repo<Conversation, ConversationIn> & { send(id: ID, text: string, mate?: string): Promise<Message> };
+  conversations: Repo<Conversation, ConversationIn> & { send(id: ID, text: string, mate?: string): Promise<Message>; /** Same as send, but the reply arrives live through onEvent. Resolves when the answer is complete. */ sendStream(id: ID, text: string, mate: string | undefined, onEvent: (e: ChatEvent) => void): Promise<void> };
   events: Repo<CalEvent, CalEventIn>;
   files: Repo<FileItem, FileIn> & { upload(file: File): Promise<FileItem>; downloadUrl(id: ID): string; /** Authenticated download: fetches with the sign-in token and saves the file. */ download(id: ID, name: string): Promise<void> };
   mateConfigs: Repo<MateConfig, MateConfigIn>;

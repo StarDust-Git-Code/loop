@@ -78,6 +78,7 @@ export function createLocalApi(): Api {
     await conversations.update(id, { messages: [...c.messages, m] } as never);
     return m;
   };
+  conversations.sendStream = async (id, text, mate) => { await conversations.send(id, text, mate); };
   mcp.verify = async (id) => mcp.update(id, { status: 'unverified' } as never);
   connections.chats = async () => [];
   connections.test = async (id) => connections.update(id, { status: 'pending' } as never);

@@ -5,6 +5,7 @@ import { svcJson } from '../lib/svc.js';
 import { db, userCol } from './db.js';
 import { chat, extractJson } from './llm.js';
 import { MATE_DEFS, persona } from './mates.js';
+import { converse } from './agent.js';
 import { getSettings } from './settings.js';
 import { putFile, artifactsReady } from './files.js';
 import { notify } from './telegram.js';
@@ -89,12 +90,10 @@ const needsApproval = (st, kind) => kind !== 'think' && (st.run.askFirst || (st.
 async function stepThink(st, step) {
   const cfg = st.mates[step.mate];
   const steer = st.steer.splice(0).join('\n');
-  const r = await chat(st.uid, {
-    model: cfg?.model || st.settings.model, maxTokens: 1500,
-    messages: [
-      { role: 'system', content: persona(step.mate, cfg?.instructions) },
-      { role: 'user', content: `Overall job:\n${st.run.prompt}\n\nNotes so far:\n${st.run.notes || '(none)'}\n\n${steer ? `Owner steering: ${steer}\n\n` : ''}Your step: ${step.label}\nAnswer with the result of this step only.` },
-    ],
+  const r = await converse({
+    uid: st.uid, mateKey: step.mate, cfg: cfg ?? {}, settings: st.settings, ctx: { runId: st.run.id },
+    history: [{ role: 'user', content: `Overall job:\n${st.run.prompt}\n\nNotes so far:\n${st.run.notes || '(none)'}\n\n${steer ? `Owner steering: ${steer}\n\n` : ''}Your step: ${step.label}\nAnswer with the result of this step only.` }],
+    emit: (ev) => { if (ev.type === 'tool') log(st, step.mate, `Using tool: ${ev.name}`); },
   });
   log(st, step.mate, r.text.slice(0, 600));
   st.run.notes = (st.run.notes + `\n\n## ${step.label}\n${r.text}`).slice(-NOTES_CAP);

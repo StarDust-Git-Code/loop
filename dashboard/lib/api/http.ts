@@ -1,5 +1,5 @@
 import type { Api, Repo } from './contract';
-import type { ID, RunEvent } from '../types';
+import type { ChatEvent, ID, RunEvent } from '../types';
 import { idToken } from '../auth';
 
 /** REST + SSE adapter. Set NEXT_PUBLIC_API_URL to switch the dashboard to it. Endpoints: see BACKEND.md. */
@@ -79,6 +79,27 @@ export function createHttpApi(base: string): Api {
   };
   const conversations = repo('/conversations') as Api['conversations'];
   conversations.send = (id, text, mate) => act(`/conversations/${id}/messages`, { text, mate });
+  conversations.sendStream = async (id, text, mate, onEvent) => {
+    const res = await request('POST', `/conversations/${id}/messages?stream=1`, { text, mate });
+    if (!res.ok || !res.body) {
+      let msg = `Could not send (${res.status})`; try { const j = await res.json(); if (j?.error) msg = j.error; } catch { /* keep default */ }
+      throw new Error(msg);
+    }
+    const reader = res.body.getReader(); const dec = new TextDecoder(); let buf = '';
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buf += dec.decode(value, { stream: true });
+      let i: number;
+      while ((i = buf.indexOf('\n\n')) >= 0) {
+        const chunk = buf.slice(0, i); buf = buf.slice(i + 2);
+        for (const line of chunk.split('\n')) if (line.startsWith('data:')) {
+          try { const e = JSON.parse(line.slice(5)) as ChatEvent; onEvent(e); if (e.type === 'start' || e.type === 'done') emit(); } catch { /* ignore malformed event */ }
+        }
+      }
+    }
+    emit();
+  };
   const mcp = repo('/mcp-servers') as Api['mcp'];
   mcp.verify = (id) => act(`/mcp-servers/${id}/verify`);
   const connections = repo('/connections') as Api['connections'];

@@ -20,3 +20,12 @@ img { display: block; }
   *, *::before, *::after { animation-duration: 0.001ms !important; animation-iteration-count: 1 !important; animation-delay: 0s !important; transition-duration: 0.001ms !important; }
 }
 @keyframes lm-draw { from { stroke-dashoffset: 1; } to { stroke-dashoffset: 0; } }
+
+/* ---------- custom scrollbars (every scrollable area) ---------- */
+* { scrollbar-width: thin; scrollbar-color: rgba(106, 77, 244, 0.32) transparent; }
+*::-webkit-scrollbar { width: 10px; height: 10px; }
+*::-webkit-scrollbar-track { background: transparent; }
+*::-webkit-scrollbar-corner { background: transparent; }
+*::-webkit-scrollbar-thumb { background: rgba(106, 77, 244, 0.28); border-radius: 999px; border: 3px solid transparent; background-clip: content-box; transition: background 0.2s; }
+*::-webkit-scrollbar-thumb:hover { background: rgba(106, 77, 244, 0.55); border: 3px solid transparent; background-clip: content-box; }
+*::-webkit-scrollbar-thumb:active { background: rgba(79, 52, 214, 0.75); border: 3px solid transparent; background-clip: content-box; }

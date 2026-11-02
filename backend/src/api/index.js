@@ -8,7 +8,8 @@ import { requireUser } from './auth.js';
 import { userCol } from './db.js';
 import { registerCrud, COLLECTIONS, sealOut } from './crud.js';
 import { chat, fetchModels } from './llm.js';
-import { persona } from './mates.js';
+import { converse } from './agent.js';
+import { setToolHooks } from './tools.js';
 import { getSettings, patchSettings } from './settings.js';
 import { startRun, control, steer, decide, subscribe, jobEvent, recoverRuns, activeCount } from './engine.js';
 import { hooks as schedHooks, startScheduler, tick } from './sched.js';
@@ -22,6 +23,7 @@ import { open } from '../lib/crypto.js';
 for (const k of ['SERVICE_SECRET', 'MASTER_KEY']) need(k);
 if (env('MEMORY_DB') !== '1' || env('NODE_ENV') === 'production') need('FIREBASE_SERVICE_ACCOUNT_B64');
 
+setToolHooks(schedHooks);
 const app = await createServer('api', { bodyLimit: 4 * 1024 * 1024 });
 const same = (a, b) => { const x = Buffer.from(String(a)), y = Buffer.from(String(b)); return x.length === y.length && timingSafeEqual(x, y); };
 const originOk = (o) => !!o && env('ALLOWED_ORIGINS').split(',').map((s) => s.trim()).includes(o);
@@ -78,7 +80,7 @@ await app.register(async (v1) => {
     req.raw.on('close', () => { clearInterval(beat); off(); });
   });
 
-  /* conversations: reply is generated before we answer, so the UI's refetch already sees it */
+  /* conversations. ?stream=1 answers as Server-Sent Events (delta / tool / done); otherwise the reply is generated first. */
   v1.post('/v1/conversations/:id/messages', async (req, reply) => {
     const { uid } = req.user; const text = String(req.body?.text ?? '').trim().slice(0, 8000);
     if (!text) return reply.code(400).send({ error: 'text is required' });
@@ -88,15 +90,40 @@ await app.register(async (v1) => {
     const mate = req.body?.mate || conv.mate || 'mimo';
     const userMsg = { id: rid(), role: 'user', text, at: now(), state: 'sent' };
     const messages = [...(conv.messages ?? []), userMsg];
-    const cfg = (await userCol(uid, 'mates').doc(mate).get()).data();
+    const cfg = (await userCol(uid, 'mates').doc(mate).get()).data() ?? {};
     const settings = await getSettings(uid);
+    const hist = messages.slice(-16).filter((m) => m.role !== 'system').map((m) => ({ role: m.role === 'user' ? 'user' : 'assistant', content: m.text }));
+    const run = (emit, signal) => converse({ uid, mateKey: mate, cfg, settings, mode: conv.mode ?? 'chat', history: hist, emit, signal });
+    const stream = req.query?.stream === '1';
+
+    if (!stream) {
+      try { const r = await run(() => {}); messages.push({ id: rid(), role: 'mate', mate, text: r.text, at: now(), state: 'sent' }); }
+      catch (e) { messages.push({ id: rid(), role: 'system', text: `Could not reply: ${e.message.slice(0, 300)}`, at: now(), state: 'error' }); }
+      await ref.set({ messages, updatedAt: now() }, { merge: true });
+      return userMsg;
+    }
+
+    await ref.set({ messages, updatedAt: now() }, { merge: true }); // the question is saved before the answer starts
+    const origin = req.headers.origin;
+    reply.hijack();
+    const raw = reply.raw;
+    raw.writeHead(200, { 'content-type': 'text/event-stream', 'cache-control': 'no-cache, no-transform', connection: 'keep-alive', 'x-accel-buffering': 'no', ...(originOk(origin) ? { 'access-control-allow-origin': origin, vary: 'Origin' } : {}) });
+    const write = (e) => { if (!raw.writableEnded) raw.write(`data: ${JSON.stringify(e)}\n\n`); };
+    const ac = new AbortController(); let gone = false;
+    req.raw.on('close', () => { gone = true; ac.abort(); });
+    const beat = setInterval(() => { if (!raw.writableEnded) raw.write(': ping\n\n'); }, 15_000);
+    write({ type: 'start', userId: userMsg.id });
+    let out;
     try {
-      const hist = messages.slice(-16).filter((m) => m.role !== 'system').map((m) => ({ role: m.role === 'user' ? 'user' : 'assistant', content: m.text }));
-      const r = await chat(uid, { model: cfg?.model || settings.model, messages: [{ role: 'system', content: persona(mate, cfg?.instructions) }, ...hist], maxTokens: 1500 });
-      messages.push({ id: rid(), role: 'mate', mate, text: r.text, at: now(), state: 'sent' });
-    } catch (e) { messages.push({ id: rid(), role: 'system', text: `Could not reply: ${e.message.slice(0, 300)}`, at: now(), state: 'error' }); }
-    await ref.set({ messages, updatedAt: now() }, { merge: true });
-    return userMsg;
+      const r = await run(write, ac.signal);
+      out = { id: rid(), role: 'mate', mate, text: r.text, at: now(), state: 'sent' };
+    } catch (e) {
+      out = gone ? null : { id: rid(), role: 'system', text: `Could not reply: ${String(e.message).slice(0, 300)}`, at: now(), state: 'error' };
+    }
+    if (out) { messages.push(out); await ref.set({ messages, updatedAt: now() }, { merge: true }).catch(() => {}); }
+    clearInterval(beat);
+    if (out) write({ type: 'done', message: out });
+    raw.end();
   });
 
   /* mcp / connections / providers */

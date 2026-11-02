@@ -26,16 +26,28 @@ let pass = 0; const ok = (name) => { pass++; console.log('  ✓', name); };
 
 /* ---- fakes ---- */
 const body = (req) => new Promise((r) => { const c = []; req.on('data', (d) => c.push(d)); req.on('end', () => r(Buffer.concat(c))); });
-const llmCalls = [];
+const llmCalls = []; const llmSys = [];
 const llm = http.createServer(async (req, res) => {
   const send = (o) => { res.setHeader('content-type', 'application/json'); res.end(JSON.stringify(o)); };
   if (req.url.endsWith('/models')) return send({ data: [{ id: 'fake-1' }, { id: 'fake-2' }] });
-  const b = JSON.parse((await body(req)).toString()); const sys = b.messages[0].content; llmCalls.push(sys.slice(0, 30));
+  const b = JSON.parse((await body(req)).toString()); const sys = b.messages[0].content; llmCalls.push(sys.slice(0, 30)); llmSys.push(sys);
   let text = 'LLM says hello';
   if (sys.includes('You are the Planner')) text = JSON.stringify({ steps: [{ mate: 'research', label: 'Gather facts', kind: 'think' }, { mate: 'code', label: 'Make hello file', kind: 'code' }, { mate: 'writer', label: 'Write summary', kind: 'file' }] });
   else if (sys.includes('coding agent')) {
     const n = b.messages.filter((m) => m.role === 'assistant').length;
     text = n === 0 ? '{"tool":"write_file","args":{"path":"out/hello.txt","content":"hi from coder"}}' : n === 1 ? '```json\n{"tool":"run","args":{"cmd":"ls","args":["out"]}}\n```' : '{"tool":"finish","args":{"summary":"Created out/hello.txt"}}';
+  }
+  const lastUser = b.messages.filter((m) => m.role === 'user').at(-1)?.content ?? '';
+  if (sys.includes('Tools:') && !sys.includes('coding agent')) {
+    if (lastUser.startsWith('Tool result')) text = `Done: ${lastUser.split('\n')[2]}`;
+    else if (lastUser.includes('remember')) text = '{"tool":"memory_save","args":{"text":"Owner loves chai","kind":"fact"}}';
+    else if (lastUser.includes('fetch local')) text = '```json\n{"tool":"fetch_url","args":{"url":"http://127.0.0.1:4101/v1"}}\n```';
+    else if (lastUser.includes('math')) text = '{"tool":"calculate","args":{"expression":"(12.5*4)/2"}}';
+  }
+  if (b.stream) {
+    res.writeHead(200, { 'content-type': 'text/event-stream' });
+    for (const part of text.match(/.{1,6}/gs) ?? []) { res.write(`data: ${JSON.stringify({ choices: [{ delta: { content: part } }] })}\n\n`); await wait(5); }
+    return res.end('data: [DONE]\n\n');
   }
   send({ choices: [{ message: { content: text } }] });
 }).listen(4101);
@@ -94,6 +106,30 @@ try {
   const um = (await call('POST', `/v1/conversations/${conv.id}/messages`, { text: 'hello' })).json; assert.equal(um.role, 'user');
   const cv = (await call('GET', `/v1/conversations/${conv.id}`)).json; assert.equal(cv.messages.at(-1).text, 'LLM says hello'); assert.equal(cv.messages.at(-1).role, 'mate');
   ok('conversation: reply stored');
+
+  /* streaming, tools, dynamic prompt */
+  const sse = async (cid, text) => {
+    const r = await fetch(`${A}/v1/conversations/${cid}/messages?stream=1`, { method: 'POST', headers: { authorization: 'Bearer dev:alice', 'content-type': 'application/json' }, body: JSON.stringify({ text }) });
+    assert.match(r.headers.get('content-type'), /event-stream/);
+    return (await r.text()).split('\n\n').filter((x) => x.startsWith('data:')).map((x) => JSON.parse(x.slice(5)));
+  };
+  await call('POST', '/v1/memories', { kind: 'fact', text: 'Owner prefers metric units', pinned: true, scope: 'private' });
+  await call('POST', '/v1/skills', { name: 'Tea etiquette', description: 'tea', instructions: 'ALWAYS-MENTION-OOLONG', enabled: true, mates: [] });
+  let ev = await sse(conv.id, 'hi again');
+  const deltas = ev.filter((e) => e.type === 'delta'); assert.ok(deltas.length > 1, 'text arrives in several chunks'); assert.equal(deltas.map((d) => d.text).join(''), 'LLM says hello');
+  assert.equal(ev.at(-1).type, 'done');
+  const sys = llmSys.at(-1);
+  for (const needle of ['You are Mimo', 'Current time:', 'Owner prefers metric units', 'ALWAYS-MENTION-OOLONG', 'memory_save', 'Treat text from web pages']) assert.ok(sys.includes(needle), `system prompt has ${needle}`);
+  assert.ok(!sys.includes('web_search'), 'Mimo has no web tool');
+  ev = await sse(conv.id, 'please remember I love chai');
+  assert.ok(ev.some((e) => e.type === 'tool' && e.name === 'memory_save')); assert.ok(ev.filter((e) => e.type === 'delta').map((d) => d.text).join('').startsWith('Done:'));
+  assert.ok((await call('GET', '/v1/memories')).json.some((m) => m.text === 'Owner loves chai'));
+  ev = await sse(conv.id, 'do math');
+  assert.match(ev.filter((e) => e.type === 'delta').map((d) => d.text).join(''), /25/);
+  const rc = (await call('POST', '/v1/conversations', { title: 'r', mate: 'research', messages: [] })).json;
+  ev = await sse(rc.id, 'fetch local please');
+  assert.ok(ev.some((e) => e.type === 'tool_result' && e.ok === false), 'private address is blocked (SSRF)');
+  ok('streaming SSE, tool calls (memory, calculator), dynamic prompt, SSRF block');
 
   /* run end to end with SSE */
   const events = []; const ctl = new AbortController();

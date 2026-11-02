@@ -6,7 +6,7 @@ import { api } from '../../lib/api';
 import { ago } from '../../lib/format';
 import { useRepo, useSettings } from '../../lib/hooks';
 import { GRAD, MATES, MATE_DEFS, mateImg, mateName } from '../../lib/mates';
-import type { Conversation, MateKey } from '../../lib/types';
+import type { ChatEvent, Conversation, MateKey } from '../../lib/types';
 import { useToast } from '../ui/toast';
 import { Badge, Btn, Pill, Tabs, Toggle, confirmThen } from '../ui/ui';
 
@@ -15,6 +15,7 @@ const SLASH = [
   { cmd: '/plan', desc: 'Only plan, do not execute' }, { cmd: '/skill', desc: 'Pick a skill to use in this chat' },
   { cmd: '/whatsapp', desc: 'Let agents read selected chats' }, { cmd: '/telegram', desc: 'Ping me when this run needs me' },
 ];
+const TOOL_LABEL: Record<string, string> = { web_search: 'Searching the web', fetch_url: 'Reading a page', memory_save: 'Saving a memory', memory_recall: 'Checking memories', knowledge_search: 'Searching knowledge', calendar_add: 'Adding to calendar', calendar_list: 'Reading calendar', task_add: 'Adding a task', task_list: 'Reading tasks', file_write: 'Saving a file', calculate: 'Calculating' };
 type Mode = 'chat' | 'plan' | 'ultracode';
 const MODE_NOTE: Record<Mode, string> = { chat: 'Chat: talk it through, the Mate answers.', plan: 'Plan: the Mate plans the work and waits for you.', ultracode: 'Ultracode: long autonomous coding run with checkpoints and tests' };
 const Dot = ({ k, s = 42 }: { k: MateKey; s?: number }) => <img src={mateImg(k)} alt="" width={s} height={s} style={{ flex: 'none' }} />;  
@@ -32,9 +33,10 @@ export function Chat() {
   const [menu, setMenu] = useState(false);
   const [sel, setSel] = useState(0);
   const [list, setList] = useState(false);
+  const [live, setLive] = useState<{ cid: string; text: string; tools: string[]; doneId?: string } | null>(null);
   const end = useRef<HTMLDivElement>(null);
   const fileIn = useRef<HTMLInputElement>(null);
-  useEffect(() => { end.current?.scrollIntoView({ block: 'end', behavior: 'smooth' }); }, [conv?.messages.length]);
+  useEffect(() => { end.current?.scrollIntoView({ block: 'end', behavior: 'smooth' }); }, [conv?.messages.length, live?.text.length]);
 
   const mate: MateKey = conv?.mate ?? 'planner';
   const mode = conv?.mode ?? 'chat';
@@ -56,7 +58,17 @@ export function Chat() {
     const t = text.trim(); if (!t || !conv) return;
     setText(''); setMenu(false);
     if (conv.messages.length === 0) await update(conv.id, { title: t.replace(/^\/btw\s*/, '').slice(0, 42) });
-    await api.conversations.send(conv.id, t, mate);
+    if (t.startsWith('/btw') || !api.capabilities.backend) { await api.conversations.send(conv.id, t, mate); return; }
+    setLive({ cid: conv.id, text: '', tools: [] });
+    const onEvent = (e: ChatEvent) => setLive((p) => {
+      if (!p) return p;
+      if (e.type === 'delta') return { ...p, text: p.text + e.text };
+      if (e.type === 'tool') return { ...p, text: '', tools: [...p.tools, e.name] };
+      if (e.type === 'done') return { ...p, doneId: e.message.id };
+      return p;
+    });
+    try { await api.conversations.sendStream(conv.id, t, mate, onEvent); }
+    catch (err) { toast(err instanceof Error ? err.message : 'Could not send', 'bad'); setLive(null); }
   };
   const startRun = async () => {
     const last = [...(conv?.messages ?? [])].reverse().find((m) => m.role === 'user' && !m.text.startsWith('/btw'));
@@ -133,6 +145,14 @@ export function Chat() {
                 <Dot k={m.mate ?? mate} /><div style={{ flex: 1, minWidth: 0 }}><div style={{ fontSize: 13, fontWeight: 600, marginBottom: 6 }}>{mateName(m.mate ?? mate)}</div><div style={{ fontSize: 15, lineHeight: 1.6, color: '#2A2631', whiteSpace: 'pre-wrap' }}>{m.text}</div></div>
               </div>);
           })}
+          {live && live.cid === conv.id && !(live.doneId && conv.messages.some((m) => m.id === live.doneId)) && (
+            <div style={{ display: 'flex', gap: 14, maxWidth: 820, animation: 'lm-pop .3s ease both' }}>
+              <Dot k={mate} /><div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 6 }}>{mateName(mate)}</div>
+                {live.tools.length > 0 && <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 6 }}>{live.tools.map((n, i) => <span key={i} className="mono" style={{ fontSize: 11.5, background: '#ECE7FF', color: '#4F34D6', borderRadius: 7, padding: '3px 8px' }}>{TOOL_LABEL[n] ?? n}{i === live.tools.length - 1 && !live.text && !live.doneId ? '…' : ''}</span>)}</div>}
+                <div style={{ fontSize: 15, lineHeight: 1.6, color: '#2A2631', whiteSpace: 'pre-wrap' }}>{live.text || (live.tools.length === 0 ? <span style={{ color: '#6B6572' }}>Thinking…</span> : null)}{!live.doneId && live.text && <span style={{ opacity: .5 }}>▍</span>}</div>
+              </div>
+            </div>)}
           <div ref={end} />
         </div>
 

@@ -83,3 +83,6 @@ export type SettingsData = {
 };
 
 export type Session = { signedIn: boolean; name?: string; email?: string; plan?: string };
+
+/** Live events while a Mate answers (server-sent). */
+export type ChatEvent = { type: 'start' } | { type: 'delta'; text: string } | { type: 'tool'; name: string } | { type: 'tool_result'; name: string; ok: boolean } | { type: 'done'; message: Message };

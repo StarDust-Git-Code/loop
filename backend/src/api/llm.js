@@ -87,3 +87,59 @@ export async function fetchModels(uid, p) {
   const arr = Array.isArray(j) ? j : j.data ?? j.models ?? [];
   return arr.map((m) => (typeof m === 'string' ? m : m.id ?? m.name)).filter(Boolean).map((s) => String(s).replace(/^models\//, ''));
 }
+
+/**
+ * Streaming completion with failover. Fails over to the next provider only until the first token arrives;
+ * after that an error is thrown (a half-written answer cannot be restarted elsewhere).
+ * Reasoning tokens (reasoning_content) are ignored; only the answer is streamed to onDelta.
+ */
+export async function chatStream(uid, { model = '', messages, temperature = 0.4, maxTokens = 2048, signal } = {}, onDelta = () => {}) {
+  const attempts = await plan(uid, model);
+  if (!attempts.length) throw Object.assign(new Error('No LLM provider configured. Add one in Settings, or set NVIDIA_API_KEY / GEMINI_API_KEY on the API service.'), { statusCode: 424 });
+  const errors = []; const t = Date.now();
+  const live = attempts.filter((a) => (cooldown.get(a.id) ?? 0) < t);
+  for (const a of live.length ? live : attempts) {
+    let got = false; let full = '';
+    try {
+      const res = await fetch(`${a.baseUrl}/chat/completions`, {
+        method: 'POST', headers: { 'content-type': 'application/json', ...authHeaders(a.baseUrl, a.key) },
+        body: JSON.stringify({ model: a.model, messages, temperature, max_tokens: maxTokens, stream: true }),
+        signal: signal ?? AbortSignal.timeout(num('LLM_STREAM_TIMEOUT_MS', 180_000)),
+      });
+      if (!res.ok || !res.body) {
+        errors.push(`${a.name}: ${res.status} ${(await res.text().catch(() => '')).slice(0, 160)}`);
+        if (res.status === 429 || res.status >= 500) cooldown.set(a.id, Date.now() + 60_000);
+        if (res.status === 401 || res.status === 403) cooldown.set(a.id, Date.now() + 10 * 60_000);
+        continue;
+      }
+      if ((res.headers.get('content-type') || '').includes('application/json')) { // provider ignored stream:true
+        const text = (await res.json())?.choices?.[0]?.message?.content;
+        if (typeof text === 'string' && text) { onDelta(text); return { text, provider: a.name, model: a.model }; }
+        errors.push(`${a.name}: empty reply`); continue;
+      }
+      const reader = res.body.getReader(); const dec = new TextDecoder(); let buf = '';
+      for (;;) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buf += dec.decode(value, { stream: true });
+        let i;
+        while ((i = buf.indexOf('\n')) >= 0) {
+          const line = buf.slice(0, i).trim(); buf = buf.slice(i + 1);
+          if (!line.startsWith('data:')) continue;
+          const data = line.slice(5).trim();
+          if (data === '[DONE]') continue;
+          let j; try { j = JSON.parse(data); } catch { continue; }
+          const d = j?.choices?.[0]?.delta?.content;
+          if (typeof d === 'string' && d) { got = true; full += d; onDelta(d); }
+        }
+      }
+      if (full) return { text: full, provider: a.name, model: a.model };
+      errors.push(`${a.name}: empty stream`);
+    } catch (e) {
+      if (got) throw Object.assign(new Error(`The answer was cut off: ${e.message}`), { statusCode: 502 });
+      errors.push(`${a.name}: ${e.name === 'TimeoutError' ? 'timed out' : e.message}`);
+      cooldown.set(a.id, Date.now() + 30_000);
+    }
+  }
+  throw Object.assign(new Error(`All providers failed. ${errors.join(' | ')}`), { statusCode: 502 });
+}
