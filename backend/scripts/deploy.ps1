@@ -149,8 +149,13 @@ if ($selected | Where-Object { $_.id -eq 'api' }) {
   if ((Cfg 'ALLOWED_EMAILS') -eq '') { $problems.Add('ALLOWED_EMAILS is empty: anyone with a Google account could sign in and spend your LLM quota.') }
   if (((Cfg 'NVIDIA_API_KEY') + (Cfg 'GEMINI_API_KEY') + (Cfg 'GROQ_API_KEY') + (Cfg 'CEREBRAS_API_KEY') + (Cfg 'OPENROUTER_API_KEY')) -eq '') { Warn 'No LLM key set. Mates cannot think until you add a provider in Settings.' }
 }
+$skipArtifacts = $false
 if ($selected | Where-Object { $_.id -eq 'artifacts' }) {
-  foreach ($k in 'GOOGLE_CLIENT_ID', 'GOOGLE_CLIENT_SECRET', 'GOOGLE_REFRESH_TOKEN') { if ((Cfg $k) -eq '') { $problems.Add("$k is empty (run: node backend/scripts/drive-token.mjs <id> <secret>).") } }
+  $missing = @('GOOGLE_CLIENT_ID', 'GOOGLE_CLIENT_SECRET', 'GOOGLE_REFRESH_TOKEN' | Where-Object { (Cfg $_) -eq '' })
+  if ($missing.Count -gt 0) {
+    if ($Only -eq 'artifacts') { $problems.Add("$($missing -join ', ') empty (run: node drive-token.mjs <id> <secret>).") }
+    else { $skipArtifacts = $true; Warn 'Google Drive is not configured yet, so the Artifacts service is skipped. File storage will answer "not configured" until you add the three GOOGLE_* values and run this script again.' }
+  }
 }
 if ($problems.Count -gt 0) {
   Write-Host ""
@@ -158,6 +163,7 @@ if ($problems.Count -gt 0) {
   Write-Host ""; Write-Host "  Fix the items above in $EnvFile and run again." -ForegroundColor Yellow
   exit 1
 }
+if ($skipArtifacts) { $selected = @($selected | Where-Object { $_.id -ne 'artifacts' }) }
 Good 'configuration is complete'
 
 # ------------------------------------------------------------------ git
@@ -246,15 +252,17 @@ function Find-Service($r) {
 $urls = @{}
 foreach ($r in $roles) { $urls[$r.id] = "https://$($r.name).onrender.com" }
 
+$existingArtifacts = $false
 # Re-runs: use the URLs Render really assigned to services that already exist (it appends a suffix if a name is taken).
 foreach ($r in $roles) {
   if ((Cfg $r.key) -eq '') { continue }
   try {
     $found = Find-Service $r
-    if ($null -ne $found -and $found.serviceDetails -and $found.serviceDetails.url) { $urls[$r.id] = [string]$found.serviceDetails.url }
+    if ($null -ne $found -and $found.serviceDetails -and $found.serviceDetails.url) { $urls[$r.id] = [string]$found.serviceDetails.url; if ($r.id -eq 'artifacts') { $existingArtifacts = $true } }
   } catch { Warn "could not look up the existing $($r.id) service: $($_.Exception.Message)" }
 }
 
+if ($skipArtifacts -and -not $existingArtifacts) { $urls['artifacts'] = '' }
 $envUrls = @{}
 foreach ($k in $urls.Keys) { $envUrls[$k] = $urls[$k] }   # URLs baked into the env vars we send
 
@@ -406,7 +414,7 @@ if (($selected | Where-Object { $_.id -eq 'api' }) -and (Cfg 'TELEGRAM_BOT_TOKEN
 # ------------------------------------------------------------------ summary
 Step 'Done'
 Write-Host ""
-foreach ($r in $roles) { Write-Host ("  {0,-22} {1}" -f $r.title, $urls[$r.id]) }
+foreach ($r in $roles) { $u = if ($urls[$r.id]) { $urls[$r.id] } else { '(not deployed)' }; Write-Host ("  {0,-22} {1}" -f $r.title, $u) }
 Write-Host ""
 Write-Host '  Next steps' -ForegroundColor Cyan
 Write-Host "   1. Vercel (dashboard project) -> Settings -> Environment Variables, then redeploy:"
