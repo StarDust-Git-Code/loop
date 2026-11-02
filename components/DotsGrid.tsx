@@ -23,6 +23,69 @@ export default function DotsGrid() {
     { scope: root }
   );
 
+  /** Reactive cards: 3D tilt toward the cursor, Dot parallax, cursor spotlight, neighbours dim + soften, click = bounce. */
+  useGSAP(
+    () => {
+      if (prefersReducedMotion()) return;
+      const grid = root.current!.querySelector<HTMLElement>(".dotgrid")!;
+      const cleanups: (() => void)[] = [];
+      gsap.utils.toArray<HTMLElement>(".dotcard", grid).forEach((card) => {
+        const pic = card.querySelector<HTMLElement>(".pic")!;
+        const name = card.querySelector<HTMLElement>("b")!;
+        const rx = gsap.quickTo(card, "rotationX", { duration: 0.5, ease: "power3.out" });
+        const ry = gsap.quickTo(card, "rotationY", { duration: 0.5, ease: "power3.out" });
+        const px = gsap.quickTo(pic, "x", { duration: 0.6, ease: "power3.out" });
+        const py = gsap.quickTo(pic, "y", { duration: 0.6, ease: "power3.out" });
+        gsap.set(card, { transformPerspective: 700, transformOrigin: "50% 50%" });
+        const move = (e: PointerEvent) => {
+          if (e.pointerType !== "mouse") return;
+          const r = card.getBoundingClientRect();
+          const nx = (e.clientX - r.left) / r.width - 0.5;
+          const ny = (e.clientY - r.top) / r.height - 0.5;
+          ry(nx * 16); rx(-ny * 16);
+          px(nx * 16); py(ny * 12);
+          card.style.setProperty("--mx", `${(nx + 0.5) * 100}%`);
+          card.style.setProperty("--my", `${(ny + 0.5) * 100}%`);
+        };
+        const enter = (e: PointerEvent) => {
+          if (e.pointerType !== "mouse") return;
+          grid.classList.add("has-hover");
+          gsap.to(gsap.utils.toArray<HTMLElement>(".dotcard", grid).filter((c) => c !== card), { opacity: 0.55, filter: "blur(1.5px)", duration: 0.35, overwrite: "auto" });
+          card.classList.add("is-hot");
+          gsap.to(card, { scale: 1.06, y: -6, duration: 0.45, ease: "back.out(2)", overwrite: "auto" });
+          gsap.to(pic, { scale: 1.14, rotation: gsap.utils.random(-5, 5), duration: 0.5, ease: "back.out(2.2)" });
+          gsap.fromTo(name, { letterSpacing: "0.02em" }, { letterSpacing: "-0.03em", duration: 0.5, ease: "power3.out" });
+        };
+        const leave = () => {
+          grid.classList.remove("has-hover");
+          gsap.to(gsap.utils.toArray<HTMLElement>(".dotcard", grid).filter((c) => c !== card), { opacity: 1, filter: "blur(0px)", duration: 0.4, overwrite: "auto" });
+          card.classList.remove("is-hot");
+          rx(0); ry(0); px(0); py(0);
+          gsap.to(card, { scale: 1, y: 0, duration: 0.6, ease: "elastic.out(1,0.6)", overwrite: "auto" });
+          gsap.to(pic, { scale: 1, rotation: 0, duration: 0.6, ease: "elastic.out(1,0.6)" });
+        };
+        const click = () => {
+          gsap.timeline()
+            .to(pic, { scaleX: 1.2, scaleY: 0.82, y: 6, duration: 0.12, ease: "power2.out" })
+            .to(pic, { scaleX: 0.92, scaleY: 1.2, y: -28, duration: 0.22, ease: "power2.out" })
+            .to(pic, { scaleX: 1, scaleY: 1, y: 0, rotation: 0, duration: 0.7, ease: "elastic.out(1,0.45)" });
+        };
+        card.addEventListener("pointermove", move);
+        card.addEventListener("pointerenter", enter);
+        card.addEventListener("pointerleave", leave);
+        card.addEventListener("click", click);
+        cleanups.push(() => {
+          card.removeEventListener("pointermove", move);
+          card.removeEventListener("pointerenter", enter);
+          card.removeEventListener("pointerleave", leave);
+          card.removeEventListener("click", click);
+        });
+      });
+      return () => cleanups.forEach((fn) => fn());
+    },
+    { scope: root }
+  );
+
   /** Flip: cards glide to their new positions when the filter changes. */
   const filter = (f: (typeof FILTERS)[number]) => {
     setActive(f);
