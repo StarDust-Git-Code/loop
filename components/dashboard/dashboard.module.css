@@ -86,8 +86,13 @@
 
 .brandName {
   font-size: 22px;
-  font-weight: 700;
-  letter-spacing: -0.02em;
+  font-weight: 800;
+  letter-spacing: -0.045em;
+}
+
+.brandName em {
+  color: var(--accent);
+  font-style: normal;
 }
 
 .navList {
@@ -763,3 +768,35 @@
     transition: background-color 0.15s, border-color 0.15s, filter 0.15s;
   }
 }
+
+/* ---------- ported design screens (static HTML from the design files, scaled to fit) ---------- */
+.screen { position: relative; overflow-x: auto; overflow-y: hidden; background: #fff; }
+.screenInner { width: 1528px; height: 1000px; transform-origin: 0 0; font-size: 14px; color: var(--ink); }
+.screenInner * { box-sizing: border-box; }
+.screenInner :global(.dot) { background-size: contain; background-repeat: no-repeat; background-position: center; flex: none; }
+.screenInner :global(.mono) { font-family: 'JetBrains Mono', ui-monospace, monospace; }
+.screenInner :global(button) { font-family: inherit; }
+.screenInner :global([data-go]) { cursor: pointer; }
+.screenInner :global(.m-red) { background-image: url(/dots/research.png); }
+.screenInner :global(.m-blue) { background-image: url(/dots/code.png); }
+.screenInner :global(.m-cream) { background-image: url(/dots/planner.png); }
+.screenInner :global(.m-yellow) { background-image: url(/dots/writer.png); }
+.screenInner :global(.m-green) { background-image: url(/dots/browser.png); }
+.screenInner :global(.m-purple) { background-image: url(/dots/ops.png); }
+.screenInner :global(.m-mimo) { background-image: url(/dots/mimo.png); }
+.screenInner :global(.m-orbit) { background-image: url(/dots/orbit.png); }
+.screenInner :global(.m-recall) { background-image: url(/dots/recall.png); }
+.screenInner :global(.m-zen) { background-image: url(/dots/zen.png); }
+.screenInner :global(.m-spark) { background-image: url(/dots/spark.png); }
+.screenInner :global(.m-luna) { background-image: url(/dots/luna.png); }
+.screenInner :global(.m-tune) { background-image: url(/dots/tune.png); }
+.screenInner :global(.m-scout) { background-image: url(/dots/scout.png); }
+.screenInner :global(.m-halo) { background-image: url(/dots/halo.png); }
+.screenInner :global(.m-data) { background-image: url(/dots/data.png); }
+.screenInner :global(.m-chef) { background-image: url(/dots/chef.png); }
+.screenInner :global(.m-byte) { background-image: url(/dots/byte.png); }
+
+.placeholder { padding: 72px 48px; max-width: 720px; }
+.placeholder h1 { font-size: 34px; letter-spacing: -0.04em; margin: 0 0 10px; }
+.placeholder p { margin: 0 0 12px; color: var(--muted); line-height: 1.6; }
+.placeholder .note { display: inline-block; font-size: 12px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--accent-ink); background: #ece7ff; border-radius: 999px; padding: 5px 12px; margin-bottom: 18px; }

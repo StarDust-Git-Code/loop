@@ -1,5 +1,7 @@
 'use client';
 
+import { useRouter } from 'next/navigation';
+
 import { useState } from 'react';
 import { AGENT } from '../../lib/dashboard/brand';
 import { APPROVAL } from '../../lib/dashboard/data';
@@ -7,6 +9,7 @@ import { Mate } from './Mate';
 import s from './dashboard.module.css';
 
 export function ApprovalCard() {
+  const router = useRouter();
   const [approved, setApproved] = useState(false);
 
   return (
@@ -34,7 +37,7 @@ export function ApprovalCard() {
           <button type="button" className={s.primaryBtn} onClick={() => setApproved(true)}>
             Approve
           </button>
-          <button type="button" className={s.ghostBtn}>
+          <button type="button" className={s.ghostBtn} onClick={() => router.push('/dashboard/run')}>
             Review files
           </button>
         </div>

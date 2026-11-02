@@ -1,0 +1,159 @@
+<div style="width:1528px;height:1000px;display:flex;background:#FFFFFF;color:#1B1822;font-size:14px;overflow:hidden">
+
+
+
+<main style="flex:1;min-width:0;display:flex;flex-direction:column;padding:0 32px 24px">
+<header style="height:96px;flex:none;display:flex;align-items:center;justify-content:space-between">
+<div>
+<h1 style="margin:0;font-size:26px;font-weight:600;letter-spacing:-.015em">Knowledge</h1>
+<p style="margin:4px 0 0;color:#6B6572;font-size:14px">What your agents know, where it came from, and how they find it.</p>
+</div>
+<div style="display:flex;align-items:center;gap:12px">
+<div role="tablist" aria-label="Knowledge views" style="display:flex;gap:4px;background:#ECE9F4;border:1px solid rgba(31,26,23,.08);border-radius:12px;padding:4px">
+<button role="tab" aria-selected="true" style="height:36px;padding:0 16px;border-radius:9px;border:0;font-size:13px;font-weight:500;background:#FFFFFF;color:#1B1822">Graph</button><button role="tab" aria-selected="false" style="height:36px;padding:0 16px;border-radius:9px;border:0;font-size:13px;font-weight:500;background:transparent;color:#6B6572">Sources</button><button role="tab" aria-selected="false" style="height:36px;padding:0 16px;border-radius:9px;border:0;font-size:13px;font-weight:500;background:transparent;color:#6B6572">Memory</button><button role="tab" aria-selected="false" style="height:36px;padding:0 16px;border-radius:9px;border:0;font-size:13px;font-weight:500;background:transparent;color:#6B6572">Retrieval</button>
+</div>
+<button style="height:44px;padding:0 18px;background:#6A4DF4;border:0;border-radius:10px;color:#fff;font-size:14px;font-weight:600">Add source</button>
+</div>
+</header>
+
+<div style="flex:1;min-height:0;display:flex;gap:20px">
+
+<!-- sources -->
+<section aria-label="Sources" style="width:290px;flex:none;background:#FFFFFF;border:1px solid rgba(27,24,34,.17);border-radius:16px;padding:16px;display:flex;flex-direction:column;gap:4px;box-shadow:0 2px 6px rgba(31,26,23,.05)">
+<h2 style="margin:0 0 8px;font-size:13px;font-weight:600;letter-spacing:.06em;color:#6B6572">SOURCES</h2>
+
+<div style="display:flex;align-items:center;gap:12px;min-height:56px;border-top:1px solid rgba(31,26,23,.07)">
+<span style="width:34px;height:34px;border-radius:9px;background:#FFE1DF;color:#8A1F18;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex:none">PDF</span>
+<div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">SkillCourt product sheet</div><div style="font-size:12px;color:#1E7A46;margin-top:2px">Indexed</div></div>
+</div>
+
+<div style="display:flex;align-items:center;gap:12px;min-height:56px;border-top:1px solid rgba(31,26,23,.07)">
+<span style="width:34px;height:34px;border-radius:9px;background:#DCE4FF;color:#26397F;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex:none">WEB</span>
+<div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">skillcourt pricing page</div><div style="font-size:12px;color:#1E7A46;margin-top:2px">Indexed</div></div>
+</div>
+
+<div style="display:flex;align-items:center;gap:12px;min-height:56px;border-top:1px solid rgba(31,26,23,.07)">
+<span style="width:34px;height:34px;border-radius:9px;background:#F1ECFA;color:#5C4614;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex:none">MD</span>
+<div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Competitor notes</div><div style="font-size:12px;color:#1E7A46;margin-top:2px">Indexed</div></div>
+</div>
+
+<div style="display:flex;align-items:center;gap:12px;min-height:56px;border-top:1px solid rgba(31,26,23,.07)">
+<span style="width:34px;height:34px;border-radius:9px;background:#D8F0DC;color:#14532D;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex:none">WA</span>
+<div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">WhatsApp: Team chat</div><div style="font-size:12px;color:#1E7A46;margin-top:2px">Read-only · 1 chat selected</div></div>
+</div>
+
+<div style="display:flex;align-items:center;gap:12px;min-height:56px;border-top:1px solid rgba(31,26,23,.07)">
+<span style="width:34px;height:34px;border-radius:9px;background:#DDF0FB;color:#0B4B6F;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex:none">TG</span>
+<div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Telegram: Loop bot</div><div style="font-size:12px;color:#6B6572;margin-top:2px">Replies only</div></div>
+</div>
+
+<div style="display:flex;align-items:center;gap:12px;min-height:56px;border-top:1px solid rgba(31,26,23,.07)">
+<span style="width:34px;height:34px;border-radius:9px;background:#ECE7FF;color:#4F34D6;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex:none">RUN</span>
+<div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Past runs</div><div style="font-size:12px;color:#4F34D6;margin-top:2px">Syncing</div></div>
+</div>
+
+<div style="display:flex;align-items:center;gap:12px;min-height:56px;border-top:1px solid rgba(31,26,23,.07)">
+<span style="width:34px;height:34px;border-radius:9px;background:#F3F1F8;color:#3D3946;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex:none">MCP</span>
+<div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Google Drive (MCP)</div><div style="font-size:12px;color:#1E7A46;margin-top:2px">Connected</div></div>
+</div>
+
+<div style="flex:1"></div>
+<div style="background:#F4F0FF;border:1px solid rgba(106,77,244,.3);border-radius:12px;padding:12px;font-size:12.5px;line-height:1.5;color:#3D3946">WhatsApp and Telegram sources only include chats you pick on the Connections page.</div>
+</section>
+
+<!-- graph -->
+<section aria-label="Knowledge graph" style="flex:1;min-width:0;position:relative;background:#FBFAFE;border:1px solid rgba(27,24,34,.17);border-radius:16px;overflow:hidden;background-image:radial-gradient(rgba(27,24,34,.17) 1px,transparent 1px);background-size:24px 24px">
+
+<svg width="780" height="800" viewBox="0 0 780 800" fill="none" style="position:absolute;left:0;top:0" aria-hidden="true">
+<g stroke="#B9ABF9" stroke-width="1.6">
+<path d="M390 400L590 280"></path><path d="M390 400L190 240"></path><path d="M390 400L170 450"></path><path d="M390 400L330 620"></path>
+<path d="M390 400L600 510"></path><path d="M590 280L600 510"></path><path d="M590 280L420 200"></path><path d="M390 400L420 200"></path>
+<path d="M600 510L620 670"></path><path d="M330 620L620 670" stroke-dasharray="5 5"></path><path d="M190 240L170 450" stroke-dasharray="5 5"></path>
+</g>
+</svg>
+
+<div class="node" style="left:334px;top:344px;width:112px;height:112px;background:#6A4DF4;color:#fff;font-size:15px;box-shadow:0 0 0 8px rgba(106,77,244,.18)">SkillCourt</div>
+<div class="node" style="left:544px;top:234px;width:92px;height:92px;background:#8E78F7;color:#fff;font-size:13px">SmartCourt</div>
+<div class="node" style="left:154px;top:204px;width:72px;height:72px;background:#FFFFFF;border:1.5px solid rgba(31,26,23,.25);font-size:12px">Pricing page</div>
+<div class="node" style="left:134px;top:414px;width:72px;height:72px;background:#FFFFFF;border:1.5px solid rgba(31,26,23,.25);font-size:12px">Features</div>
+<div class="node" style="left:294px;top:584px;width:72px;height:72px;background:#FFFFFF;border:1.5px solid rgba(31,26,23,.25);font-size:12px">Product docs</div>
+<div class="node" style="left:564px;top:474px;width:72px;height:72px;background:#F1ECFA;border:1.5px solid rgba(31,26,23,.2);font-size:12px">Competitor notes</div>
+<div class="node" style="left:584px;top:634px;width:72px;height:72px;background:#D8F0DC;border:1.5px solid #1E7A46;color:#14532D;font-size:12px">Team chat</div>
+<div class="dot m-red" style="position:absolute;left:386px;top:164px;width:68px;height:68px"></div>
+<div class="lab" style="left:355px;top:236px;display:none"></div>
+<div class="lab" style="left:355px;top:232px;font-size:11px;color:#6B6572">Research Mate memory</div>
+
+<div style="position:absolute;left:20px;bottom:20px;background:#FFFFFF;border:1px solid rgba(31,26,23,.14);border-radius:12px;padding:10px 14px;display:flex;gap:16px;font-size:12px;color:#3D3946;box-shadow:0 1px 2px rgba(27,24,34,.06),0 8px 22px rgba(106,77,244,.08)">
+<span style="display:flex;align-items:center;gap:6px"><span style="width:12px;height:12px;border-radius:50%;background:#6A4DF4;border:1px solid rgba(31,26,23,.2)"></span>Topic</span><span style="display:flex;align-items:center;gap:6px"><span style="width:12px;height:12px;border-radius:50%;background:#FFFFFF;border:1px solid rgba(31,26,23,.2)"></span>Source</span><span style="display:flex;align-items:center;gap:6px"><span style="width:12px;height:12px;border-radius:50%;background:#F1ECFA;border:1px solid rgba(31,26,23,.2)"></span>Note</span><span style="display:flex;align-items:center;gap:6px"><span style="width:12px;height:12px;border-radius:50%;background:#D8F0DC;border:1px solid rgba(31,26,23,.2)"></span>Chat</span>
+</div>
+<div style="position:absolute;right:20px;top:20px;display:flex;gap:8px">
+<button aria-label="Zoom in" style="width:44px;height:44px;background:#FFFFFF;border:1px solid rgba(31,26,23,.14);border-radius:10px;font-size:18px;box-shadow:0 1px 2px rgba(27,24,34,.06),0 8px 22px rgba(106,77,244,.08)">+</button>
+<button aria-label="Zoom out" style="width:44px;height:44px;background:#FFFFFF;border:1px solid rgba(31,26,23,.14);border-radius:10px;font-size:18px;box-shadow:0 1px 2px rgba(27,24,34,.06),0 8px 22px rgba(106,77,244,.08)">−</button>
+</div>
+<div style="position:absolute;left:20px;top:20px;height:44px;width:260px;background:#FFFFFF;border:1px solid rgba(31,26,23,.14);border-radius:10px;display:flex;align-items:center;gap:10px;padding:0 14px;color:#6B6572;box-shadow:0 1px 2px rgba(27,24,34,.06),0 8px 22px rgba(106,77,244,.08)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-4-4"></path></svg><label for="gq" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)">Search the graph</label><input id="gq" placeholder="Search the graph" style="flex:1;min-width:0;border:0;outline:0;background:none;font-family:inherit;font-size:14px;color:#1B1822"></div>
+</section>
+
+<!-- RAG panel -->
+<aside aria-label="Retrieval settings" style="width:350px;flex:none;display:flex;flex-direction:column;gap:14px">
+
+<div style="background:#FFFFFF;border:1px solid rgba(27,24,34,.17);border-radius:16px;padding:16px;box-shadow:0 2px 6px rgba(31,26,23,.05)">
+<h2 style="margin:0 0 10px;font-size:13px;font-weight:600;letter-spacing:.06em;color:#6B6572">HOW AGENTS FIND THINGS (RAG)</h2>
+<div style="display:flex;flex-wrap:wrap;align-items:center;gap:6px">
+<span style="font-size:12px;font-weight:600;color:#4F34D6;background:#ECE7FF;border-radius:8px;padding:6px 10px">Ingest</span><span style="font-size:12px;font-weight:600;color:#4F34D6;background:#ECE7FF;border-radius:8px;padding:6px 10px">Chunk</span><span style="font-size:12px;font-weight:600;color:#4F34D6;background:#ECE7FF;border-radius:8px;padding:6px 10px">Embed</span><span style="font-size:12px;font-weight:600;color:#4F34D6;background:#ECE7FF;border-radius:8px;padding:6px 10px">Index</span><span style="font-size:12px;font-weight:600;color:#4F34D6;background:#ECE7FF;border-radius:8px;padding:6px 10px">Retrieve</span><span style="font-size:12px;font-weight:600;color:#4F34D6;background:#ECE7FF;border-radius:8px;padding:6px 10px">Rerank</span><span style="font-size:12px;font-weight:600;color:#4F34D6;background:#ECE7FF;border-radius:8px;padding:6px 10px">Cite</span>
+</div>
+<div style="margin-top:12px;display:flex;flex-direction:column">
+
+<div style="display:flex;align-items:center;gap:10px;min-height:46px;border-top:1px solid rgba(31,26,23,.07);font-size:13px"><span style="flex:1;color:#2A2631">Chunk size</span>
+
+<span class="mono" style="font-size:12px;background:#F3F1F8;border-radius:6px;padding:4px 8px">800 tokens</span>
+</div>
+
+<div style="display:flex;align-items:center;gap:10px;min-height:46px;border-top:1px solid rgba(31,26,23,.07);font-size:13px"><span style="flex:1;color:#2A2631">Overlap</span>
+
+<span class="mono" style="font-size:12px;background:#F3F1F8;border-radius:6px;padding:4px 8px">100 tokens</span>
+</div>
+
+<div style="display:flex;align-items:center;gap:10px;min-height:46px;border-top:1px solid rgba(31,26,23,.07);font-size:13px"><span style="flex:1;color:#2A2631">Top results</span>
+
+<span class="mono" style="font-size:12px;background:#F3F1F8;border-radius:6px;padding:4px 8px">6</span>
+</div>
+
+<div style="display:flex;align-items:center;gap:10px;min-height:46px;border-top:1px solid rgba(31,26,23,.07);font-size:13px"><span style="flex:1;color:#2A2631">Hybrid search (keyword + meaning)</span>
+<button role="switch" aria-checked="true" aria-label="Hybrid search (keyword + meaning)" style="width:40px;height:22px;border-radius:11px;border:0;position:relative;background:#6A4DF4"><span style="position:absolute;top:3px;left:21px;width:16px;height:16px;border-radius:50%;background:#fff"></span></button>
+
+</div>
+
+<div style="display:flex;align-items:center;gap:10px;min-height:46px;border-top:1px solid rgba(31,26,23,.07);font-size:13px"><span style="flex:1;color:#2A2631">Rerank results</span>
+<button role="switch" aria-checked="true" aria-label="Rerank results" style="width:40px;height:22px;border-radius:11px;border:0;position:relative;background:#6A4DF4"><span style="position:absolute;top:3px;left:21px;width:16px;height:16px;border-radius:50%;background:#fff"></span></button>
+
+</div>
+
+<div style="display:flex;align-items:center;gap:10px;min-height:46px;border-top:1px solid rgba(31,26,23,.07);font-size:13px"><span style="flex:1;color:#2A2631">Always cite sources</span>
+<button role="switch" aria-checked="true" aria-label="Always cite sources" style="width:40px;height:22px;border-radius:11px;border:0;position:relative;background:#6A4DF4"><span style="position:absolute;top:3px;left:21px;width:16px;height:16px;border-radius:50%;background:#fff"></span></button>
+
+</div>
+
+</div>
+</div>
+
+<div style="background:#FFFFFF;border:1px solid rgba(27,24,34,.17);border-radius:16px;padding:16px;box-shadow:0 2px 6px rgba(31,26,23,.05)">
+<h2 style="margin:0 0 10px;font-size:13px;font-weight:600;letter-spacing:.06em;color:#6B6572">MEMORY SCOPE</h2>
+<div role="tablist" aria-label="Memory scope" style="display:flex;gap:4px;background:#ECE9F4;border-radius:10px;padding:3px">
+<button role="tab" aria-selected="false" style="flex:1;height:36px;border-radius:8px;border:0;font-size:12.5px;font-weight:500;background:transparent;color:#6B6572">Private</button><button role="tab" aria-selected="true" style="flex:1;height:36px;border-radius:8px;border:0;font-size:12.5px;font-weight:500;background:#FFFFFF;color:#1B1822">Shared</button><button role="tab" aria-selected="false" style="flex:1;height:36px;border-radius:8px;border:0;font-size:12.5px;font-weight:500;background:transparent;color:#6B6572">Project</button>
+</div>
+<p style="margin:10px 0 0;font-size:12.5px;line-height:1.5;color:#6B6572">Research Mate keeps its own notes, and anything marked shared becomes visible to every Mate in this workspace.</p>
+</div>
+
+<div style="background:#F4F0FF;border:1px solid rgba(106,77,244,.35);border-radius:16px;padding:16px;flex:1;min-height:0">
+<h2 style="margin:0 0 10px;font-size:13px;font-weight:600;letter-spacing:.06em;color:#4F34D6">TEST A QUERY</h2>
+<div style="background:#FFFFFF;border:1px solid rgba(31,26,23,.14);border-radius:10px;padding:12px;font-size:13.5px;margin-bottom:10px;box-shadow:0 1px 2px rgba(27,24,34,.06),0 8px 22px rgba(106,77,244,.08)">What does SkillCourt charge?</div>
+<div style="font-size:13px;line-height:1.55;color:#2A2631">Top passages come back ranked, each with its source so the agent can cite it.</div>
+<div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:10px">
+<span class="mono" style="font-size:12px;background:#FFFFFF;border:1px solid rgba(31,26,23,.14);border-radius:8px;padding:5px 9px;box-shadow:0 1px 2px rgba(27,24,34,.06),0 8px 22px rgba(106,77,244,.08)">Pricing page · #2</span>
+<span class="mono" style="font-size:12px;background:#FFFFFF;border:1px solid rgba(31,26,23,.14);border-radius:8px;padding:5px 9px;box-shadow:0 1px 2px rgba(27,24,34,.06),0 8px 22px rgba(106,77,244,.08)">Product docs · #7</span>
+</div>
+</div>
+</aside>
+</div>
+</main>
+</div>

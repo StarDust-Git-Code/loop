@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { RECENT_RUNS, RUN_STEPS, RUN_TITLE } from '../../lib/dashboard/data';
 import { ApprovalCard } from './ApprovalCard';
 import { Mate } from './Mate';
@@ -32,9 +33,9 @@ function RunningNow() {
           </li>
         ))}
       </ol>
-      <a href="#" className={s.secondaryBtn}>
+      <Link href="/dashboard/run" className={s.secondaryBtn}>
         Open live run
-      </a>
+      </Link>
     </section>
   );
 }
@@ -48,14 +49,14 @@ function RecentRuns() {
       <ul className={s.runList}>
         {RECENT_RUNS.map((r) => (
           <li key={r.title}>
-            <a href="#" className={s.runRow}>
+            <Link href="/dashboard/run" className={s.runRow}>
               <Mate mate={r.mate} size={30} />
               <span className={s.runText}>
                 <span className={s.runName}>{r.title}</span>
                 <span className={s.runMeta}>{r.meta}</span>
               </span>
               <span className={`${s.status} ${STATUS_CLASS[r.status]}`}>{r.status}</span>
-            </a>
+            </Link>
           </li>
         ))}
       </ul>
