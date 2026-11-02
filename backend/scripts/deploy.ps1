@@ -16,7 +16,7 @@
 #>
 [CmdletBinding()]
 param(
-  [string]$EnvFile = (Join-Path $PSScriptRoot 'deploy.env'),
+  [string]$EnvFile = '',
   [ValidateSet('all', 'api', 'coder', 'artifacts')][string]$Only = 'all',
   [switch]$DryRun,
   [switch]$SkipGit,
@@ -38,8 +38,13 @@ function Fail($m)  { throw $m }
 trap { Write-Host ""; Write-Host "  XX  $($_.Exception.Message)" -ForegroundColor Red; Write-Host "      (nothing is half-done: this script is safe to run again)" -ForegroundColor DarkGray; exit 1 }
 
 # ------------------------------------------------------------------ env file
-$RepoRoot = Split-Path -Parent (Split-Path -Parent $PSCommandPath)
-$ExamplePath = Join-Path $PSScriptRoot 'deploy.env.example'
+$ScriptPath = $MyInvocation.MyCommand.Path
+if (-not $ScriptPath) { $ScriptPath = $PSCommandPath }
+if (-not $ScriptPath) { throw 'Cannot work out where deploy.ps1 lives. Run it with: powershell -File .\scripts\deploy.ps1' }
+$ScriptDir = Split-Path -Parent $ScriptPath
+$RepoRoot = Split-Path -Parent $ScriptDir
+if (-not $EnvFile) { $EnvFile = Join-Path $ScriptDir 'deploy.env' }
+$ExamplePath = Join-Path $ScriptDir 'deploy.env.example'
 
 function Read-EnvFile([string]$path) {
   $map = [ordered]@{}
@@ -138,9 +143,10 @@ if ($selected | Where-Object { $_.id -eq 'api' }) {
     try {
       $raw = Get-Content -LiteralPath $saPath -Raw -Encoding UTF8
       $j = $raw | ConvertFrom-Json
-      if ($j.type -ne 'service_account' -or -not $j.private_key) { $problems.Add('FIREBASE_SERVICE_ACCOUNT_FILE is not a service-account key (Firebase console -> Project settings -> Service accounts -> Generate new private key).') }
+      $names = @($j.PSObject.Properties.Name)
+      if (($names -notcontains 'type') -or ($names -notcontains 'private_key') -or $j.type -ne 'service_account') { $problems.Add('FIREBASE_SERVICE_ACCOUNT_FILE is not a service-account key (Firebase console -> Project settings -> Service accounts -> Generate new private key).') }
       else {
-        if ($j.project_id -ne 'loop-mates') { Warn "service account is for project '$($j.project_id)', not 'loop-mates'." }
+        if (($names -contains 'project_id') -and $j.project_id -ne 'loop-mates') { Warn "service account is for project '$($j.project_id)', not 'loop-mates'." }
         $saB64 = [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes($raw.Trim()))
       }
     } catch { $problems.Add("FIREBASE_SERVICE_ACCOUNT_FILE is not valid JSON: $($_.Exception.Message)") }
