@@ -55,8 +55,8 @@ export type Provider = 'telegram' | 'whatsapp' | 'gdrive' | 'github' | 'email';
 export type ConnectionIn = { provider: Provider; label: string; status: 'disconnected' | 'pending' | 'connected' | 'error'; config: Record<string, string> };
 export type Connection = Entity<ConnectionIn>;
 
-export type Message = { id: ID; role: 'user' | 'mate' | 'system'; mate?: MateKey; text: string; at: string; state: 'sent' | 'pending' | 'error'; /** The Mate's reasoning, when the model shared it. */ thought?: string };
-export type ConversationIn = { title: string; mate?: MateKey; messages: Message[]; mode?: 'chat' | 'plan' | 'ultracode'; detached?: ID[]; members?: MateKey[]; /** Thinking level for this chat. Empty or 'default' uses the Mate's own, then the workspace default. */ thinking?: 'default' | 'low' | 'medium' | 'high' | 'xhigh' };
+export type Message = { id: ID; role: 'user' | 'mate' | 'system'; mate?: MateKey; text: string; at: string; state: 'sent' | 'pending' | 'error'; /** The Mate's reasoning, when the model shared it. */ thought?: string; /** Brainstorm: which round this turn belongs to, and whether it is the closing summary. */ round?: number; summary?: boolean };
+export type ConversationIn = { title: string; mate?: MateKey; messages: Message[]; mode?: 'chat' | 'plan' | 'ultracode' | 'brainstorm'; /** Brainstorm rounds for this chat (1 to 4). */ rounds?: number; detached?: ID[]; members?: MateKey[]; /** Thinking level for this chat. Empty or 'default' uses the Mate's own, then the workspace default. */ thinking?: 'default' | 'low' | 'medium' | 'high' | 'xhigh' };
 export type Conversation = Entity<ConversationIn>;
 
 export type CalEventIn = { title: string; start: string; end: string; kind: 'event' | 'reminder' | 'run' | 'automation'; notes: string };
@@ -81,10 +81,10 @@ export type SettingsData = {
   chunkSize: number; overlap: number; topK: number; hybrid: boolean; rerank: boolean; citeAlways: boolean; memoryScope: 'private' | 'shared' | 'project';
   prefersShort: boolean; shareSchedule: boolean;
   /** Developer options. 0 = automatic. Tokens, roughly 4 characters each. */
-  maxContextTokens: number; maxOutputTokens: number; defaultThinking: 'low' | 'medium' | 'high' | 'xhigh'; showReasoning: boolean;
+  maxContextTokens: number; maxOutputTokens: number; defaultThinking: 'low' | 'medium' | 'high' | 'xhigh'; showReasoning: boolean; brainstormRounds: number;
 };
 
 export type Session = { signedIn: boolean; name?: string; email?: string; plan?: string };
 
 /** Live events while a Mate answers (server-sent). */
-export type ChatEvent = { type: 'start' } | { type: 'delta'; text: string } | { type: 'mate'; mate: MateKey } | { type: 'reset' } | { type: 'think'; text: string } | { type: 'tool'; name: string } | { type: 'tool_result'; name: string; ok: boolean } | { type: 'done'; message: Message };
+export type ChatEvent = { type: 'start' } | { type: 'delta'; text: string } | { type: 'mate'; mate: MateKey; summary?: boolean } | { type: 'round'; n: number; of: number } | { type: 'reset' } | { type: 'think'; text: string } | { type: 'tool'; name: string } | { type: 'tool_result'; name: string; ok: boolean } | { type: 'done'; message: Message };

@@ -62,6 +62,7 @@ const llm = http.createServer(async (req, res) => {
     else if (want.length) calls = want;
     if (calls && !native) { text = calls.map(([n, a]) => JSON.stringify({ tool: n, args: a })).join('\n</tool>\n') + '\n</tool>'; calls = null; } // sloppy text protocol on purpose
   }
+  if (sys.includes('Mode: BRAINSTORM') && !calls) text = `${sys.includes('Round table on') || b.messages.at(-1).content.includes('Write the summary') || b.messages.at(-1).content.includes('is over') ? '' : ''}idea from ${/You are (\w+)/.exec(sys)[1]}`;
   if (b.stream && !calls && sys.includes('reasoning-test')) text = '<think>hidden thoughts here</think>Visible answer';
   if (b.stream) {
     res.writeHead(200, { 'content-type': 'text/event-stream' });
@@ -210,6 +211,24 @@ try {
   ev = await sse(sc.id, 'hello'); assert.equal(J('think'), '', 'reasoning can be switched off'); assert.equal(J('delta'), 'Visible answer');
   await call('PATCH', '/v1/settings', { showReasoning: true });
   await call('PATCH', '/v1/mates/spark', { instructions: '' }); await call('PATCH', '/v1/mates/recall', { instructions: '' });
+  /* round table */
+  await call('PATCH', '/v1/settings', { brainstormRounds: 2 });
+  const bc = (await call('POST', '/v1/conversations', { title: 'bs', mate: 'planner', messages: [], mode: 'brainstorm' })).json;
+  ev = await sse(bc.id, '@research @writer @planner how do we launch loopmates?');
+  assert.deepEqual(ev.filter((e) => e.type === 'round').map((e) => e.n), [1, 2, 3], 'two rounds plus the summary');
+  assert.deepEqual(ev.filter((e) => e.type === 'mate').map((e) => e.mate), ['research', 'writer', 'planner', 'research', 'writer', 'planner', 'planner']);
+  assert.equal(ev.filter((e) => e.type === 'done').length, 7);
+  const bm = (await call('GET', `/v1/conversations/${bc.id}`)).json.messages.filter((m) => m.role === 'mate');
+  assert.deepEqual(bm.map((m) => m.round), [1, 1, 1, 2, 2, 2, 3]); assert.equal(bm.at(-1).summary, true); assert.equal(bm[0].text, 'idea from Research');
+  const second = llmMsgs.filter((m) => /Round table on/.test(m.at(-1)?.content ?? '')).find((m) => m.at(-1).content.includes('You speak as Writer') && m.at(-1).content.includes('round 1'));
+  assert.ok(second.some((m) => m.content === '[Research]: idea from Research'), 'a later speaker sees what earlier speakers said');
+  const third = llmMsgs.filter((m) => /Round table on/.test(m.at(-1)?.content ?? '')).find((m) => m.at(-1).content.includes('You speak as Research') && m.at(-1).content.includes('round 2'));
+  assert.ok(third.some((m) => m.content === '[Planner]: idea from Planner'), 'round 2 sees all of round 1');
+  assert.ok(llmMsgs.at(-1).at(-1).content.includes('Recommended next steps') || llmMsgs.some((m) => m.at(-1)?.content?.includes('Recommended next steps')), 'summary prompt');
+  ev = await sse(bc.id, 'one more topic'); // no mentions: members from before sit again
+  assert.ok(ev.filter((e) => e.type === 'mate' && !e.summary).length >= 6);
+  const solo = (await call('POST', '/v1/conversations', { title: 'solo', mate: 'research', messages: [], mode: 'brainstorm' })).json;
+  ev = await sse(solo.id, 'alone?'); assert.ok(new Set(ev.filter((e) => e.type === 'mate').map((e) => e.mate)).size >= 3, 'table is topped up when only one agent is named');
   ev = await sse(conv.id, 'check both please');
   assert.equal(ev.filter((e) => e.type === 'tool').map((e) => e.name).sort().join(), 'runs_active,runs_failed', 'two calls in one turn');
   assert.equal(ev.filter((e) => e.type === 'tool_result').length, 2);

@@ -20,11 +20,11 @@ const clean = (msgs) => msgs.map((m) => (m.role === 'tool' ? { role: 'tool', too
  * converse: one assistant turn. history = [{role:'user'|'assistant', content}]
  * emit({type:'delta'|'reset'|'tool'|'tool_result'}) ; returns { text, tools:[{name,ok}] }
  */
-export async function converse({ uid, mateKey, cfg = {}, settings, mode = 'chat', history, emit = () => {}, signal, ctx = {}, others = [], thinking }) {
+export async function converse({ uid, mateKey, cfg = {}, settings, mode = 'chat', history, emit = () => {}, signal, ctx = {}, others = [], thinking, maxTokens: maxTok, readOnly = false, noTools = false }) {
   // thinking level: this chat's choice, else the Mate's own, else the workspace default (high)
   const pick = [thinking, cfg.thinking].find((v) => v && v !== 'default');
   const effort = effortOf(pick ?? settings.defaultThinking);
-  const allowed = mode === 'plan' ? [] : toolsFor(cfg.tools ?? [], settings, mateKey);
+  const allowed = mode === 'plan' || noTools ? [] : toolsFor(cfg.tools ?? [], settings, mateKey).filter((t) => !readOnly || !t.write);
   const known = new Set(allowed.map((t) => t.name));
   const last = [...history].reverse().find((m) => m.role === 'user')?.content ?? '';
   const system = await buildSystem({ uid, mateKey, cfg, mode, query: last, settings, tools: allowed, others, effort });
@@ -32,9 +32,9 @@ export async function converse({ uid, mateKey, cfg = {}, settings, mode = 'chat'
   const msgs = [...history]; // canonical (native) conversation, without the system message
   const used = []; const gathered = []; const cache = new Map(); let thought = ''; const showThought = settings.showReasoning !== false;
   const toolCtx = { uid, settings, mate: mateKey, ...ctx };
-  const maxTurns = allowed.length ? TOOL_TURNS[effort] : 0;
+  const maxTurns = allowed.length ? (mode === 'brainstorm' ? Math.min(2, TOOL_TURNS[effort]) : TOOL_TURNS[effort]) : 0;
   const fixedMax = settings.maxOutputTokens > 0; // developer option: an exact output cap, no automatic scaling
-  const maxTokens = fixedMax ? settings.maxOutputTokens : mode === 'ultracode' ? 3000 : 1500;
+  const maxTokens = fixedMax ? settings.maxOutputTokens : maxTok ?? (mode === 'ultracode' ? 3000 : 1500);
   let dupes = 0, forced = false;
 
   const finalMsgs = () => [{ role: 'system', content: system }, ...clean(toTextMessages(msgs))];

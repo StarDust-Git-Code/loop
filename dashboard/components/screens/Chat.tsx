@@ -1,7 +1,7 @@
 'use client';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useEffect, useRef, useState } from 'react';
+import { Fragment, useEffect, useRef, useState } from 'react';
 import { api } from '../../lib/api';
 import { ago } from '../../lib/format';
 import { useRepo, useSettings } from '../../lib/hooks';
@@ -13,12 +13,12 @@ import { Badge, Btn, Pill, Tabs, Toggle, confirmThen } from '../ui/ui';
 
 const SLASH = [
   { cmd: '/btw', desc: 'Ask a side question without stopping the run' }, { cmd: '/ultracode', desc: 'Hand a coding task to a Mate for a long run' },
-  { cmd: '/plan', desc: 'Only plan, do not execute' }, { cmd: '/skill', desc: 'Pick a skill to use in this chat' },
+  { cmd: '/plan', desc: 'Only plan, do not execute' }, { cmd: '/brainstorm', desc: 'Round table: agents discuss and then summarise' }, { cmd: '/skill', desc: 'Pick a skill to use in this chat' },
   { cmd: '/whatsapp', desc: 'Let agents read selected chats' }, { cmd: '/telegram', desc: 'Ping me when this run needs me' },
 ];
 const TOOL_LABEL: Record<string, string> = { web_search: 'Searching the web', fetch_url: 'Reading a page', memory_save: 'Saving a memory', memory_recall: 'Checking memories', knowledge_search: 'Searching knowledge', calendar_add: 'Adding to calendar', calendar_list: 'Reading calendar', task_add: 'Adding a task', task_list: 'Reading tasks', file_write: 'Saving a file', calculate: 'Calculating', watchdog: 'Running watchdog', console_tail: 'Reading the console', system_status: 'Checking system status', runs_active: 'Checking active runs', runs_failed: 'Checking failed runs', runs_recent: 'Reading recent runs', run_status: 'Reading a run', run_log: 'Reading a run log', approvals_pending: 'Checking approvals', jobs_upcoming: 'Checking scheduled jobs', automations_list: 'Reading automations', connections_status: 'Checking connections', files_list: 'Listing files', knowledge_list: 'Listing knowledge', llm_status: 'Checking LLM providers', mates_list: 'Reading the roster', time_now: 'Checking the time', task_done: 'Completing a task', run_stop: 'Stopping a run', run_pause: 'Pausing a run', run_resume: 'Resuming a run', workflow_list: 'Listing workflows', workflow_get: 'Reading a workflow', workflow_save: 'Saving the workflow', chat_history: 'Looking back in this chat' };
-type Mode = 'chat' | 'plan' | 'ultracode';
-const MODE_NOTE: Record<Mode, string> = { chat: 'Chat: talk it through, the Mate answers.', plan: 'Plan: the Mate plans the work and waits for you.', ultracode: 'Ultracode: long autonomous coding run with checkpoints and tests' };
+type Mode = 'chat' | 'plan' | 'ultracode' | 'brainstorm';
+const MODE_NOTE: Record<Mode, string> = { brainstorm: 'Brainstorm: @ two or more agents and they talk it through as a round table, then summarise.', chat: 'Chat: talk it through, the Mate answers.', plan: 'Plan: the Mate plans the work and waits for you.', ultracode: 'Ultracode: long autonomous coding run with checkpoints and tests' };
 const Dot = ({ k, s = 42 }: { k: MateKey; s?: number }) => <img src={mateImg(k)} alt="" width={s} height={s} style={{ flex: 'none' }} />;  
 
 
@@ -51,7 +51,7 @@ export function Chat() {
   const [menu, setMenu] = useState(false);
   const [sel, setSel] = useState(0);
   const [list, setList] = useState(false);
-  const [live, setLive] = useState<{ cid: string; segs: { mate: MateKey; text: string; thought: string; tools: string[]; doneId?: string }[] } | null>(null);
+  const [live, setLive] = useState<{ cid: string; round?: number; segs: { mate: MateKey; text: string; thought: string; tools: string[]; doneId?: string; round?: number; summary?: boolean }[] } | null>(null);
   const end = useRef<HTMLDivElement>(null);
   const fileIn = useRef<HTMLInputElement>(null);
   useEffect(() => { end.current?.scrollIntoView({ block: 'end', behavior: 'smooth' }); }, [conv?.messages.length, live?.segs.map((s) => s.text.length).join(',')]);
@@ -71,6 +71,7 @@ export function Chat() {
   const patch = (p: Partial<Conversation>) => conv && update(conv.id, p);
   const pickCmd = (cmd: string) => {
     if (cmd === '/plan') { void patch({ mode: 'plan' }); setText(''); toast('Plan mode on'); }
+    else if (cmd === '/brainstorm') { void patch({ mode: 'brainstorm' }); setText(''); toast('Brainstorm mode on: @ two or more agents'); }
     else if (cmd === '/ultracode') { void patch({ mode: 'ultracode' }); setText(''); toast('Ultracode mode on'); }
     else if (cmd === '/skill') { setText(''); router.push('/skills'); }
     else if (cmd === '/whatsapp' || cmd === '/telegram') { setText(''); router.push('/connections'); }
@@ -86,7 +87,8 @@ export function Chat() {
     const onEvent = (e: ChatEvent) => setLive((p) => {
       if (!p) return p;
       const segs = p.segs.map((s) => ({ ...s })); const cur = segs[segs.length - 1];
-      if (e.type === 'mate') { if (cur.doneId || cur.text || cur.thought || cur.tools.length) segs.push({ mate: e.mate, text: '', thought: '', tools: [] }); else cur.mate = e.mate; }
+      if (e.type === 'round') return { ...p, round: e.n };
+      if (e.type === 'mate') { if (cur.doneId || cur.text || cur.thought || cur.tools.length) segs.push({ mate: e.mate, text: '', thought: '', tools: [], round: p.round, summary: e.summary }); else { cur.mate = e.mate; cur.round = p.round; cur.summary = e.summary; } }
       else if (e.type === 'delta') cur.text += e.text;
       else if (e.type === 'think') cur.thought += e.text;
       else if (e.type === 'reset') cur.text = '';
@@ -154,7 +156,7 @@ export function Chat() {
               <div style={{ display: 'inline-block', animation: 'lm-bob 3.6s ease-in-out infinite' }}><Dot k={mate} s={96} /></div>
               <p style={{ margin: '10px 0 0', fontSize: 15 }}><b style={{ color: '#1B1822' }}>{mateName(mate)}</b>. {MATES[mate].blurb}</p><p style={{ margin: '4px 0 0', fontSize: 13 }}>Type <code>/</code> for commands.</p>
             </div>)}
-          {conv.messages.map((m) => {
+          {conv.messages.map((m, mi) => {
             const mine = m.role === 'user', side = m.text.startsWith('/btw');
             if (side) return (
               <div key={m.id} style={{ marginLeft: 56, maxWidth: 600, background: '#fff', border: '1.5px dashed rgba(106,77,244,.5)', borderRadius: 16, padding: '12px 16px', animation: 'lm-pop .3s ease both' }}>
@@ -168,19 +170,24 @@ export function Chat() {
                 <small style={{ color: '#6B6572', display: 'flex', gap: 6, justifyContent: 'flex-end', marginTop: 4 }}>{ago(m.at)}{m.state === 'pending' && <Badge>{api.capabilities.backend ? 'Sending…' : 'Waiting for backend'}</Badge>}{m.state === 'error' && <Badge tone="bad">Failed</Badge>}</small>
               </div>
             ) : (
-              <div key={m.id} style={{ display: 'flex', gap: 14, maxWidth: 820, animation: 'lm-pop .3s ease both' }}>
-                <Dot k={m.mate ?? mate} /><div style={{ flex: 1, minWidth: 0 }}><div style={{ fontSize: 13, fontWeight: 600, marginBottom: 6 }}>{mateName(m.mate ?? mate)}</div>{m.thought && <Thought text={m.thought} />}<Markdown text={m.text} /></div>
-              </div>);
+              <Fragment key={m.id}>
+                {m.round != null && m.round !== conv.messages[mi - 1]?.round && <RoundMark n={m.round} summary={m.summary} />}
+                <div style={{ display: 'flex', gap: 14, maxWidth: 820, animation: 'lm-pop .3s ease both', ...(m.summary ? { background: '#F4F0FF', border: '1px solid rgba(106,77,244,.3)', borderRadius: 16, padding: 14 } : null) }}>
+                  <Dot k={m.mate ?? mate} /><div style={{ flex: 1, minWidth: 0 }}><div style={{ fontSize: 13, fontWeight: 600, marginBottom: 6 }}>{mateName(m.mate ?? mate)}{m.summary ? ' · Round-table summary' : ''}</div>{m.thought && <Thought text={m.thought} />}<Markdown text={m.text} />{m.summary && <button type="button" onClick={() => { void api.memories.create({ kind: 'decision', text: m.text.slice(0, 1500), scope: 'private' }).then(() => toast('Saved to memory')); }} style={{ marginTop: 8, border: '1px solid rgba(106,77,244,.4)', background: '#fff', color: '#4F34D6', borderRadius: 9, padding: '6px 12px', fontSize: 12.5, fontWeight: 600 }}>Save to memory</button>}</div>
+                </div>
+              </Fragment>);
           })}
           {live && live.cid === conv.id && live.segs.filter((s) => !(s.doneId && conv.messages.some((m) => m.id === s.doneId))).map((s, i, arr) => (
-            <div key={`${s.mate}-${i}`} style={{ display: 'flex', gap: 14, maxWidth: 820, animation: 'lm-pop .3s ease both' }}>
+            <Fragment key={`${s.mate}-${i}`}>
+            {s.round != null && s.round !== arr[i - 1]?.round && <RoundMark n={s.round} summary={s.summary} />}
+            <div style={{ display: 'flex', gap: 14, maxWidth: 820, animation: 'lm-pop .3s ease both' }}>
               <Dot k={s.mate} /><div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 6 }}>{mateName(s.mate)}</div>
                 {s.thought && <Thought text={s.thought} live answering={!!s.text} />}
                 {s.tools.length > 0 && <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 6 }}>{s.tools.map((n, j) => <span key={j} className="mono" style={{ fontSize: 11.5, background: '#ECE7FF', color: '#4F34D6', borderRadius: 7, padding: '3px 8px' }}>{TOOL_LABEL[n] ?? n}{j === s.tools.length - 1 && !s.text && !s.doneId ? '…' : ''}</span>)}</div>}
                 <div>{s.text ? <Markdown text={s.text} /> : (s.tools.length === 0 && !s.doneId && !s.thought ? <span style={{ color: '#6B6572' }}>Thinking…</span> : null)}{!s.doneId && s.text && i === arr.length - 1 && <span style={{ opacity: .5 }}>▍</span>}</div>
               </div>
-            </div>))}
+            </div></Fragment>))}
           <div ref={end} />
         </div>
 
@@ -203,19 +210,24 @@ export function Chat() {
             <form onSubmit={(e) => { e.preventDefault(); if (showMention) pickMention(mentionOpts[sel % mentionOpts.length].key); else if (showMenu) pickCmd(slash[sel % slash.length].cmd); else void send(); }} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
               <input ref={fileIn} type="file" hidden onChange={async (e) => { const f = e.target.files?.[0]; if (f) { await api.files.upload(f); await api.conversations.send(conv.id, `📎 ${f.name}`, mate); } e.target.value = ''; }} />
               <button type="button" aria-label="Attach" onClick={() => fileIn.current?.click()} style={{ width: 44, height: 44, borderRadius: 12, background: '#F3F1F8', border: '1px solid rgba(31,26,23,.1)', fontSize: 20 }}>+</button>
-              <input value={text} aria-label="Message" placeholder={`Message ${MATES[mate].name}, @ to bring in a Mate, / for commands`} autoComplete="off"
+              <input value={text} aria-label="Message" placeholder={mode === 'brainstorm' ? 'Give the table a topic, and @ two or more agents' : `Message ${MATES[mate].name}, @ to bring in a Mate, / for commands`} autoComplete="off"
                 onChange={(e) => { setText(e.target.value); setMenu(true); setSel(0); }}
                 onKeyDown={(e) => { const n = showMention ? mentionOpts.length : slash.length; const open = showMention || showMenu; if (open && e.key === 'ArrowDown') { e.preventDefault(); setSel((x) => x + 1); } if (open && e.key === 'ArrowUp') { e.preventDefault(); setSel((x) => x + n - 1); } if (open && e.key === 'Tab') { e.preventDefault(); if (showMention) pickMention(mentionOpts[sel % n].key); else pickCmd(slash[sel % n].cmd); } if (e.key === 'Escape') setMenu(false); }}
                 style={{ flex: 1, minWidth: 0, height: 44, background: 'none', border: 0, outline: 0, fontSize: 15, fontFamily: 'inherit' }} />
               <button type="submit" aria-label="Send" disabled={!text.trim()} style={{ width: 44, height: 44, borderRadius: 12, background: '#6A4DF4', border: 0, color: '#fff', fontSize: 20, opacity: text.trim() ? 1 : 0.4, transition: 'opacity .15s, transform .15s' }}>↑</button>
             </form>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 6, flexWrap: 'wrap' }}>
-              <Tabs value={mode} onChange={(m) => patch({ mode: m })} options={[{ id: 'chat', label: 'Chat' }, { id: 'plan', label: 'Plan' }, { id: 'ultracode', label: 'Ultracode' }]} />
+              <Tabs value={mode} onChange={(m) => patch({ mode: m })} options={[{ id: 'chat', label: 'Chat' }, { id: 'plan', label: 'Plan' }, { id: 'ultracode', label: 'Ultracode' }, { id: 'brainstorm', label: 'Brainstorm' }]} />
               <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12.5, color: '#3D3946' }}>Thinking
                 <select value={conv.thinking ?? 'default'} onChange={(e) => void patch({ thinking: e.target.value as Conversation['thinking'] })} aria-label="Thinking level" style={{ height: 34, borderRadius: 10, border: '1px solid rgba(31,26,23,.16)', background: '#fff', padding: '0 8px', font: 'inherit', fontSize: 12.5 }}>
                   {[['default', 'Default'], ['low', 'Low'], ['medium', 'Medium'], ['high', 'High'], ['xhigh', 'XHigh']].map(([k, n]) => <option key={k} value={k}>{n}</option>)}
                 </select>
               </label>
+              {mode === 'brainstorm' && <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12.5, color: '#3D3946' }}>Rounds
+                <select value={conv.rounds ?? settings?.brainstormRounds ?? 2} onChange={(e) => void patch({ rounds: Number(e.target.value) })} aria-label="Brainstorm rounds" style={{ height: 34, borderRadius: 10, border: '1px solid rgba(31,26,23,.16)', background: '#fff', padding: '0 8px', font: 'inherit', fontSize: 12.5 }}>
+                  {[1, 2, 3, 4].map((n) => <option key={n} value={n}>{n}</option>)}
+                </select>
+              </label>}
               <span style={{ fontSize: 12, color: '#6B6572' }}>{MODE_NOTE[mode]}</span>
             </div>
           </div>
@@ -260,3 +272,11 @@ export function Chat() {
 const Sec = ({ title, children }: { title: string; children: React.ReactNode }) => (
   <div><h2 style={{ margin: '0 0 10px', fontSize: 13, fontWeight: 600, letterSpacing: '.06em', color: '#6B6572' }}>{title}</h2>{children}</div>
 );
+
+function RoundMark({ n, summary }: { n: number; summary?: boolean }) {
+  return (
+    <div role="separator" style={{ display: 'flex', alignItems: 'center', gap: 12, color: '#4F34D6', fontSize: 11.5, fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase' }}>
+      <span style={{ flex: 1, height: 1, background: 'rgba(106,77,244,.25)' }} />{summary ? 'Summary' : `Round ${n}`}<span style={{ flex: 1, height: 1, background: 'rgba(106,77,244,.25)' }} />
+    </div>
+  );
+}

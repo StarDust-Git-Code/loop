@@ -10,6 +10,7 @@ import { registerCrud, COLLECTIONS, sealOut } from './crud.js';
 import { chat, fetchModels } from './llm.js';
 import { converse } from './agent.js';
 import { MATE } from './mates.js';
+import { runRoundTable, pickParticipants } from './brainstorm.js';
 import { setToolHooks } from './tools.js';
 import { getSettings, patchSettings } from './settings.js';
 import { startRun, control, steer, decide, subscribe, jobEvent, recoverRuns, activeCount, liveRuns } from './engine.js';
@@ -104,8 +105,8 @@ await app.register(async (v1) => {
     const nameOf = (k) => MATE[k]?.name ?? k;
     // History budget: automatic ~28k chars, or derived from the developer option (about 4 chars per token, minus room for the prompt and the answer).
     const HIST_CHARS = settings.maxContextTokens > 0 ? Math.max(2000, settings.maxContextTokens * 4 - 6000 - (settings.maxOutputTokens || 1500) * 4) : 28_000;
-    const historyFor = (me) => {
-      const all = messages.filter((m) => m.role !== 'system' && m.state !== 'error').map((m) => (m.role === 'user' ? { role: 'user', content: m.text } : (m.mate ?? home) === me ? { role: 'assistant', content: m.text } : { role: 'user', content: `[${nameOf(m.mate ?? home)}]: ${m.text}` }));
+    const historyFor = (me, src = messages) => {
+      const all = src.filter((m) => m.role !== 'system' && m.state !== 'error').map((m) => (m.role === 'user' ? { role: 'user', content: m.text } : (m.mate ?? home) === me ? { role: 'assistant', content: m.text } : { role: 'user', content: `[${nameOf(m.mate ?? home)}]: ${m.text}` }));
       let used = 0, from = all.length;
       while (from > 0 && used + all[from - 1].content.length <= HIST_CHARS) used += all[--from].content.length;
       if (from === all.length && all.length) from = all.length - 1; // always keep the newest message
@@ -118,8 +119,17 @@ await app.register(async (v1) => {
     const stream = req.query?.stream === '1';
     const save = () => ref.set({ messages, updatedAt: now(), ...(members.length ? { members } : {}) }, { merge: true });
     if (skipped.length) messages.push(sysNote(`${skipped.map(nameOf).join(', ')} ${skipped.length > 1 ? 'are' : 'is'} switched off. Turn on in Agents to use @${skipped[0]}.`));
+    const table = conv.mode === 'brainstorm' && !text.startsWith('/btw');
+    const rounds = Math.min(4, Math.max(1, Number(conv.rounds) || settings.brainstormRounds || 2));
+    const seat = table ? pickParticipants({ mentioned: mates, home, members: conv.members ?? [], cfgs }) : [];
+    if (table && seat.length < 2) messages.push(sysNote('Brainstorm needs at least two agents. Switch some on in Agents, or @mention them.'));
+    const sitting = table && seat.length >= 2;
+    if (sitting) for (const k of seat) if (!members.includes(k) && k !== home) members.push(k);
+    const snap = [...messages]; // the chat as it was when the table was called; turns are appended separately
+    const roundTable = (emit, signal) => runRoundTable({ uid, topic: text, participants: seat, rounds, cfgs, settings, baseHistory: (me) => historyFor(me, snap), emit, signal, onMessage: async (m) => { messages.push(m); await save().catch(() => {}); } });
 
     if (!stream) {
+      if (sitting) { await roundTable(() => {}); return userMsg; }
       for (const mate of responders) {
         try { const r = await turn(mate, () => {}); messages.push({ id: rid(), role: 'mate', mate, text: r.text, at: now(), state: 'sent', ...(r.thought ? { thought: r.thought.slice(0, 8000) } : {}) }); }
         catch (e) { messages.push({ id: rid(), role: 'system', text: `${nameOf(mate)} could not reply: ${e.message.slice(0, 300)}`, at: now(), state: 'error' }); }
@@ -138,6 +148,7 @@ await app.register(async (v1) => {
     req.raw.on('close', () => { gone = true; ac.abort(); });
     const beat = setInterval(() => { if (!raw.writableEnded) raw.write(': ping\n\n'); }, 15_000);
     write({ type: 'start', userId: userMsg.id });
+    if (sitting) { await roundTable(write, ac.signal); clearInterval(beat); raw.end(); return; }
     for (const mate of responders) {
       if (gone) break;
       write({ type: 'mate', mate });

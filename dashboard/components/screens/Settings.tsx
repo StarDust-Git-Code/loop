@@ -93,6 +93,7 @@ function Dev({ st, set }: P) {
       <div className={s.card}>
         <h2 style={{ margin: '0 0 6px', fontSize: 18 }}>Model limits</h2>
         {numRow('maxContextTokens', 'Max context window (tokens)', 'How much chat history is sent with each message. Older messages are dropped (Mates can still look them up). Empty = automatic. Allowed: 1,000 to 2,000,000. Set it at or below what your model supports.', 'Auto')}
+        <Row label="Brainstorm rounds" sub="How many times each agent speaks at a round table before the summary. Can be changed per chat. 1 to 4."><input type="number" min={1} max={4} className={s.inp} style={{ width: 90 }} defaultValue={st.brainstormRounds} aria-label="Brainstorm rounds" onBlur={(e) => void set({ brainstormRounds: Math.min(4, Math.max(1, Number(e.target.value) || 2)) })} /></Row>
         {numRow('maxOutputTokens', 'Max output (tokens)', 'The longest answer a Mate may write. Empty = automatic (grows with the thinking level). Allowed: 64 to 64,000. When set, it is used exactly, and models that think before answering spend part of it on thinking.', 'Auto')}
         <p style={{ margin: '12px 0 0', fontSize: 13, color: 'var(--muted)' }}>Tokens are estimated at about 4 characters each, so treat the context limit as approximate.</p>
       </div>

@@ -63,6 +63,7 @@ export async function buildSystem({ uid, mateKey, cfg = {}, mode = 'chat', query
     parts.push(mateKey === 'flow' ? FLOW_GUIDE(cfgs) : PLANNER_GUIDE(cfgs));
   }
   if (mode === 'plan') parts.push('Mode: PLAN. Do not carry out the work. Reply with a short numbered plan: steps, who/what does each, and what could go wrong.');
+  if (mode === 'brainstorm') parts.push('Mode: BRAINSTORM round table. You are one voice among several Mates thinking together. Be creative but concrete, build on what others said, keep it short, and stay in your own role. Only use tools if a quick fact check really helps.');
   if (mode === 'ultracode') parts.push('Mode: ULTRACODE. Treat this as a careful engineering task: restate the goal, list assumptions, then give complete, working code with brief notes on how to run and test it.');
   const prov = (await providerSummary(uid).catch(() => []))[0];
   if (prov) parts.push(`Runtime: you are being served through ${prov.name} (model ${prov.model}); requests can fail over to another provider. If asked what model you are, say this and that you cannot verify anything beyond it.`);
