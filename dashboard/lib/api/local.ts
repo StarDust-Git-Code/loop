@@ -83,6 +83,7 @@ export function createLocalApi(): Api {
   connections.test = async (id) => connections.update(id, { status: 'pending' } as never);
   files.upload = async (file) => files.create({ name: file.name, size: file.size, mime: file.type || 'application/octet-stream', source: 'upload' } as never);
   files.downloadUrl = () => '#';
+  files.download = async () => { throw new Error('Files are not stored without the backend.'); };
 
   const providers = repo<never, never>('providers') as unknown as Api['providers'];
   providers.fetchModels = async (id) => {

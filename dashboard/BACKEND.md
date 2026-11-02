@@ -3,7 +3,7 @@
 The UI talks to one interface, `lib/api/contract.ts`. Two adapters implement it:
 
 - `lib/api/local.ts` (default): saves to `localStorage`, starts empty, **executes nothing**. Runs stay `queued`, chat messages stay `pending`, connections stay `pending`, file bytes are not stored.
-- `lib/api/http.ts`: used when `NEXT_PUBLIC_API_URL` is set. Calls `${URL}/v1/...` with cookies (`credentials: include`).
+- `lib/api/http.ts`: used when `NEXT_PUBLIC_API_URL` is set. Calls `${URL}/v1/...` with `Authorization: Bearer <Firebase ID token>` (no cookies). Run events are read with `fetch` streaming, file downloads with `files.download()` (anchors cannot send the header). The reference implementation is `/backend` at the repo root.
 
 ## Endpoints (JSON; every entity has `id`, `createdAt`, `updatedAt`)
 Standard CRUD (`GET /x`, `GET /x/:id`, `POST /x`, `PATCH /x/:id`, `DELETE /x/:id`) for:

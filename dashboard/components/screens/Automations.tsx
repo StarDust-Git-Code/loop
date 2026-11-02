@@ -71,7 +71,7 @@ export function Automations() {
                 <div style={{ display: 'flex', fontSize: 12, fontWeight: 700, letterSpacing: '.08em', color: '#3D3946', marginBottom: 12 }}><span style={{ flex: 1 }}>LATEST OUTPUTS</span>{last && <Link href={`/run?id=${last.id}`} style={{ fontWeight: 500, letterSpacing: 0, color: '#4F34D6' }}>Open the run</Link>}</div>
                 {!last ? <p style={{ color: '#6B6572', margin: 0, fontSize: 14 }}>No runs yet. Use Run now, or wait for the schedule.</p> : <>
                   {last.report && <div style={{ background: '#F4F2FA', borderRadius: 12, padding: 14, fontSize: 14, lineHeight: 1.55, marginBottom: 10, whiteSpace: 'pre-wrap' }}>{last.report.slice(0, 400)}</div>}
-                  {outs.map((f) => <div key={f.id} style={{ display: 'flex', gap: 10, padding: '6px 0', fontSize: 13.5 }}><a href={api.files.downloadUrl(f.id)} style={{ flex: 1 }}>{f.name}</a><span style={{ color: '#6B6572' }}>{bytes(f.size)}</span></div>)}
+                  {outs.map((f) => <div key={f.id} style={{ display: 'flex', gap: 10, padding: '6px 0', fontSize: 13.5 }}><a href="#" onClick={(e) => { e.preventDefault(); api.files.download(f.id, f.name).catch((err: Error) => toast(err.message)); }} style={{ flex: 1 }}>{f.name}</a><span style={{ color: '#6B6572' }}>{bytes(f.size)}</span></div>)}
                   {!last.report && outs.length === 0 && <p style={{ color: '#6B6572', margin: 0, fontSize: 14 }}>Status: {last.status}. Nothing produced yet.</p>}
                   {last.approvals.some((a) => a.status === 'pending') && <Btn style={{ width: '100%', marginTop: 10, background: '#F4F0FF', color: '#4F34D6', borderColor: 'rgba(106,77,244,.4)' }} href={`/run?id=${last.id}`}>Review and approve</Btn>}
                 </>}

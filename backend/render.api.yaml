@@ -1,0 +1,27 @@
+# Render #3: API + run engine + scheduler + Telegram/WhatsApp. Manual alternative to scripts/deploy.ps1.
+services:
+  - type: web
+    name: loopmates-api
+    runtime: node
+    plan: free
+    region: singapore
+    rootDir: backend
+    buildCommand: npm ci --omit=dev
+    startCommand: node src/api/index.js
+    healthCheckPath: /healthz
+    autoDeploy: true
+    envVars:
+      - { key: NODE_ENV, value: production }
+      - { key: SERVICE_SECRET, sync: false }
+      - { key: MASTER_KEY, sync: false }
+      - { key: CRON_SECRET, sync: false }
+      - { key: FIREBASE_SERVICE_ACCOUNT_B64, sync: false }
+      - { key: ALLOWED_ORIGINS, sync: false }
+      - { key: ALLOWED_EMAILS, sync: false }
+      - { key: PUBLIC_URL, sync: false }
+      - { key: CODER_URL, sync: false }
+      - { key: ARTIFACTS_URL, sync: false }
+      - { key: NVIDIA_API_KEY, sync: false }
+      - { key: GEMINI_API_KEY, sync: false }
+      - { key: TELEGRAM_BOT_TOKEN, sync: false }
+      - { key: TELEGRAM_WEBHOOK_SECRET, sync: false }

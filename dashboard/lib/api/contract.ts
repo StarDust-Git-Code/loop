@@ -36,7 +36,7 @@ export interface Api {
   connections: Repo<Connection, ConnectionIn> & { test(id: ID): Promise<Connection>; /** Chats the bridge can see (WhatsApp). Empty until the backend lists them. */ chats(id: ID): Promise<{ id: string; name: string; meta: string }[]> };
   conversations: Repo<Conversation, ConversationIn> & { send(id: ID, text: string, mate?: string): Promise<Message> };
   events: Repo<CalEvent, CalEventIn>;
-  files: Repo<FileItem, FileIn> & { upload(file: File): Promise<FileItem>; downloadUrl(id: ID): string };
+  files: Repo<FileItem, FileIn> & { upload(file: File): Promise<FileItem>; downloadUrl(id: ID): string; /** Authenticated download: fetches with the sign-in token and saves the file. */ download(id: ID, name: string): Promise<void> };
   mateConfigs: Repo<MateConfig, MateConfigIn>;
   /** LLM providers. `fetchModels` asks the provider for its model list and stores it on the provider. */
   providers: Repo<ProviderCfg, ProviderIn> & { fetchModels(id: ID): Promise<string[]> };

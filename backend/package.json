@@ -1,0 +1,23 @@
+{
+  "name": "loopmates-backend",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Loopmates backend: api (Render 3), coder (Render 1), artifacts (Render 2). One codebase, three start commands.",
+  "engines": { "node": ">=20" },
+  "scripts": {
+    "start:api": "node src/api/index.js",
+    "start:coder": "node src/coder/index.js",
+    "start:artifacts": "node src/artifacts/index.js",
+    "test": "node scripts/e2e.mjs"
+  },
+  "dependencies": {
+    "@fastify/cors": "^10.0.0",
+    "@fastify/multipart": "^9.0.0",
+    "fastify": "^5.0.0",
+    "firebase-admin": "^13.0.0"
+  },
+  "optionalDependencies": {
+    "@whiskeysockets/baileys": "^6.7.0"
+  }
+}

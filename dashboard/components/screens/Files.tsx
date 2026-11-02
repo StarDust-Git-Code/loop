@@ -37,7 +37,7 @@ export function Files() {
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                   <span style={{ background: x.source === 'run' ? '#E6F4EA' : '#ECE7FF', color: x.source === 'run' ? '#1E7A46' : '#4F34D6', borderRadius: 6, padding: '2px 8px', fontSize: 12 }}>{x.source === 'run' ? 'From a run' : 'Upload'}</span>
                   <span style={{ flex: 1 }} />
-                  {api.capabilities.backend && <a href={api.files.downloadUrl(x.id)} style={{ fontSize: 13, color: '#4F34D6', fontWeight: 600 }}>Download</a>}
+                  {api.capabilities.backend && <a href="#" onClick={(e) => { e.preventDefault(); api.files.download(x.id, x.name).catch((err: Error) => toast(err.message)); }} style={{ fontSize: 13, color: '#4F34D6', fontWeight: 600 }}>Download</a>}
                   <button aria-label={`Delete ${x.name}`} onClick={() => confirmThen(`Delete ${x.name}?`, () => remove(x.id))} style={{ border: 0, background: 'none', color: '#6B6572', cursor: 'pointer' }}>✕</button>
                 </div>
               </article>))}
