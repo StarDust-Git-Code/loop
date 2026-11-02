@@ -17,6 +17,27 @@ const authHeaders = (baseUrl, key) => (/anthropic\.com/.test(baseUrl)
   ? { authorization: `Bearer ${key}`, 'x-api-key': key, 'anthropic-version': '2023-06-01' }
   : { authorization: `Bearer ${key}` });
 
+
+/* ---- thinking effort ---- levels: low | medium | high | xhigh (the dashboard's "default" means high) */
+export const EFFORTS = ['low', 'medium', 'high', 'xhigh'];
+export const effortOf = (v) => (EFFORTS.includes(v) ? v : 'high');
+export const TOKEN_MULT = { low: 1, medium: 1.5, high: 2, xhigh: 3 };
+const noExtras = new Set(); // provider ids that rejected the reasoning parameters: we stop sending them
+/** Provider-specific reasoning switches. Unknown providers get none; a 400/422 makes us retry without (see withEffort). */
+function extrasFor(a, effort) {
+  if (!effort || noExtras.has(a.id)) return null;
+  const e3 = effort === 'xhigh' ? 'high' : effort;
+  if (/generativelanguage\.googleapis\.com|api\.groq\.com|api\.cerebras\.ai|api\.openai\.com/.test(a.baseUrl)) return { reasoning_effort: e3 };
+  if (/openrouter\.ai/.test(a.baseUrl)) return { reasoning: { effort: e3 } };
+  if (/integrate\.api\.nvidia\.com/.test(a.baseUrl)) return { chat_template_kwargs: { enable_thinking: effort !== 'low' } };
+  return null;
+}
+export const llmStatus = () => [...cooldown.entries()].filter(([, t]) => t > Date.now()).map(([id, t]) => ({ id, secondsLeft: Math.ceil((t - Date.now()) / 1000) }));
+export async function providerSummary(uid) {
+  const list = await plan(uid, '');
+  return list.map((a) => ({ name: a.name, model: a.model, cooling: Math.max(0, Math.ceil(((cooldown.get(a.id) ?? 0) - Date.now()) / 1000)) }));
+}
+
 export const providerKey = (uid, p) => open(p.keyEnc, `${uid}|provider|${p.id}`);
 
 async function userProviders(uid) {
@@ -38,7 +59,7 @@ export async function plan(uid, model = '') {
 }
 
 /** Single completion with failover. Returns { text, provider, model }. */
-export async function chat(uid, { model = '', messages, temperature = 0.4, maxTokens = 2048, json = false, signal } = {}) {
+export async function chat(uid, { model = '', messages, temperature = 0.4, maxTokens = 2048, json = false, effort, signal } = {}) {
   const attempts = await plan(uid, model);
   if (!attempts.length) throw Object.assign(new Error('No LLM provider configured. Add one in Settings, or set NVIDIA_API_KEY / GEMINI_API_KEY on the API service.'), { statusCode: 424 });
   const errors = [];
@@ -46,8 +67,13 @@ export async function chat(uid, { model = '', messages, temperature = 0.4, maxTo
   const live = attempts.filter((a) => (cooldown.get(a.id) ?? 0) < t);
   for (const a of live.length ? live : attempts) {
     try {
-      const body = { model: a.model, messages, temperature, max_tokens: maxTokens, stream: false, ...(json ? { response_format: { type: 'json_object' } } : {}) };
+      const ex = extrasFor(a, effort);
+      const body = { model: a.model, messages, temperature, max_tokens: effort ? Math.min(8000, Math.round(maxTokens * (TOKEN_MULT[effort] ?? 1))) : maxTokens, stream: false, ...(json ? { response_format: { type: 'json_object' } } : {}), ...(ex ?? {}) };
       let res = await fetch(`${a.baseUrl}/chat/completions`, { method: 'POST', headers: { 'content-type': 'application/json', ...authHeaders(a.baseUrl, a.key) }, body: JSON.stringify(body), signal: signal ?? AbortSignal.timeout(num('LLM_TIMEOUT_MS', 90_000)) });
+      if ((res.status === 400 || res.status === 422) && ex) { // provider does not know the reasoning parameters
+        noExtras.add(a.id); for (const k of Object.keys(ex)) delete body[k];
+        res = await fetch(`${a.baseUrl}/chat/completions`, { method: 'POST', headers: { 'content-type': 'application/json', ...authHeaders(a.baseUrl, a.key) }, body: JSON.stringify(body), signal: signal ?? AbortSignal.timeout(num('LLM_TIMEOUT_MS', 90_000)) });
+      }
       if (res.status === 400 && json) { // some providers reject response_format: retry without it
         delete body.response_format;
         res = await fetch(`${a.baseUrl}/chat/completions`, { method: 'POST', headers: { 'content-type': 'application/json', ...authHeaders(a.baseUrl, a.key) }, body: JSON.stringify(body), signal: signal ?? AbortSignal.timeout(num('LLM_TIMEOUT_MS', 90_000)) });
@@ -93,7 +119,7 @@ export async function fetchModels(uid, p) {
  * after that an error is thrown (a half-written answer cannot be restarted elsewhere).
  * Reasoning tokens (reasoning_content) are ignored; only the answer is streamed to onDelta.
  */
-export async function chatStream(uid, { model = '', messages, temperature = 0.4, maxTokens = 2048, signal } = {}, onDelta = () => {}) {
+export async function chatStream(uid, { model = '', messages, temperature = 0.4, maxTokens = 2048, effort, signal } = {}, onDelta = () => {}) {
   const attempts = await plan(uid, model);
   if (!attempts.length) throw Object.assign(new Error('No LLM provider configured. Add one in Settings, or set NVIDIA_API_KEY / GEMINI_API_KEY on the API service.'), { statusCode: 424 });
   const errors = []; const t = Date.now();
@@ -101,11 +127,14 @@ export async function chatStream(uid, { model = '', messages, temperature = 0.4,
   for (const a of live.length ? live : attempts) {
     let got = false; let full = '';
     try {
-      const res = await fetch(`${a.baseUrl}/chat/completions`, {
+      const ex = extrasFor(a, effort);
+      const send = (extra) => fetch(`${a.baseUrl}/chat/completions`, {
         method: 'POST', headers: { 'content-type': 'application/json', ...authHeaders(a.baseUrl, a.key) },
-        body: JSON.stringify({ model: a.model, messages, temperature, max_tokens: maxTokens, stream: true }),
+        body: JSON.stringify({ model: a.model, messages, temperature, max_tokens: effort ? Math.min(8000, Math.round(maxTokens * (TOKEN_MULT[effort] ?? 1))) : maxTokens, stream: true, ...(extra ?? {}) }),
         signal: signal ?? AbortSignal.timeout(num('LLM_STREAM_TIMEOUT_MS', 180_000)),
       });
+      let res = await send(ex);
+      if ((res.status === 400 || res.status === 422) && ex) { noExtras.add(a.id); res = await send(null); }
       if (!res.ok || !res.body) {
         errors.push(`${a.name}: ${res.status} ${(await res.text().catch(() => '')).slice(0, 160)}`);
         if (res.status === 429 || res.status >= 500) cooldown.set(a.id, Date.now() + 60_000);

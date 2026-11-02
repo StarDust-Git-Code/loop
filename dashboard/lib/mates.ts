@@ -26,7 +26,7 @@ export const MATE_DEFS: MateDef[] = [
 
 export const MATES = Object.fromEntries(MATE_DEFS.map((m) => [m.key, m])) as Record<MateKey, MateDef>;
 export const mateImg = (k: MateKey) => `/dots/${k}.png`;
-export const ALL_TOOLS = ['Web Search', 'Browser', 'File System', 'Terminal', 'Code Interpreter', 'Vector Search', 'Memory', 'Calendar'];
+export const ALL_TOOLS = ['Web Search', 'Browser', 'File System', 'Terminal', 'Code Interpreter', 'Vector Search', 'Memory', 'Calendar', 'Run Control'];
 
 /** Card header gradients, from the design boards. */
 export const GRAD: Record<MateKey, string> = {

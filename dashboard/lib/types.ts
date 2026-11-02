@@ -65,7 +65,7 @@ export type CalEvent = Entity<CalEventIn>;
 export type FileIn = { name: string; size: number; mime: string; source: 'upload' | 'run'; runId?: ID };
 export type FileItem = Entity<FileIn>;
 
-export type MateConfigIn = { mate: MateKey; enabled: boolean; instructions: string; model: string; tools: string[]; description: string; outputFormat: string; memoryScope: 'private' | 'shared' | 'project' };
+export type MateConfigIn = { mate: MateKey; enabled: boolean; instructions: string; model: string; tools: string[]; description: string; outputFormat: string; memoryScope: 'private' | 'shared' | 'project'; /** Reasoning effort. 'default' means high. */ thinking?: 'default' | 'low' | 'medium' | 'high' | 'xhigh' };
 export type MateConfig = Entity<MateConfigIn>;
 
 export type ProviderIn = { preset: string; name: string; baseUrl: string; apiKey: string; models: string[]; enabled: boolean; fetchedAt?: string };
@@ -85,4 +85,4 @@ export type SettingsData = {
 export type Session = { signedIn: boolean; name?: string; email?: string; plan?: string };
 
 /** Live events while a Mate answers (server-sent). */
-export type ChatEvent = { type: 'start' } | { type: 'delta'; text: string } | { type: 'tool'; name: string } | { type: 'tool_result'; name: string; ok: boolean } | { type: 'done'; message: Message };
+export type ChatEvent = { type: 'start' } | { type: 'delta'; text: string } | { type: 'mate'; mate: MateKey } | { type: 'reset' } | { type: 'tool'; name: string } | { type: 'tool_result'; name: string; ok: boolean } | { type: 'done'; message: Message };

@@ -9,9 +9,11 @@ import { userCol } from './db.js';
 import { registerCrud, COLLECTIONS, sealOut } from './crud.js';
 import { chat, fetchModels } from './llm.js';
 import { converse } from './agent.js';
+import { MATE } from './mates.js';
 import { setToolHooks } from './tools.js';
 import { getSettings, patchSettings } from './settings.js';
-import { startRun, control, steer, decide, subscribe, jobEvent, recoverRuns, activeCount } from './engine.js';
+import { startRun, control, steer, decide, subscribe, jobEvent, recoverRuns, activeCount, liveRuns } from './engine.js';
+import { captureConsole } from '../lib/console.js';
 import { hooks as schedHooks, startScheduler, tick } from './sched.js';
 import { indexKnowledge, searchKnowledge } from './knowledge.js';
 import { verifyMcp } from './mcp.js';
@@ -20,10 +22,11 @@ import { telegramReady, send as tgSend, linkCode, handleUpdate, setWebhook } fro
 import { startWhatsApp, waStatus, waChats, waRecent, resumeWhatsApp } from './whatsapp.js';
 import { open } from '../lib/crypto.js';
 
+captureConsole();
 for (const k of ['SERVICE_SECRET', 'MASTER_KEY']) need(k);
 if (env('MEMORY_DB') !== '1' || env('NODE_ENV') === 'production') need('FIREBASE_SERVICE_ACCOUNT_B64');
 
-setToolHooks(schedHooks);
+setToolHooks({ events: schedHooks.events, tasks: schedHooks.tasks, control, liveRuns });
 const app = await createServer('api', { bodyLimit: 4 * 1024 * 1024 });
 const same = (a, b) => { const x = Buffer.from(String(a)), y = Buffer.from(String(b)); return x.length === y.length && timingSafeEqual(x, y); };
 const originOk = (o) => !!o && env('ALLOWED_ORIGINS').split(',').map((s) => s.trim()).includes(o);
@@ -87,23 +90,35 @@ await app.register(async (v1) => {
     const ref = userCol(uid, 'conversations').doc(req.params.id);
     const conv = (await ref.get()).data();
     if (!conv) return reply.code(404).send({ error: 'Not found' });
-    const mate = req.body?.mate || conv.mate || 'mimo';
+    const home = req.body?.mate || conv.mate || 'mimo';
     const userMsg = { id: rid(), role: 'user', text, at: now(), state: 'sent' };
     const messages = [...(conv.messages ?? []), userMsg];
-    const cfg = (await userCol(uid, 'mates').doc(mate).get()).data() ?? {};
+    const cfgs = Object.fromEntries((await userCol(uid, 'mates').get()).docs.map((d) => [d.id, d.data()]));
     const settings = await getSettings(uid);
-    const hist = messages.slice(-16).filter((m) => m.role !== 'system').map((m) => ({ role: m.role === 'user' ? 'user' : 'assistant', content: m.text }));
-    const run = (emit, signal) => converse({ uid, mateKey: mate, cfg, settings, mode: conv.mode ?? 'chat', history: hist, emit, signal });
+    // @mentions: every mentioned Mate answers in turn; with none, the chat's own Mate answers.
+    const asked = [...new Set([...text.matchAll(/(?:^|\s)@([a-z]+)/gi)].map((m) => m[1].toLowerCase()))].filter((k) => MATE[k]).slice(0, 3);
+    const skipped = asked.filter((k) => cfgs[k] ? cfgs[k].enabled === false : !MATE[k].core);
+    const mates = asked.filter((k) => !skipped.includes(k));
+    const responders = mates.length ? mates : (asked.length ? [] : [home]);
+    const members = [...new Set([...(conv.members ?? []), ...mates])];
+    const nameOf = (k) => MATE[k]?.name ?? k;
+    const historyFor = (me) => messages.slice(-16).filter((m) => m.role !== 'system').map((m) => (m.role === 'user' ? { role: 'user', content: m.text } : (m.mate ?? home) === me ? { role: 'assistant', content: m.text } : { role: 'user', content: `[${nameOf(m.mate ?? home)}]: ${m.text}` }));
+    const turn = (mate, emit, signal) => converse({ uid, mateKey: mate, cfg: cfgs[mate] ?? {}, settings, mode: conv.mode ?? 'chat', history: historyFor(mate), emit, signal, others: [...new Set([home, ...members])].filter((k) => k !== mate).map(nameOf) });
+    const sysNote = (t) => ({ id: rid(), role: 'system', text: t, at: now(), state: 'sent' });
     const stream = req.query?.stream === '1';
+    const save = () => ref.set({ messages, updatedAt: now(), ...(members.length ? { members } : {}) }, { merge: true });
+    if (skipped.length) messages.push(sysNote(`${skipped.map(nameOf).join(', ')} ${skipped.length > 1 ? 'are' : 'is'} switched off. Turn on in Agents to use @${skipped[0]}.`));
 
     if (!stream) {
-      try { const r = await run(() => {}); messages.push({ id: rid(), role: 'mate', mate, text: r.text, at: now(), state: 'sent' }); }
-      catch (e) { messages.push({ id: rid(), role: 'system', text: `Could not reply: ${e.message.slice(0, 300)}`, at: now(), state: 'error' }); }
-      await ref.set({ messages, updatedAt: now() }, { merge: true });
+      for (const mate of responders) {
+        try { const r = await turn(mate, () => {}); messages.push({ id: rid(), role: 'mate', mate, text: r.text, at: now(), state: 'sent' }); }
+        catch (e) { messages.push({ id: rid(), role: 'system', text: `${nameOf(mate)} could not reply: ${e.message.slice(0, 300)}`, at: now(), state: 'error' }); }
+      }
+      await save();
       return userMsg;
     }
 
-    await ref.set({ messages, updatedAt: now() }, { merge: true }); // the question is saved before the answer starts
+    await save(); // the question is saved before any answer starts
     const origin = req.headers.origin;
     reply.hijack();
     const raw = reply.raw;
@@ -113,16 +128,16 @@ await app.register(async (v1) => {
     req.raw.on('close', () => { gone = true; ac.abort(); });
     const beat = setInterval(() => { if (!raw.writableEnded) raw.write(': ping\n\n'); }, 15_000);
     write({ type: 'start', userId: userMsg.id });
-    let out;
-    try {
-      const r = await run(write, ac.signal);
-      out = { id: rid(), role: 'mate', mate, text: r.text, at: now(), state: 'sent' };
-    } catch (e) {
-      out = gone ? null : { id: rid(), role: 'system', text: `Could not reply: ${String(e.message).slice(0, 300)}`, at: now(), state: 'error' };
+    for (const mate of responders) {
+      if (gone) break;
+      write({ type: 'mate', mate });
+      let out;
+      try { const r = await turn(mate, write, ac.signal); out = { id: rid(), role: 'mate', mate, text: r.text, at: now(), state: 'sent' }; }
+      catch (e) { out = gone ? null : { id: rid(), role: 'system', text: `${nameOf(mate)} could not reply: ${String(e.message).slice(0, 300)}`, at: now(), state: 'error' }; }
+      if (out) { messages.push(out); await save().catch(() => {}); write({ type: 'done', message: out }); }
     }
-    if (out) { messages.push(out); await ref.set({ messages, updatedAt: now() }, { merge: true }).catch(() => {}); }
+    if (!responders.length) write({ type: 'done', message: messages.at(-1) });
     clearInterval(beat);
-    if (out) write({ type: 'done', message: out });
     raw.end();
   });
 

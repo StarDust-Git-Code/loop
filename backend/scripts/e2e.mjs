@@ -39,9 +39,13 @@ const llm = http.createServer(async (req, res) => {
   }
   const lastUser = b.messages.filter((m) => m.role === 'user').at(-1)?.content ?? '';
   if (sys.includes('Tools:') && !sys.includes('coding agent')) {
-    if (lastUser.startsWith('Tool result')) text = `Done: ${lastUser.split('\n')[2]}`;
+    if (b.messages.some((m) => m.role === 'user' && m.content.includes('loop forever'))) text = '{"tool":"calculate","args":{"expression":"1+1"}}';
+    else if (lastUser.startsWith('Tool result')) text = `Done: ${lastUser.split('\n')[2]}`;
     else if (lastUser.includes('remember')) text = '{"tool":"memory_save","args":{"text":"Owner loves chai","kind":"fact"}}';
     else if (lastUser.includes('fetch local')) text = '```json\n{"tool":"fetch_url","args":{"url":"http://127.0.0.1:4101/v1"}}\n```';
+    else if (lastUser.includes('health check')) text = '{"tool":"watchdog","args":{}}';
+    else if (lastUser.includes('show console')) text = '{"tool":"console_tail","args":{"n":5}}';
+    else if (lastUser.includes('who is failing')) text = '{"tool":"runs_failed","args":{}}';
     else if (lastUser.includes('math')) text = '{"tool":"calculate","args":{"expression":"(12.5*4)/2"}}';
   }
   if (b.stream) {
@@ -130,6 +134,25 @@ try {
   ev = await sse(rc.id, 'fetch local please');
   assert.ok(ev.some((e) => e.type === 'tool_result' && e.ok === false), 'private address is blocked (SSRF)');
   ok('streaming SSE, tool calls (memory, calculator), dynamic prompt, SSRF block');
+
+  /* thinking levels, @mentions, planner prompt, monitor tools, tool budget */
+  assert.ok(sys.includes('Thinking level: HIGH'), 'default thinking is high');
+  await call('PATCH', '/v1/mates/research', { thinking: 'low' });
+  await sse(rc.id, 'hello research'); assert.ok(llmSys.at(-1).includes('Thinking level: LOW'), 'per-mate thinking level is used');
+  ev = await sse(conv.id, '@planner @research plan a launch');
+  const order = ev.filter((e) => e.type === 'mate').map((e) => e.mate); assert.deepEqual(order, ['planner', 'research']);
+  assert.equal(ev.filter((e) => e.type === 'done').length, 2);
+  assert.ok(llmSys.some((x) => x.includes('PLANNER PLAYBOOK') && x.includes('- research [ON]')), 'planner gets the playbook and live roster');
+  const cv2 = (await call('GET', `/v1/conversations/${conv.id}`)).json; assert.ok(cv2.members.includes('planner') && cv2.members.includes('research'));
+  ev = await sse(conv.id, '@research @luna hi'); // luna is off by default
+  assert.ok(cv2.messages.length > 0 && (await call('GET', `/v1/conversations/${conv.id}`)).json.messages.some((m) => m.role === 'system' && m.text.includes('Luna is switched off')));
+  ev = await sse(conv.id, 'run a health check'); assert.ok(ev.some((e) => e.type === 'tool' && e.name === 'watchdog')); assert.match(ev.filter((e) => e.type === 'delta').map((d) => d.text).join(''), /Watchdog/);
+  ev = await sse(conv.id, 'show console'); assert.ok(ev.some((e) => e.type === 'tool_result' && e.ok));
+  ev = await sse(conv.id, 'who is failing'); assert.ok(ev.some((e) => e.type === 'tool_result' && e.ok));
+  ev = await sse(conv.id, 'loop forever');
+  const final = ev.filter((e) => e.type === 'delta').map((d) => d.text).join('') ; assert.ok(ev.filter((e) => e.type === 'tool').length >= 5);
+  assert.ok(ev.at(-1).message.text.includes('ran out of tool turns') && !ev.at(-1).message.text.trim().startsWith('{'), 'raw tool JSON is never the final answer');
+  ok('thinking levels, @mentions, planner playbook, monitor/watchdog tools, tool-budget fallback');
 
   /* run end to end with SSE */
   const events = []; const ctl = new AbortController();

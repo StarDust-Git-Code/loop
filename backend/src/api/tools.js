@@ -7,8 +7,9 @@ import { userCol } from './db.js';
 import { searchKnowledge } from './knowledge.js';
 import { putFile, artifactsReady } from './files.js';
 
-let hooks = {};
-export const setToolHooks = (h) => { hooks = h; };
+import { hooks, setToolHooks } from './toolhooks.js';
+import { MONITOR_TOOLS } from './monitor.js';
+export { setToolHooks };
 
 const cap = (s, n = 4000) => (s.length > n ? `${s.slice(0, n)}\n…[truncated]` : s);
 const textOf = (h) => h.replace(/<(script|style|noscript|svg)[\s\S]*?<\/\1>/gi, ' ').replace(/<[^>]+>/g, ' ').replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&quot;/g, '"').replace(/&#x27;|&#39;/g, "'").replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/\s+/g, ' ').trim();
@@ -69,6 +70,7 @@ const iso = (v, label) => { const t = Date.parse(v); if (!Number.isFinite(t)) th
 
 /** name -> { group, desc, args, run(ctx, args) }  ctx = { uid, settings } */
 export const TOOLS = {
+  ...MONITOR_TOOLS,
   web_search: { group: 'Web Search', net: true, desc: 'Search the web. Returns titles, URLs and snippets.', args: '{"query": "text"}', run: async (_c, a) => cap(await search(String(a.query ?? '').slice(0, 200))) },
   fetch_url: { group: 'Web Search', net: true, desc: 'Open a public web page and read its text.', args: '{"url": "https://..."}', run: async (_c, a) => {
     const res = await safeFetch(String(a.url));
@@ -132,8 +134,10 @@ export const TOOLS = {
 };
 
 /** Which tools a Mate may use, given its configured tool groups and the workspace settings. */
-export function toolsFor(groups = [], settings = {}) {
-  const g = new Set(groups);
+/** Always-on extras per Mate (on top of what its config lists). */
+const EXTRA_GROUPS = { ops: ['Run Control'], halo: ['Run Control'], planner: ['Run Control'] };
+export function toolsFor(groups = [], settings = {}, mateKey = '') {
+  const g = new Set([...groups, ...(EXTRA_GROUPS[mateKey] ?? [])]);
   return Object.entries(TOOLS).filter(([, t]) => (t.group === '*' || g.has(t.group)) && !(t.net && settings.allowNetwork === false) && !(t.needsApproval && settings.permissionMode !== 'auto')).map(([name, t]) => ({ name, ...t }));
 }
 

@@ -3,8 +3,8 @@
 import { env, now, uid as rid, sleep } from '../lib/env.js';
 import { svcJson } from '../lib/svc.js';
 import { db, userCol } from './db.js';
-import { chat, extractJson } from './llm.js';
-import { MATE_DEFS, persona } from './mates.js';
+import { chat, extractJson, effortOf } from './llm.js';
+import { MATE_DEFS, persona, PLAN_JSON_PROMPT } from './mates.js';
 import { converse } from './agent.js';
 import { getSettings } from './settings.js';
 import { putFile, artifactsReady } from './files.js';
@@ -55,15 +55,15 @@ async function makePlan(st, wf) {
   }
   try {
     const r = await chat(st.uid, {
-      model: st.settings.model, json: true, maxTokens: 700, temperature: 0.2,
+      model: st.settings.model, json: true, maxTokens: 900, temperature: 0.2, effort: effortOf(st.mates.planner?.thinking),
       messages: [
-        { role: 'system', content: `You are the Planner. Split the job into at most ${Math.min(st.settings.maxSteps, 8)} short steps. Reply with JSON only: {"steps":[{"mate":"<key>","label":"<what to do, <=80 chars>","kind":"think|code|file|notify"}]}. Mates: ${MATE_LIST}. kind "code" runs a coding agent on a repo, "file" writes a deliverable file to Drive, "notify" sends a Telegram message, "think" is reasoning/research. Use "code" only if the job needs code changes. Always end with a "think" step by writer that produces the final answer.` },
+        { role: 'system', content: PLAN_JSON_PROMPT(st.mates, Math.min(st.settings.maxSteps, 8)) },
         { role: 'user', content: st.run.prompt },
       ],
     });
     const j = extractJson(r.text);
     const steps = (j?.steps ?? []).filter((s) => s && typeof s.label === 'string').slice(0, st.settings.maxSteps)
-      .map((s) => ({ mate: MATE_DEFS.some((m) => m.key === s.mate) ? s.mate : 'ops', label: s.label.slice(0, 120), kind: ['think', 'code', 'file', 'notify'].includes(s.kind) ? s.kind : 'think' }));
+      .map((s) => ({ mate: MATE_DEFS.some((m) => m.key === s.mate) && st.mates[s.mate]?.enabled !== false ? s.mate : 'ops', label: s.label.slice(0, 120), kind: ['think', 'code', 'file', 'notify'].includes(s.kind) ? s.kind : 'think' }));
     if (steps.length) return steps;
   } catch (e) { log(st, 'planner', `Planning failed (${e.message.slice(0, 160)}). Using a simple plan.`); }
   return [{ mate: 'research', label: 'Work on the request', kind: 'think' }, { mate: 'writer', label: 'Write the final answer', kind: 'think' }];
@@ -172,7 +172,7 @@ async function execute(st) {
       await save(st);
     }
 
-    const fin = await chat(st.uid, { model: st.settings.model, maxTokens: 1500, messages: [{ role: 'system', content: persona('writer') }, { role: 'user', content: `Write the final report (Markdown, brief, with the answer first) for this job.\n\nJob:\n${st.run.prompt}\n\nNotes:\n${st.run.notes}` }] }).catch(() => null);
+    const fin = await chat(st.uid, { model: st.settings.model, maxTokens: 1500, effort: effortOf(st.mates.writer?.thinking), messages: [{ role: 'system', content: persona('writer') }, { role: 'user', content: `Write the final report (Markdown, brief, with the answer first) for this job.\n\nJob:\n${st.run.prompt}\n\nNotes:\n${st.run.notes}` }] }).catch(() => null);
     st.run.report = fin?.text ?? st.run.notes;
     emit(st, { type: 'status', status: 'done' });
     if (st.settings.notifyTelegram) void notify(st.uid, `✅ Done: ${st.run.title}\n\n${st.run.report.slice(0, 700)}`);
@@ -221,6 +221,7 @@ export async function control(uid, id, action) {
   return st.run;
 }
 
+export const liveRuns = (uid) => [...live.values()].filter((s) => s.uid === uid).map((s) => ({ id: s.run.id, status: s.run.status, paused: s.paused }));
 export function steer(uid, id, text) { const st = own(uid, id); st.steer.push(String(text).slice(0, 2000)); log(st, 'you', `Steer: ${text}`); return st.run; }
 
 export function decide(uid, runId, approvalId, decision) {

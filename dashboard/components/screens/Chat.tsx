@@ -15,7 +15,7 @@ const SLASH = [
   { cmd: '/plan', desc: 'Only plan, do not execute' }, { cmd: '/skill', desc: 'Pick a skill to use in this chat' },
   { cmd: '/whatsapp', desc: 'Let agents read selected chats' }, { cmd: '/telegram', desc: 'Ping me when this run needs me' },
 ];
-const TOOL_LABEL: Record<string, string> = { web_search: 'Searching the web', fetch_url: 'Reading a page', memory_save: 'Saving a memory', memory_recall: 'Checking memories', knowledge_search: 'Searching knowledge', calendar_add: 'Adding to calendar', calendar_list: 'Reading calendar', task_add: 'Adding a task', task_list: 'Reading tasks', file_write: 'Saving a file', calculate: 'Calculating' };
+const TOOL_LABEL: Record<string, string> = { web_search: 'Searching the web', fetch_url: 'Reading a page', memory_save: 'Saving a memory', memory_recall: 'Checking memories', knowledge_search: 'Searching knowledge', calendar_add: 'Adding to calendar', calendar_list: 'Reading calendar', task_add: 'Adding a task', task_list: 'Reading tasks', file_write: 'Saving a file', calculate: 'Calculating', watchdog: 'Running watchdog', console_tail: 'Reading the console', system_status: 'Checking system status', runs_active: 'Checking active runs', runs_failed: 'Checking failed runs', runs_recent: 'Reading recent runs', run_status: 'Reading a run', run_log: 'Reading a run log', approvals_pending: 'Checking approvals', jobs_upcoming: 'Checking scheduled jobs', automations_list: 'Reading automations', connections_status: 'Checking connections', files_list: 'Listing files', knowledge_list: 'Listing knowledge', llm_status: 'Checking LLM providers', mates_list: 'Reading the roster', time_now: 'Checking the time', task_done: 'Completing a task', run_stop: 'Stopping a run', run_pause: 'Pausing a run', run_resume: 'Resuming a run' };
 type Mode = 'chat' | 'plan' | 'ultracode';
 const MODE_NOTE: Record<Mode, string> = { chat: 'Chat: talk it through, the Mate answers.', plan: 'Plan: the Mate plans the work and waits for you.', ultracode: 'Ultracode: long autonomous coding run with checkpoints and tests' };
 const Dot = ({ k, s = 42 }: { k: MateKey; s?: number }) => <img src={mateImg(k)} alt="" width={s} height={s} style={{ flex: 'none' }} />;  
@@ -33,16 +33,21 @@ export function Chat() {
   const [menu, setMenu] = useState(false);
   const [sel, setSel] = useState(0);
   const [list, setList] = useState(false);
-  const [live, setLive] = useState<{ cid: string; text: string; tools: string[]; doneId?: string } | null>(null);
+  const [live, setLive] = useState<{ cid: string; segs: { mate: MateKey; text: string; tools: string[]; doneId?: string }[] } | null>(null);
   const end = useRef<HTMLDivElement>(null);
   const fileIn = useRef<HTMLInputElement>(null);
-  useEffect(() => { end.current?.scrollIntoView({ block: 'end', behavior: 'smooth' }); }, [conv?.messages.length, live?.text.length]);
+  useEffect(() => { end.current?.scrollIntoView({ block: 'end', behavior: 'smooth' }); }, [conv?.messages.length, live?.segs.map((s) => s.text.length).join(',')]);
 
   const mate: MateKey = conv?.mate ?? 'planner';
   const mode = conv?.mode ?? 'chat';
   const members = [...new Set<MateKey>([mate, ...(conv?.members ?? [])])];
   const slash = text.startsWith('/') && !text.includes(' ') ? SLASH.filter((s) => s.cmd.startsWith(text.toLowerCase())) : [];
-  const showMenu = menu && slash.length > 0;
+  const mm = /(?:^|\s)@([a-z]*)$/i.exec(text);
+  const ready = MATE_DEFS.filter((d) => cfgs.find((c) => c.mate === d.key)?.enabled ?? d.core);
+  const mentionOpts = mm ? ready.filter((d) => d.key.startsWith(mm[1].toLowerCase()) || d.name.toLowerCase().startsWith(mm[1].toLowerCase())) : [];
+  const showMention = menu && mentionOpts.length > 0;
+  const showMenu = menu && !showMention && slash.length > 0;
+  const pickMention = (k: MateKey) => { setText(text.replace(/@[a-z]*$/i, `@${k} `)); setMenu(false); };
 
   const start = async (m: MateKey) => { const c = await create({ title: `Chat with ${MATES[m].name}`, mate: m, messages: [], mode: 'chat', members: [] }); router.push(`/chat?c=${c.id}`); };
   const patch = (p: Partial<Conversation>) => conv && update(conv.id, p);
@@ -59,13 +64,16 @@ export function Chat() {
     setText(''); setMenu(false);
     if (conv.messages.length === 0) await update(conv.id, { title: t.replace(/^\/btw\s*/, '').slice(0, 42) });
     if (t.startsWith('/btw') || !api.capabilities.backend) { await api.conversations.send(conv.id, t, mate); return; }
-    setLive({ cid: conv.id, text: '', tools: [] });
+    setLive({ cid: conv.id, segs: [{ mate, text: '', tools: [] }] });
     const onEvent = (e: ChatEvent) => setLive((p) => {
       if (!p) return p;
-      if (e.type === 'delta') return { ...p, text: p.text + e.text };
-      if (e.type === 'tool') return { ...p, text: '', tools: [...p.tools, e.name] };
-      if (e.type === 'done') return { ...p, doneId: e.message.id };
-      return p;
+      const segs = p.segs.map((s) => ({ ...s })); const cur = segs[segs.length - 1];
+      if (e.type === 'mate') { if (cur.doneId || cur.text || cur.tools.length) segs.push({ mate: e.mate, text: '', tools: [] }); else cur.mate = e.mate; }
+      else if (e.type === 'delta') cur.text += e.text;
+      else if (e.type === 'reset') cur.text = '';
+      else if (e.type === 'tool') { cur.text = ''; cur.tools.push(e.name); }
+      else if (e.type === 'done') cur.doneId = e.message.id;
+      return { ...p, segs };
     });
     try { await api.conversations.sendStream(conv.id, t, mate, onEvent); }
     catch (err) { toast(err instanceof Error ? err.message : 'Could not send', 'bad'); setLive(null); }
@@ -137,7 +145,7 @@ export function Chat() {
               </div>);
             return mine ? (
               <div key={m.id} style={{ alignSelf: 'flex-end', maxWidth: 560, animation: 'lm-pop .3s cubic-bezier(.22,1,.36,1) both' }}>
-                <div style={{ background: '#ECE7FF', border: '1px solid rgba(106,77,244,.25)', borderRadius: '18px 18px 4px 18px', padding: '14px 18px', fontSize: 15, lineHeight: 1.55, whiteSpace: 'pre-wrap' }}>{m.text}</div>
+                <div style={{ background: '#ECE7FF', border: '1px solid rgba(106,77,244,.25)', borderRadius: '18px 18px 4px 18px', padding: '14px 18px', fontSize: 15, lineHeight: 1.55, whiteSpace: 'pre-wrap' }}>{m.text.split(/(@[a-z]+)/gi).map((part, i) => (/^@[a-z]+$/i.test(part) ? <b key={i} style={{ color: '#4F34D6' }}>{part}</b> : part))}</div>
                 <small style={{ color: '#6B6572', display: 'flex', gap: 6, justifyContent: 'flex-end', marginTop: 4 }}>{ago(m.at)}{m.state === 'pending' && <Badge>{api.capabilities.backend ? 'Sending…' : 'Waiting for backend'}</Badge>}{m.state === 'error' && <Badge tone="bad">Failed</Badge>}</small>
               </div>
             ) : (
@@ -145,18 +153,25 @@ export function Chat() {
                 <Dot k={m.mate ?? mate} /><div style={{ flex: 1, minWidth: 0 }}><div style={{ fontSize: 13, fontWeight: 600, marginBottom: 6 }}>{mateName(m.mate ?? mate)}</div><div style={{ fontSize: 15, lineHeight: 1.6, color: '#2A2631', whiteSpace: 'pre-wrap' }}>{m.text}</div></div>
               </div>);
           })}
-          {live && live.cid === conv.id && !(live.doneId && conv.messages.some((m) => m.id === live.doneId)) && (
-            <div style={{ display: 'flex', gap: 14, maxWidth: 820, animation: 'lm-pop .3s ease both' }}>
-              <Dot k={mate} /><div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 6 }}>{mateName(mate)}</div>
-                {live.tools.length > 0 && <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 6 }}>{live.tools.map((n, i) => <span key={i} className="mono" style={{ fontSize: 11.5, background: '#ECE7FF', color: '#4F34D6', borderRadius: 7, padding: '3px 8px' }}>{TOOL_LABEL[n] ?? n}{i === live.tools.length - 1 && !live.text && !live.doneId ? '…' : ''}</span>)}</div>}
-                <div style={{ fontSize: 15, lineHeight: 1.6, color: '#2A2631', whiteSpace: 'pre-wrap' }}>{live.text || (live.tools.length === 0 ? <span style={{ color: '#6B6572' }}>Thinking…</span> : null)}{!live.doneId && live.text && <span style={{ opacity: .5 }}>▍</span>}</div>
+          {live && live.cid === conv.id && live.segs.filter((s) => !(s.doneId && conv.messages.some((m) => m.id === s.doneId))).map((s, i, arr) => (
+            <div key={`${s.mate}-${i}`} style={{ display: 'flex', gap: 14, maxWidth: 820, animation: 'lm-pop .3s ease both' }}>
+              <Dot k={s.mate} /><div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 6 }}>{mateName(s.mate)}</div>
+                {s.tools.length > 0 && <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 6 }}>{s.tools.map((n, j) => <span key={j} className="mono" style={{ fontSize: 11.5, background: '#ECE7FF', color: '#4F34D6', borderRadius: 7, padding: '3px 8px' }}>{TOOL_LABEL[n] ?? n}{j === s.tools.length - 1 && !s.text && !s.doneId ? '…' : ''}</span>)}</div>}
+                <div style={{ fontSize: 15, lineHeight: 1.6, color: '#2A2631', whiteSpace: 'pre-wrap' }}>{s.text || (s.tools.length === 0 && !s.doneId ? <span style={{ color: '#6B6572' }}>Thinking…</span> : null)}{!s.doneId && s.text && i === arr.length - 1 && <span style={{ opacity: .5 }}>▍</span>}</div>
               </div>
-            </div>)}
+            </div>))}
           <div ref={end} />
         </div>
 
         <div style={{ flex: 'none', position: 'relative' }}>
+          {showMention && (
+            <div style={{ position: 'absolute', left: 0, bottom: '100%', marginBottom: 8, width: 460, maxWidth: '100%', maxHeight: 300, overflow: 'auto', background: '#fff', border: '1px solid rgba(31,26,23,.16)', borderRadius: 14, padding: 6, boxShadow: '0 16px 40px rgba(31,26,23,.14)', animation: 'lm-pop .18s ease both', zIndex: 5 }}>
+              {mentionOpts.map((d, i) => (
+                <button key={d.key} type="button" onMouseEnter={() => setSel(i)} onClick={() => pickMention(d.key)} style={{ display: 'flex', width: '100%', alignItems: 'center', gap: 12, minHeight: 44, padding: '4px 10px', border: 0, borderRadius: 9, background: i === sel % mentionOpts.length ? '#ECE7FF' : 'transparent', textAlign: 'left' }}>
+                  <Dot k={d.key} s={30} /><span style={{ fontSize: 13.5, fontWeight: 600, width: 84 }}>@{d.key}</span><span style={{ fontSize: 12.5, color: '#3D3946', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{d.blurb}</span>
+                </button>))}
+            </div>)}
           {showMenu && (
             <div style={{ position: 'absolute', left: 0, bottom: '100%', marginBottom: 8, width: 460, maxWidth: '100%', background: '#fff', border: '1px solid rgba(31,26,23,.16)', borderRadius: 14, padding: 6, boxShadow: '0 16px 40px rgba(31,26,23,.14)', animation: 'lm-pop .18s ease both', zIndex: 5 }}>
               {slash.map((s, i) => (
@@ -165,12 +180,12 @@ export function Chat() {
                 </button>))}
             </div>)}
           <div style={{ background: '#fff', border: '1px solid rgba(31,26,23,.16)', borderRadius: 18, padding: '12px 14px', boxShadow: '0 8px 24px rgba(106,77,244,.08)' }}>
-            <form onSubmit={(e) => { e.preventDefault(); if (showMenu) pickCmd(slash[sel % slash.length].cmd); else void send(); }} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <form onSubmit={(e) => { e.preventDefault(); if (showMention) pickMention(mentionOpts[sel % mentionOpts.length].key); else if (showMenu) pickCmd(slash[sel % slash.length].cmd); else void send(); }} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
               <input ref={fileIn} type="file" hidden onChange={async (e) => { const f = e.target.files?.[0]; if (f) { await api.files.upload(f); await api.conversations.send(conv.id, `📎 ${f.name}`, mate); } e.target.value = ''; }} />
               <button type="button" aria-label="Attach" onClick={() => fileIn.current?.click()} style={{ width: 44, height: 44, borderRadius: 12, background: '#F3F1F8', border: '1px solid rgba(31,26,23,.1)', fontSize: 20 }}>+</button>
-              <input value={text} aria-label="Message" placeholder={`Message ${MATES[mate].name}, or type / for commands`} autoComplete="off"
+              <input value={text} aria-label="Message" placeholder={`Message ${MATES[mate].name}, @ to bring in a Mate, / for commands`} autoComplete="off"
                 onChange={(e) => { setText(e.target.value); setMenu(true); setSel(0); }}
-                onKeyDown={(e) => { if (showMenu && e.key === 'ArrowDown') { e.preventDefault(); setSel((x) => x + 1); } if (showMenu && e.key === 'ArrowUp') { e.preventDefault(); setSel((x) => x + slash.length - 1); } if (e.key === 'Escape') setMenu(false); }}
+                onKeyDown={(e) => { const n = showMention ? mentionOpts.length : slash.length; const open = showMention || showMenu; if (open && e.key === 'ArrowDown') { e.preventDefault(); setSel((x) => x + 1); } if (open && e.key === 'ArrowUp') { e.preventDefault(); setSel((x) => x + n - 1); } if (open && e.key === 'Tab') { e.preventDefault(); if (showMention) pickMention(mentionOpts[sel % n].key); else pickCmd(slash[sel % n].cmd); } if (e.key === 'Escape') setMenu(false); }}
                 style={{ flex: 1, minWidth: 0, height: 44, background: 'none', border: 0, outline: 0, fontSize: 15, fontFamily: 'inherit' }} />
               <button type="submit" aria-label="Send" disabled={!text.trim()} style={{ width: 44, height: 44, borderRadius: 12, background: '#6A4DF4', border: 0, color: '#fff', fontSize: 20, opacity: text.trim() ? 1 : 0.4, transition: 'opacity .15s, transform .15s' }}>↑</button>
             </form>

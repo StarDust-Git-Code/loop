@@ -96,7 +96,7 @@ export function createLocalApi(): Api {
 
   const settingsSubs = new Set<() => void>();
   const defaultsFor = () => MATE_DEFS.map((m) => ({
-    id: m.key, createdAt: now(), updatedAt: now(), mate: m.key, enabled: m.core, instructions: '', model: '', tools: m.tools, description: m.blurb, outputFormat: 'Markdown', memoryScope: 'private' as const,
+    id: m.key, createdAt: now(), updatedAt: now(), mate: m.key, enabled: m.core, instructions: '', model: '', tools: m.tools, description: m.blurb, outputFormat: 'Markdown', memoryScope: 'private' as const, thinking: 'default' as const,
   }));
 
   return {

@@ -13,7 +13,7 @@ type Filter = 'all' | 'Core' | 'Personal' | 'Creative' | 'Dev';
 type Tab = 'config' | 'tools' | 'memory';
 const TOOL_TEXT: Record<string, string> = {
   'Web Search': 'Search the web and read results', Browser: 'Open pages, click and fill forms', 'File System': 'Read and write files in the workspace', Terminal: 'Run commands in a sandbox',
-  'Code Interpreter': 'Run code to analyse data', 'Vector Search': 'Search your Knowledge by meaning', Memory: 'Read and write My Space memories', Calendar: 'Read and add Schedule events',
+  'Code Interpreter': 'Run code to analyse data', 'Vector Search': 'Search your Knowledge by meaning', Memory: 'Read and write My Space memories', Calendar: 'Read and add Schedule events', 'Run Control': 'Stop, pause and resume runs (Ops, Halo and Planner always have it)',
 };
 
 export function Agents() {
@@ -85,6 +85,7 @@ function Configure({ mate, onClose }: { mate: MateKey; onClose: () => void }) {
           <Field label="Description"><Textarea rows={3} value={v.description} onChange={(e) => set({ description: e.target.value })} /></Field>
           <Field label="Model"><ModelPicker value={v.model} onChange={(m) => set({ model: m })} /></Field>
           <Field label="Persona / system prompt"><Textarea rows={7} value={v.instructions} placeholder="Always cite sources. Prefer short answers." onChange={(e) => set({ instructions: e.target.value })} /></Field>
+          <Field label="Thinking"><Select value={v.thinking ?? 'default'} onChange={(e) => set({ thinking: e.target.value as MateConfigIn['thinking'] })}>{[['default', 'Default (high)'], ['low', 'Low: fast, direct'], ['medium', 'Medium: brief reasoning'], ['high', 'High: careful'], ['xhigh', 'XHigh: draft, critique, revise']].map(([k, n]) => <option key={k} value={k}>{n}</option>)}</Select></Field>
           <Field label="Output format"><Select value={v.outputFormat} onChange={(e) => set({ outputFormat: e.target.value })}>{['Markdown', 'Plain text', 'JSON', 'Table'].map((f) => <option key={f}>{f}</option>)}</Select></Field>
         </>}
         {tab === 'tools' && ALL_TOOLS.map((t) => (
