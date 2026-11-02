@@ -96,7 +96,8 @@
 .modal { animation: lm-pop 0.32s cubic-bezier(0.22, 1, 0.36, 1) both; }
 .sheetWrap { place-items: stretch end; padding: 0; backdrop-filter: blur(2px); }
 .sheet { width: min(460px, 100%); max-height: none; height: 100dvh; border-radius: 22px 0 0 22px; padding: 26px 26px 22px; display: flex; flex-direction: column; animation: lm-sheet 0.4s cubic-bezier(0.22, 1, 0.36, 1) both; }
-.sheet > div { flex: 1; overflow: auto; padding: 2px; }
+.sheet > .stack { flex: 1; overflow-y: auto; overflow-x: hidden; padding: 2px; min-height: 0; }
+.sheet > .modalFoot { flex: none; }
 @keyframes lm-sheet { from { transform: translateX(40px); opacity: 0; } to { transform: none; opacity: 1; } }
 
 /* ---------- design alignment (White-* boards) ---------- */

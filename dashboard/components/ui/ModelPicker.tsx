@@ -8,6 +8,7 @@ import { Select } from './ui';
 export function ModelPicker({ value, onChange, allowDefault = true }: { value: string; onChange: (v: string) => void; allowDefault?: boolean }) {
   const { items } = useRepo(api.providers);
   const active = items.filter((p) => p.enabled);
+  value = value.includes('::') ? value : ''; // old plain model names mean "workspace default"
   const unused = PRESETS.filter((p) => p.id !== 'custom' && !items.some((x) => x.preset === p.id));
   return (
     <Select value={value} onChange={(e) => onChange(e.target.value)} aria-label="Model">
