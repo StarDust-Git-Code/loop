@@ -281,7 +281,7 @@ function Build-Env($r) {
       $e['FIREBASE_SERVICE_ACCOUNT_B64'] = $saB64
       $e['ALLOWED_ORIGINS'] = "$origin,http://localhost:3000"; $e['ALLOWED_EMAILS'] = Cfg 'ALLOWED_EMAILS'
       $e['PUBLIC_URL'] = $urls['api']; $e['CODER_URL'] = $urls['coder']; $e['ARTIFACTS_URL'] = $urls['artifacts']
-      foreach ($k in 'NVIDIA_API_KEY', 'GEMINI_API_KEY', 'GROQ_API_KEY', 'CEREBRAS_API_KEY', 'OPENROUTER_API_KEY', 'TELEGRAM_BOT_TOKEN', 'TELEGRAM_WEBHOOK_SECRET', 'WHATSAPP_ENABLED', 'DEFAULT_REPO') { $e[$k] = Cfg $k }
+      foreach ($k in 'NVIDIA_API_KEY', 'NVIDIA_MODEL', 'GEMINI_API_KEY', 'GEMINI_MODEL', 'GROQ_API_KEY', 'GROQ_MODEL', 'CEREBRAS_API_KEY', 'CEREBRAS_MODEL', 'OPENROUTER_API_KEY', 'OPENROUTER_MODEL', 'TELEGRAM_BOT_TOKEN', 'TELEGRAM_WEBHOOK_SECRET', 'WHATSAPP_ENABLED', 'DEFAULT_REPO') { $e[$k] = Cfg $k }
       if ((Cfg 'DEFAULT_REPO') -eq '') { $e['DEFAULT_REPO'] = $repo }
     }
     'coder' {
