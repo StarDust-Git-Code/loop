@@ -30,7 +30,7 @@ export async function converse({ uid, mateKey, cfg = {}, settings, mode = 'chat'
   const system = await buildSystem({ uid, mateKey, cfg, mode, query: last, settings, tools: allowed, others, effort });
   const schemas = toOpenAI(allowed);
   const msgs = [...history]; // canonical (native) conversation, without the system message
-  const used = []; const gathered = []; const cache = new Map();
+  const used = []; const gathered = []; const cache = new Map(); let thought = ''; const showThought = settings.showReasoning !== false;
   const toolCtx = { uid, settings, mate: mateKey, ...ctx };
   const maxTurns = allowed.length ? TOOL_TURNS[effort] : 0;
   const fixedMax = settings.maxOutputTokens > 0; // developer option: an exact output cap, no automatic scaling
@@ -55,7 +55,7 @@ export async function converse({ uid, mateKey, cfg = {}, settings, mode = 'chat'
         else { head += d; if (!head.trim()) return; hide = HEAD_CALL.test(head); if (!hide) emit({ type: 'delta', text: head }); return; }
       }
       if (!hide) emit({ type: 'delta', text: d });
-    }, (s) => { modeNow = s.mode; });
+    }, (s) => { modeNow = s.mode; }, (t) => { if (showThought && thought.length < 8000) { thought += t; emit({ type: 'think', text: t }); } });
     let text = r.text ?? '';
     if (hide === null && text && !hide) { /* nothing streamed yet (empty head) */ emit({ type: 'delta', text }); }
 
@@ -93,8 +93,8 @@ export async function converse({ uid, mateKey, cfg = {}, settings, mode = 'chat'
     if (!canCall && (callish(text) && parseTextCalls(text).length || !text.trim())) { // never show raw tool JSON (or nothing) as the answer
       const fb = used.length ? `I used my tools but could not finish a written answer. What I gathered:\n\n${gathered.slice(-4).map((g) => `- ${g}`).join('\n')}` : 'I could not produce an answer. Please try again.';
       emit({ type: 'reset' }); emit({ type: 'delta', text: fb });
-      return { text: fb, tools: used };
+      return { text: fb, tools: used, thought };
     }
-    return { text, tools: used };
+    return { text, tools: used, thought };
   }
 }

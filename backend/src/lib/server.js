@@ -13,7 +13,7 @@ export async function createServer(name, { bodyLimit = 2 * 1024 * 1024 } = {}) {
     allowedHeaders: ['authorization', 'content-type'],
     maxAge: 86400,
   });
-  app.get('/healthz', async () => ({ ok: true, service: name, uptime: Math.round(process.uptime()), mem: Math.round(process.memoryUsage().rss / 1048576) }));
+  app.get('/healthz', async () => ({ ok: true, service: name, commit: (process.env.RENDER_GIT_COMMIT || '').slice(0, 7), uptime: Math.round(process.uptime()), mem: Math.round(process.memoryUsage().rss / 1048576) }));
   app.get('/', async () => ({ service: name, ok: true }));
   app.setErrorHandler((err, req, reply) => {
     const status = err.statusCode && err.statusCode >= 400 ? err.statusCode : 500;

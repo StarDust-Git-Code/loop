@@ -23,12 +23,27 @@ export function Agents() {
   const { items, loading, error, update } = useRepo(api.mateConfigs);
   const [filter, setFilter] = useState<Filter>('all');
   const cards = MATE_DEFS.filter((m) => filter === 'all' || m.role === filter);
+  const [lvl, setLvl] = useState<NonNullable<MateConfigIn['thinking']>>('default'); const [busy, setBusy] = useState(false);
+  const applyAll = async () => {
+    setBusy(true);
+    try { for (const c of items) if ((c.thinking ?? 'default') !== lvl) await update(c.id, { thinking: lvl }); toast(`Thinking set to ${lvl === 'default' ? 'Default (high)' : lvl} for all ${items.length} agents`); }
+    catch (e) { toast(e instanceof Error ? e.message : 'Could not update every agent', 'bad'); }
+    setBusy(false);
+  };
+  const same = items.length > 0 && items.every((c) => (c.thinking ?? 'default') === lvl);
 
   return (
     <Page title="Agents" sub={`${MATE_DEFS.length} Mates. Give each one a job, a model, and the tools it is allowed to use.`}
       actions={<><Tabs value={filter} onChange={setFilter} options={[{ id: 'all', label: 'All' }, { id: 'Core', label: 'Core' }, { id: 'Personal', label: 'Personal' }, { id: 'Creative', label: 'Creative' }, { id: 'Dev', label: 'Dev' }]} />
         <Btn variant="primary" disabled title="Custom Mates arrive with the backend">+ New agent</Btn></>}>
       <ErrorNote message={error} />
+      {!loading && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap', background: 'linear-gradient(160deg,#F1ECFF,#FAF8FF)', border: '1px solid rgba(106,77,244,.2)', borderRadius: 16, padding: '12px 16px', marginBottom: 14 }}>
+          <span aria-hidden="true" style={{ fontSize: 20 }}>🧠</span>
+          <div style={{ flex: 1, minWidth: 220 }}><b style={{ fontSize: 14.5 }}>Reasoning for every agent</b><div style={{ color: '#6B6572', fontSize: 12.5 }}>Every agent thinks at <b>High</b> unless you change it. Set one level for all of them here, or tune each agent in Configure.</div></div>
+          <Select value={lvl} onChange={(e) => setLvl(e.target.value as typeof lvl)} aria-label="Thinking level for all agents" style={{ width: 190 }}>{[['default', 'Default (high)'], ['low', 'Low'], ['medium', 'Medium'], ['high', 'High'], ['xhigh', 'XHigh']].map(([k, n]) => <option key={k} value={k}>{n}</option>)}</Select>
+          <Btn variant="primary" onClick={() => void applyAll()} disabled={busy || same}>{busy ? 'Applying…' : same ? 'Applied' : 'Apply to all'}</Btn>
+        </div>)}
       {loading ? <Loading /> : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(210px,1fr))', gap: 14 }}>
           {cards.map((d, i) => {

@@ -87,7 +87,7 @@ export async function chat(uid, { model = '', messages, temperature = 0.4, maxTo
       }
       const data = await res.json();
       const text = data?.choices?.[0]?.message?.content;
-      if (typeof text === 'string' && text.length) return { text, provider: a.name, model: a.model };
+      if (typeof text === 'string' && text.length) return { text: text.replace(/<think>[\s\S]*?<\/think>/g, '').trimStart(), provider: a.name, model: a.model };
       errors.push(`${a.name}: empty reply`);
     } catch (e) {
       errors.push(`${a.name}: ${e.name === 'TimeoutError' ? 'timed out' : e.message}`);
@@ -114,6 +114,26 @@ export async function fetchModels(uid, p) {
   return arr.map((m) => (typeof m === 'string' ? m : m.id ?? m.name)).filter(Boolean).map((s) => String(s).replace(/^models\//, ''));
 }
 
+
+/** Splits streamed content into answer text and <think>...</think> reasoning (some models inline their reasoning). */
+function thinkSplitter(onAnswer, onThink) {
+  let inThink = false, carry = '';
+  const hold = (s, tag) => { for (let n = Math.min(tag.length - 1, s.length); n > 0; n--) if (tag.startsWith(s.slice(-n))) return n; return 0; };
+  return {
+    push(chunk, final = false) {
+      let s = carry + chunk; carry = '';
+      for (;;) {
+        const tag = inThink ? '</think>' : '<think>'; const i = s.indexOf(tag);
+        if (i >= 0) { const before = s.slice(0, i); if (before) (inThink ? onThink : onAnswer)(before); s = s.slice(i + tag.length); inThink = !inThink; continue; }
+        const h = final ? 0 : hold(s, tag); const out = s.slice(0, s.length - h); carry = s.slice(s.length - h);
+        if (out) (inThink ? onThink : onAnswer)(out);
+        return;
+      }
+    },
+    flush() { this.push('', true); },
+  };
+}
+
 const noTools = new Map(); // provider id -> until (ms): rejected native tool calling, so the text protocol is used for a while
 const parseArgs = (raw) => { if (raw && typeof raw === 'object') return raw; try { const v = JSON.parse(raw || '{}'); return v && typeof v === 'object' ? v : {}; } catch { return { __bad: String(raw).slice(0, 200) }; } };
 
@@ -123,13 +143,14 @@ const parseArgs = (raw) => { if (raw && typeof raw === 'object') return raw; try
  *  otherwise `textMessages` (which carry the text tool protocol) are sent and `mode` comes back as 'text'.
  *  onStart({mode}) fires once, right before the first output arrives. Returns { text, toolCalls:[{id,name,args}], mode, provider, model }.
  */
-export async function chatStream(uid, { model = '', messages, textMessages, tools, temperature = 0.4, maxTokens = 2048, effort, fixedMax = false, signal } = {}, onDelta = () => {}, onStart = () => {}) {
+export async function chatStream(uid, { model = '', messages, textMessages, tools, temperature = 0.4, maxTokens = 2048, effort, fixedMax = false, signal } = {}, onDelta = () => {}, onStart = () => {}, onThink = () => {}) {
   const attempts = await plan(uid, model);
   if (!attempts.length) throw Object.assign(new Error('No LLM provider configured. Add one in Settings, or set NVIDIA_API_KEY / GEMINI_API_KEY on the API service.'), { statusCode: 424 });
   const errors = []; const t = Date.now();
   const live = attempts.filter((a) => (cooldown.get(a.id) ?? 0) < t);
   for (const a of live.length ? live : attempts) {
-    let got = false; let full = ''; const calls = [];
+    let got = false; let full = ''; let thought = ''; const calls = [];
+    const splitter = thinkSplitter((t) => { full += t; onDelta(t); }, (t) => { thought += t; onThink(t); });
     const begin = (mode) => { if (!got) { got = true; onStart({ mode }); } };
     try {
       let native = !!tools?.length && (noTools.get(a.id) ?? 0) < Date.now();
@@ -149,10 +170,11 @@ export async function chatStream(uid, { model = '', messages, textMessages, tool
         continue;
       }
       const mode = native ? 'native' : 'text';
-      const finish = () => ({ text: full, toolCalls: calls.filter((c) => c.name).map((c, i) => ({ id: c.id || `call_${Date.now().toString(36)}${i}`, name: c.name, args: parseArgs(c.args) })), mode, provider: a.name, model: a.model });
+      const finish = () => ({ text: full, thought, toolCalls: calls.filter((c) => c.name).map((c, i) => ({ id: c.id || `call_${Date.now().toString(36)}${i}`, name: c.name, args: parseArgs(c.args) })), mode, provider: a.name, model: a.model });
       if ((res.headers.get('content-type') || '').includes('application/json')) { // provider ignored stream:true
         const m = (await res.json())?.choices?.[0]?.message;
-        full = typeof m?.content === 'string' ? m.content : '';
+        full = typeof m?.content === 'string' ? m.content.replace(/<think>[\s\S]*?<\/think>/g, '').trimStart() : '';
+        thought = typeof m?.reasoning_content === 'string' ? m.reasoning_content : '';
         for (const tc of m?.tool_calls ?? []) calls.push({ id: tc.id, name: tc.function?.name, args: tc.function?.arguments });
         if (full || calls.length) { begin(mode); if (full) onDelta(full); return finish(); }
         errors.push(`${a.name}: empty reply`); continue;
@@ -170,7 +192,9 @@ export async function chatStream(uid, { model = '', messages, textMessages, tool
           if (data === '[DONE]') continue;
           let j; try { j = JSON.parse(data); } catch { continue; }
           const dl = j?.choices?.[0]?.delta;
-          if (typeof dl?.content === 'string' && dl.content) { begin(mode); full += dl.content; onDelta(dl.content); }
+          const rs = dl?.reasoning_content ?? dl?.reasoning; // models that reason in a separate field
+          if (typeof rs === 'string' && rs) { begin(mode); thought += rs; onThink(rs); }
+          if (typeof dl?.content === 'string' && dl.content) { begin(mode); splitter.push(dl.content); }
           for (const tc of dl?.tool_calls ?? []) {
             begin(mode);
             const slot = tc.index ?? (tc.id || tc.function?.name ? calls.length : Math.max(0, calls.length - 1));
@@ -181,6 +205,7 @@ export async function chatStream(uid, { model = '', messages, textMessages, tool
           }
         }
       }
+      splitter.flush();
       if (full || calls.some((c) => c?.name)) return finish();
       errors.push(`${a.name}: empty stream`);
     } catch (e) {

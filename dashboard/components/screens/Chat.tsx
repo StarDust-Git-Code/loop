@@ -20,6 +20,23 @@ type Mode = 'chat' | 'plan' | 'ultracode';
 const MODE_NOTE: Record<Mode, string> = { chat: 'Chat: talk it through, the Mate answers.', plan: 'Plan: the Mate plans the work and waits for you.', ultracode: 'Ultracode: long autonomous coding run with checkpoints and tests' };
 const Dot = ({ k, s = 42 }: { k: MateKey; s?: number }) => <img src={mateImg(k)} alt="" width={s} height={s} style={{ flex: 'none' }} />;  
 
+
+/** Collapsible reasoning. While the Mate is still thinking it is open and streaming; once the answer starts it folds away. */
+function Thought({ text, live, answering }: { text: string; live?: boolean; answering?: boolean }) {
+  const [manual, setManual] = useState<boolean | null>(null);
+  const thinking = !!live && !answering;
+  const open = manual ?? thinking;
+  return (
+    <div style={{ marginBottom: 8 }}>
+      <button type="button" onClick={() => setManual(!open)} aria-expanded={open} style={{ display: 'inline-flex', alignItems: 'center', gap: 8, border: 0, background: thinking ? '#ECE7FF' : '#F4F2FA', color: '#4F34D6', borderRadius: 999, padding: '5px 12px', fontSize: 12.5, fontWeight: 600 }}>
+        <span aria-hidden="true" style={{ display: 'inline-block', animation: thinking ? 'lm-pulse 1.4s ease-in-out infinite' : 'none', width: 8, height: 8, borderRadius: 99, background: '#6A4DF4' }} />
+        {thinking ? 'Thinking…' : 'Thought process'}<span aria-hidden="true" style={{ transition: 'transform .2s', transform: open ? 'rotate(180deg)' : 'none' }}>▾</span>
+      </button>
+      {open && <div style={{ marginTop: 8, borderLeft: '3px solid #CFC5FF', padding: '4px 0 4px 14px', fontSize: 13.5, lineHeight: 1.55, color: '#6B6572', whiteSpace: 'pre-wrap', maxHeight: 240, overflowY: 'auto', animation: 'lm-up .25s ease both' }}>{text}</div>}
+    </div>
+  );
+}
+
 export function Chat() {
   const router = useRouter();
   const toast = useToast();
@@ -33,7 +50,7 @@ export function Chat() {
   const [menu, setMenu] = useState(false);
   const [sel, setSel] = useState(0);
   const [list, setList] = useState(false);
-  const [live, setLive] = useState<{ cid: string; segs: { mate: MateKey; text: string; tools: string[]; doneId?: string }[] } | null>(null);
+  const [live, setLive] = useState<{ cid: string; segs: { mate: MateKey; text: string; thought: string; tools: string[]; doneId?: string }[] } | null>(null);
   const end = useRef<HTMLDivElement>(null);
   const fileIn = useRef<HTMLInputElement>(null);
   useEffect(() => { end.current?.scrollIntoView({ block: 'end', behavior: 'smooth' }); }, [conv?.messages.length, live?.segs.map((s) => s.text.length).join(',')]);
@@ -64,12 +81,13 @@ export function Chat() {
     setText(''); setMenu(false);
     if (conv.messages.length === 0) await update(conv.id, { title: t.replace(/^\/btw\s*/, '').slice(0, 42) });
     if (t.startsWith('/btw') || !api.capabilities.backend) { await api.conversations.send(conv.id, t, mate); return; }
-    setLive({ cid: conv.id, segs: [{ mate, text: '', tools: [] }] });
+    setLive({ cid: conv.id, segs: [{ mate, text: '', thought: '', tools: [] }] });
     const onEvent = (e: ChatEvent) => setLive((p) => {
       if (!p) return p;
       const segs = p.segs.map((s) => ({ ...s })); const cur = segs[segs.length - 1];
-      if (e.type === 'mate') { if (cur.doneId || cur.text || cur.tools.length) segs.push({ mate: e.mate, text: '', tools: [] }); else cur.mate = e.mate; }
+      if (e.type === 'mate') { if (cur.doneId || cur.text || cur.thought || cur.tools.length) segs.push({ mate: e.mate, text: '', thought: '', tools: [] }); else cur.mate = e.mate; }
       else if (e.type === 'delta') cur.text += e.text;
+      else if (e.type === 'think') cur.thought += e.text;
       else if (e.type === 'reset') cur.text = '';
       else if (e.type === 'tool') { cur.text = ''; cur.tools.push(e.name); }
       else if (e.type === 'done') cur.doneId = e.message.id;
@@ -150,15 +168,16 @@ export function Chat() {
               </div>
             ) : (
               <div key={m.id} style={{ display: 'flex', gap: 14, maxWidth: 820, animation: 'lm-pop .3s ease both' }}>
-                <Dot k={m.mate ?? mate} /><div style={{ flex: 1, minWidth: 0 }}><div style={{ fontSize: 13, fontWeight: 600, marginBottom: 6 }}>{mateName(m.mate ?? mate)}</div><div style={{ fontSize: 15, lineHeight: 1.6, color: '#2A2631', whiteSpace: 'pre-wrap' }}>{m.text}</div></div>
+                <Dot k={m.mate ?? mate} /><div style={{ flex: 1, minWidth: 0 }}><div style={{ fontSize: 13, fontWeight: 600, marginBottom: 6 }}>{mateName(m.mate ?? mate)}</div>{m.thought && <Thought text={m.thought} />}<div style={{ fontSize: 15, lineHeight: 1.6, color: '#2A2631', whiteSpace: 'pre-wrap' }}>{m.text}</div></div>
               </div>);
           })}
           {live && live.cid === conv.id && live.segs.filter((s) => !(s.doneId && conv.messages.some((m) => m.id === s.doneId))).map((s, i, arr) => (
             <div key={`${s.mate}-${i}`} style={{ display: 'flex', gap: 14, maxWidth: 820, animation: 'lm-pop .3s ease both' }}>
               <Dot k={s.mate} /><div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 6 }}>{mateName(s.mate)}</div>
+                {s.thought && <Thought text={s.thought} live answering={!!s.text} />}
                 {s.tools.length > 0 && <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 6 }}>{s.tools.map((n, j) => <span key={j} className="mono" style={{ fontSize: 11.5, background: '#ECE7FF', color: '#4F34D6', borderRadius: 7, padding: '3px 8px' }}>{TOOL_LABEL[n] ?? n}{j === s.tools.length - 1 && !s.text && !s.doneId ? '…' : ''}</span>)}</div>}
-                <div style={{ fontSize: 15, lineHeight: 1.6, color: '#2A2631', whiteSpace: 'pre-wrap' }}>{s.text || (s.tools.length === 0 && !s.doneId ? <span style={{ color: '#6B6572' }}>Thinking…</span> : null)}{!s.doneId && s.text && i === arr.length - 1 && <span style={{ opacity: .5 }}>▍</span>}</div>
+                <div style={{ fontSize: 15, lineHeight: 1.6, color: '#2A2631', whiteSpace: 'pre-wrap' }}>{s.text || (s.tools.length === 0 && !s.doneId && !s.thought ? <span style={{ color: '#6B6572' }}>Thinking…</span> : null)}{!s.doneId && s.text && i === arr.length - 1 && <span style={{ opacity: .5 }}>▍</span>}</div>
               </div>
             </div>))}
           <div ref={end} />

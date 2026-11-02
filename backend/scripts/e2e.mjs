@@ -62,6 +62,7 @@ const llm = http.createServer(async (req, res) => {
     else if (want.length) calls = want;
     if (calls && !native) { text = calls.map(([n, a]) => JSON.stringify({ tool: n, args: a })).join('\n</tool>\n') + '\n</tool>'; calls = null; } // sloppy text protocol on purpose
   }
+  if (b.stream && !calls && sys.includes('reasoning-test')) text = '<think>hidden thoughts here</think>Visible answer';
   if (b.stream) {
     res.writeHead(200, { 'content-type': 'text/event-stream' });
     const w = (delta) => res.write(`data: ${JSON.stringify({ choices: [{ delta }] })}\n\n`);
@@ -69,6 +70,7 @@ const llm = http.createServer(async (req, res) => {
       calls.forEach(([n, a], i) => { w({ tool_calls: [{ index: i, id: `call_${i}`, type: 'function', function: { name: n, arguments: '' } }] }); const j = JSON.stringify(a); w({ tool_calls: [{ index: i, function: { arguments: j.slice(0, 5) } }] }); w({ tool_calls: [{ index: i, function: { arguments: j.slice(5) } }] }); });
       return res.end('data: [DONE]\n\n');
     }
+    if (sys.includes('nativeR-marker')) { w({ reasoning_content: 'pondering ' }); w({ reasoning_content: 'deeply' }); }
     for (const part of text.match(/.{1,6}/gs) ?? []) { w({ content: part }); await wait(5); }
     return res.end('data: [DONE]\n\n');
   }
@@ -196,6 +198,18 @@ try {
   await sse(lc.id, 'hello once more'); assert.ok(llmSys.at(-1).includes('Thinking level: XHIGH'), 'per-chat thinking wins');
   const bad = (await call('PATCH', '/v1/settings', { maxOutputTokens: 5, defaultThinking: 'bogus' })).json; assert.equal(bad.maxOutputTokens, 64); assert.equal(bad.defaultThinking, 'medium');
   await call('PATCH', '/v1/settings', { maxOutputTokens: 0, maxContextTokens: 0, defaultThinking: 'high' });
+  /* streamed reasoning: inline <think> tags and a separate reasoning_content field */
+  await call('PATCH', '/v1/mates/spark', { instructions: 'reasoning-test' }); await call('PATCH', '/v1/mates/recall', { instructions: 'nativeR-marker' });
+  const sc = (await call('POST', '/v1/conversations', { title: 's', mate: 'spark', messages: [] })).json;
+  ev = await sse(sc.id, 'hello'); const J = (type, k = 'text') => ev.filter((e) => e.type === type).map((e) => e[k]).join('');
+  assert.equal(J('think'), 'hidden thoughts here'); assert.equal(J('delta'), 'Visible answer', 'think tags never leak into the answer');
+  assert.equal(ev.at(-1).message.thought, 'hidden thoughts here'); assert.equal(ev.at(-1).message.text, 'Visible answer');
+  const rc2 = (await call('POST', '/v1/conversations', { title: 'r2', mate: 'recall', messages: [] })).json;
+  ev = await sse(rc2.id, 'hello'); assert.equal(J('think'), 'pondering deeply'); assert.equal(ev.at(-1).message.thought, 'pondering deeply');
+  await call('PATCH', '/v1/settings', { showReasoning: false });
+  ev = await sse(sc.id, 'hello'); assert.equal(J('think'), '', 'reasoning can be switched off'); assert.equal(J('delta'), 'Visible answer');
+  await call('PATCH', '/v1/settings', { showReasoning: true });
+  await call('PATCH', '/v1/mates/spark', { instructions: '' }); await call('PATCH', '/v1/mates/recall', { instructions: '' });
   ev = await sse(conv.id, 'check both please');
   assert.equal(ev.filter((e) => e.type === 'tool').map((e) => e.name).sort().join(), 'runs_active,runs_failed', 'two calls in one turn');
   assert.equal(ev.filter((e) => e.type === 'tool_result').length, 2);

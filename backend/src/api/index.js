@@ -121,7 +121,7 @@ await app.register(async (v1) => {
 
     if (!stream) {
       for (const mate of responders) {
-        try { const r = await turn(mate, () => {}); messages.push({ id: rid(), role: 'mate', mate, text: r.text, at: now(), state: 'sent' }); }
+        try { const r = await turn(mate, () => {}); messages.push({ id: rid(), role: 'mate', mate, text: r.text, at: now(), state: 'sent', ...(r.thought ? { thought: r.thought.slice(0, 8000) } : {}) }); }
         catch (e) { messages.push({ id: rid(), role: 'system', text: `${nameOf(mate)} could not reply: ${e.message.slice(0, 300)}`, at: now(), state: 'error' }); }
       }
       await save();
@@ -142,7 +142,7 @@ await app.register(async (v1) => {
       if (gone) break;
       write({ type: 'mate', mate });
       let out;
-      try { const r = await turn(mate, write, ac.signal); out = { id: rid(), role: 'mate', mate, text: r.text, at: now(), state: 'sent' }; }
+      try { const r = await turn(mate, write, ac.signal); out = { id: rid(), role: 'mate', mate, text: r.text, at: now(), state: 'sent', ...(r.thought ? { thought: r.thought.slice(0, 8000) } : {}) }; }
       catch (e) { out = gone ? null : { id: rid(), role: 'system', text: `${nameOf(mate)} could not reply: ${String(e.message).slice(0, 300)}`, at: now(), state: 'error' }; }
       if (out) { messages.push(out); await save().catch(() => {}); write({ type: 'done', message: out }); }
     }

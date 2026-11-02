@@ -9,7 +9,7 @@ export const DEFAULT_SETTINGS = {
   guardContainer: true, guardPurchases: true, guardLog: true,
   chunkSize: 800, overlap: 100, topK: 5, hybrid: true, rerank: false, citeAlways: true, memoryScope: 'private',
   prefersShort: false, shareSchedule: false,
-  maxContextTokens: 0, maxOutputTokens: 0, defaultThinking: 'high', // developer options: 0 = automatic
+  maxContextTokens: 0, maxOutputTokens: 0, defaultThinking: 'high', showReasoning: true, // developer options: 0 = automatic
 };
 const ref = (uid) => userDoc(uid, 'meta', 'settings');
 

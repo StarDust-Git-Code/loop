@@ -98,6 +98,7 @@ function Dev({ st, set }: P) {
       </div>
       <div className={s.card}>
         <h2 style={{ margin: '0 0 6px', fontSize: 18 }}>Thinking</h2>
+        <Row label="Show reasoning" sub="Stream the model's thinking into the chat as a collapsible block and keep it with the message. Only models that share their reasoning show anything."><Toggle label="Show reasoning" checked={st.showReasoning} onChange={(v) => void set({ showReasoning: v })} /></Row>
         <Row label="Default thinking level" sub="Used when neither the chat nor the Mate sets one. Change it per chat from the composer, or per Mate in Agents.">
           <Tabs value={st.defaultThinking} onChange={(v) => void set({ defaultThinking: v })} options={[{ id: 'low', label: 'Low' }, { id: 'medium', label: 'Medium' }, { id: 'high', label: 'High' }, { id: 'xhigh', label: 'XHigh' }]} />
         </Row>

@@ -46,7 +46,7 @@ const DEFAULT_SETTINGS: SettingsData = {
   guardContainer: true, guardPurchases: true, guardLog: true,
   chunkSize: 800, overlap: 100, topK: 6, hybrid: true, rerank: true, citeAlways: true, memoryScope: 'shared',
   prefersShort: true, shareSchedule: false,
-  maxContextTokens: 0, maxOutputTokens: 0, defaultThinking: 'high',
+  maxContextTokens: 0, maxOutputTokens: 0, defaultThinking: 'high', showReasoning: true,
 };
 
 export function createLocalApi(): Api {
