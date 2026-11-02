@@ -107,14 +107,14 @@ export const MONITOR_TOOLS = {
     const cc = counts(15 * 60_000); if (cc.error > 5) add('MED', `${cc.error} errors in the console in the last 15 min.`);
     return f.length ? `Watchdog found ${f.length} issue(s):\n${f.join('\n')}` : `Watchdog: all clear at ${now()}.`;
   } },
-  task_done: { group: '*', desc: 'Mark a task as done (by id or by part of its title).', args: '{"match": "id or title text"}', run: async (c, a) => {
+  task_done: { group: '*', write: true, desc: 'Mark a task as done (by id or by part of its title).', args: '{"match": "id or title text"}', run: async (c, a) => {
     const q = String(a.match ?? '').toLowerCase(); if (!q) throw bad('match is required');
     const docs = (await userCol(c.uid, 'tasks').limit(300).get()).docs.filter((d) => d.id === a.match || d.data().title?.toLowerCase().includes(q) && d.data().status !== 'done');
     if (!docs.length) throw bad('No matching open task'); if (docs.length > 1) throw bad(`Several match: ${docs.slice(0, 5).map((d) => d.data().title).join(' | ')}`);
     const t = { ...docs[0].data(), status: 'done', updatedAt: now() }; await docs[0].ref.set(t); await hooks.tasks?.(c.uid, docs[0].id, t, 'set'); return `Marked "${t.title}" done.`;
   } },
   /* ---- control: only for Ops / Halo / Planner (see EXTRA_GROUPS) ---- */
-  run_stop: { group: 'Run Control', desc: 'Stop a running run.', args: '{"id": "run id"}', run: async (c, a) => { if (!hooks.control) throw bad('Run control is unavailable'); try { await hooks.control(c.uid, String(a.id), 'stop'); } catch (e) { throw bad(e.message); } return `Stop requested for ${a.id}.`; } },
-  run_pause: { group: 'Run Control', desc: 'Pause a running run between steps.', args: '{"id": "run id"}', run: async (c, a) => { try { await hooks.control(c.uid, String(a.id), 'pause'); } catch (e) { throw bad(e.message); } return `Paused ${a.id}.`; } },
-  run_resume: { group: 'Run Control', desc: 'Resume a paused run.', args: '{"id": "run id"}', run: async (c, a) => { try { await hooks.control(c.uid, String(a.id), 'resume'); } catch (e) { throw bad(e.message); } return `Resumed ${a.id}.`; } },
+  run_stop: { group: 'Run Control', write: true, desc: 'Stop a running run.', args: '{"id": "run id"}', run: async (c, a) => { if (!hooks.control) throw bad('Run control is unavailable'); try { await hooks.control(c.uid, String(a.id), 'stop'); } catch (e) { throw bad(e.message); } return `Stop requested for ${a.id}.`; } },
+  run_pause: { group: 'Run Control', write: true, desc: 'Pause a running run between steps.', args: '{"id": "run id"}', run: async (c, a) => { try { await hooks.control(c.uid, String(a.id), 'pause'); } catch (e) { throw bad(e.message); } return `Paused ${a.id}.`; } },
+  run_resume: { group: 'Run Control', write: true, desc: 'Resume a paused run.', args: '{"id": "run id"}', run: async (c, a) => { try { await hooks.control(c.uid, String(a.id), 'resume'); } catch (e) { throw bad(e.message); } return `Resumed ${a.id}.`; } },
 };

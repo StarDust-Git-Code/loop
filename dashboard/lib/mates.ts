@@ -5,6 +5,7 @@ export type MateDef = { key: MateKey; name: string; role: string; blurb: string;
 
 export const MATE_DEFS: MateDef[] = [
   { key: 'research', tint: '#ffe6e3', name: 'Research', role: 'Core', core: true, blurb: 'Finds information, analyses sources and keeps notes.', tools: ['Web Search', 'Browser', 'File System', 'Vector Search'] },
+  { key: 'flow', tint: '#dff5ec', name: 'Flow', role: 'Core', core: true, blurb: 'Designs and edits your workflow canvas from a plain-language goal.', tools: ['Workflows'] },
   { key: 'code', tint: '#e3ebff', name: 'Code', role: 'Core', core: true, blurb: 'Writes, reviews and runs code in a contained container.', tools: ['Terminal', 'File System', 'Code Interpreter'] },
   { key: 'planner', tint: '#f4ecdd', name: 'Planner', role: 'Core', core: true, blurb: 'Breaks big jobs into steps and decides who does each one.', tools: ['File System'] },
   { key: 'writer', tint: '#fff1c9', name: 'Writer', role: 'Core', core: true, blurb: 'Produces reports, scripts and drafts in your voice.', tools: ['File System'] },
@@ -26,11 +27,11 @@ export const MATE_DEFS: MateDef[] = [
 
 export const MATES = Object.fromEntries(MATE_DEFS.map((m) => [m.key, m])) as Record<MateKey, MateDef>;
 export const mateImg = (k: MateKey) => `/dots/${k}.png`;
-export const ALL_TOOLS = ['Web Search', 'Browser', 'File System', 'Terminal', 'Code Interpreter', 'Vector Search', 'Memory', 'Calendar', 'Run Control'];
+export const ALL_TOOLS = ['Web Search', 'Browser', 'File System', 'Terminal', 'Code Interpreter', 'Vector Search', 'Memory', 'Calendar', 'Run Control', 'Workflows'];
 
 /** Card header gradients, from the design boards. */
 export const GRAD: Record<MateKey, string> = {
-  research: 'linear-gradient(160deg,#FFE1DF,#FFF3EE)', code: 'linear-gradient(160deg,#DCE4FF,#F1F4FF)', planner: 'linear-gradient(160deg,#F1ECFA,#FBF6EA)',
+  research: 'linear-gradient(160deg,#FFE1DF,#FFF3EE)', code: 'linear-gradient(160deg,#DCE4FF,#F1F4FF)', planner: 'linear-gradient(160deg,#F1ECFA,#FBF6EA)', flow: 'linear-gradient(160deg,#CDEFE0,#EEF9F4)',
   writer: 'linear-gradient(160deg,#FFEDB0,#FFF8DF)', browser: 'linear-gradient(160deg,#D3F0D1,#EEF9EC)', ops: 'linear-gradient(160deg,#E3D9FF,#F5F1FF)',
   mimo: 'linear-gradient(160deg,#FFD9E6,#FFF0F5)', orbit: 'linear-gradient(160deg,#E4E6EA,#F5F6F8)', recall: 'linear-gradient(160deg,#C9F1F4,#EAFAFB)',
   spark: 'linear-gradient(160deg,#FFD9BF,#FFF1E6)', zen: 'linear-gradient(160deg,#D6E4FF,#F0F5FF)', luna: 'linear-gradient(160deg,#E3D9FF,#F5F1FF)',

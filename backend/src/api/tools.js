@@ -2,7 +2,8 @@
 // Tools are called through a JSON protocol (works with any model, no native function-calling needed).
 import dns from 'node:dns/promises';
 import net from 'node:net';
-import { env, now } from '../lib/env.js';
+import { env, now, uid as rid } from '../lib/env.js';
+import { MATE } from './mates.js';
 import { userCol } from './db.js';
 import { searchKnowledge } from './knowledge.js';
 import { putFile, artifactsReady } from './files.js';
@@ -68,9 +69,50 @@ const score = (text, terms) => { const low = text.toLowerCase(); return terms.re
 const termsOf = (q) => (String(q).toLowerCase().match(/[\p{L}\p{N}]{3,}/gu) ?? []).slice(0, 10);
 const iso = (v, label) => { const t = Date.parse(v); if (!Number.isFinite(t)) throw bad(`${label} must be an ISO date-time like 2026-11-05T09:00:00+05:30`); return new Date(t).toISOString(); };
 
+const NODE_TYPES = ['trigger', 'knowledge', 'input', 'mate', 'tool', 'condition', 'transform', 'filter', 'output'];
+const WF_TOOLS = {
+  workflow_list: { group: 'Workflows', desc: 'List the owner\'s workflows.', args: '{}', run: async (c) => {
+    const rows = (await userCol(c.uid, 'workflows').limit(100).get()).docs.map((d) => ({ id: d.id, ...d.data() }));
+    return rows.length ? rows.map((w) => `${w.id} | ${w.name} | ${(w.nodes ?? []).length} nodes | ${w.state ?? 'draft'}`).join('\n') : 'No workflows yet.';
+  } },
+  workflow_get: { group: 'Workflows', desc: 'Read one workflow: its nodes in order.', args: '{"id": "workflow id"}', run: async (c, a) => {
+    const w = (await userCol(c.uid, 'workflows').doc(String(a.id ?? '')).get()).data(); if (!w) throw bad('No such workflow');
+    const byId = new Map(w.nodes.map((n) => [n.id, n])); const next = new Map((w.edges ?? []).map((e) => [e.from, e.to]));
+    const hasIn = new Set((w.edges ?? []).map((e) => e.to)); let cur = w.nodes.find((n) => !hasIn.has(n.id)) ?? w.nodes[0]; const seen = new Set(); const out = [];
+    while (cur && !seen.has(cur.id)) { seen.add(cur.id); out.push(`${out.length + 1}. [${cur.type}${cur.mate ? `:${cur.mate}` : ''}] ${cur.label}${cur.config && Object.keys(cur.config).length ? ` ${JSON.stringify(cur.config)}` : ''}`); cur = byId.get(next.get(cur.id)); }
+    return `${w.name}: ${w.description ?? ''}\n${out.join('\n') || '(empty)'}`;
+  } },
+  workflow_save: { group: 'Workflows', write: true, desc: 'Create or replace a workflow on the Studio canvas as a chain of steps. Pass id to update an existing one, otherwise a new one is created.',
+    args: '{"id?": "existing workflow id to update", "name": "workflow name", "description?": "one-line purpose", "steps": "ordered steps"}',
+    props: { steps: { type: 'array', description: 'Ordered steps of the chain.', items: { type: 'object', properties: { type: { type: 'string', enum: NODE_TYPES }, mate: { type: 'string', description: 'Roster key for mate/tool steps, e.g. research, writer, code' }, label: { type: 'string', description: 'What this step does and outputs' }, config: { type: 'object', description: 'Optional, e.g. {"repo":"owner/name"} for code steps' } }, required: ['label'] } } },
+    run: async (c, a) => {
+      let steps = a.steps; if (typeof steps === 'string') { try { steps = JSON.parse(steps); } catch { throw bad('steps must be a JSON array'); } }
+      if (!Array.isArray(steps) || !steps.length) throw bad('steps must be a non-empty array'); if (steps.length > 12) throw bad('At most 12 steps');
+      const name = String(a.name ?? '').trim().slice(0, 80); if (!name) throw bad('name is required');
+      const cfgs = Object.fromEntries((await userCol(c.uid, 'mates').get()).docs.map((d) => [d.id, d.data()]));
+      const warn = []; const nodes = steps.map((s, i) => {
+        const type = NODE_TYPES.includes(s?.type) ? s.type : 'mate'; const label = String(s?.label ?? '').trim().slice(0, 100); if (!label) throw bad(`Step ${i + 1} needs a label`);
+        let mate = s?.mate && MATE[s.mate] ? s.mate : undefined;
+        if ((type === 'mate' || type === 'tool') && !mate) { if (s?.mate) throw bad(`Step ${i + 1}: unknown mate "${s.mate}"`); mate = type === 'tool' ? 'ops' : 'research'; warn.push(`Step ${i + 1} had no mate, using ${mate}.`); }
+        if (mate && cfgs[mate]?.enabled === false) warn.push(`${mate} is switched off; turn it on in Agents or the run will use Ops.`);
+        if (!['mate', 'tool', 'output', 'trigger'].includes(type)) warn.push(`Step ${i + 1} (${type}) is documentation only: the engine skips it.`);
+        const config = s?.config && typeof s.config === 'object' ? Object.fromEntries(Object.entries(s.config).slice(0, 6).map(([k, v]) => [k, String(v).slice(0, 200)])) : undefined;
+        return { id: rid(), type, label, ...(mate && (type === 'mate' || type === 'tool') ? { mate } : {}), x: 40 + i * 240, y: 80, ...(config && Object.keys(config).length ? { config } : {}) };
+      });
+      const edges = nodes.slice(1).map((n, i) => ({ id: rid(), from: nodes[i].id, to: n.id }));
+      const col = userCol(c.uid, 'workflows'); let ref = a.id ? col.doc(String(a.id)) : null; const prev = ref ? (await ref.get()).data() : null;
+      if (a.id && !prev) throw bad('No workflow with that id');
+      if (!ref) { const same = (await col.limit(100).get()).docs.find((d) => d.data().name?.toLowerCase() === name.toLowerCase()); ref = same ? same.ref : col.doc(); }
+      const ts = now(); const existing = prev ?? (await ref.get()).data();
+      await ref.set({ ...(existing ?? { createdAt: ts, state: 'draft' }), name, description: String(a.description ?? existing?.description ?? '').slice(0, 300), nodes, edges, updatedAt: ts });
+      return `Saved workflow "${name}" (${ref.id}) with ${nodes.length} steps.${warn.length ? `\nWarnings:\n- ${warn.join('\n- ')}` : ''}\nThe owner can open Studio to review it and press Test Run.`;
+    } },
+};
+
 /** name -> { group, desc, args, run(ctx, args) }  ctx = { uid, settings } */
 export const TOOLS = {
   ...MONITOR_TOOLS,
+  ...WF_TOOLS,
   web_search: { group: 'Web Search', net: true, desc: 'Search the web. Returns titles, URLs and snippets.', args: '{"query": "text"}', run: async (_c, a) => cap(await search(String(a.query ?? '').slice(0, 200))) },
   fetch_url: { group: 'Web Search', net: true, desc: 'Open a public web page and read its text.', args: '{"url": "https://..."}', run: async (_c, a) => {
     const res = await safeFetch(String(a.url));
@@ -84,7 +126,7 @@ export const TOOLS = {
     const hits = await searchKnowledge(c.uid, String(a.query ?? ''), c.settings?.topK || 5);
     return hits.length ? hits.map((h) => `[${h.name}] ${h.snippet}`).join('\n') : 'No matching knowledge.';
   } },
-  memory_save: { group: 'Memory', desc: 'Save something worth remembering about the owner or their work.', args: '{"text": "fact", "kind": "note|idea|decision|fact|journal|link"}', run: async (c, a) => {
+  memory_save: { group: 'Memory', write: true, desc: 'Save something worth remembering about the owner or their work.', args: '{"text": "fact", "kind?": "note|idea|decision|fact|journal|link"}', run: async (c, a) => {
     const text = String(a.text ?? '').trim().slice(0, 2000); if (!text) throw bad('text is required');
     const kind = ['note', 'idea', 'decision', 'fact', 'journal', 'link'].includes(a.kind) ? a.kind : 'note';
     const ref = userCol(c.uid, 'memories').doc(); const ts = now();
@@ -96,7 +138,7 @@ export const TOOLS = {
     const hits = snap.docs.map((d) => ({ ...d.data() })).map((m) => ({ m, s: terms.length ? score(m.text, terms) : 1 })).filter((x) => x.s).sort((x, y) => y.s - x.s).slice(0, 8);
     return hits.length ? hits.map((h) => `- (${h.m.kind}) ${h.m.text}`).join('\n') : 'No matching memories.';
   } },
-  calendar_add: { group: 'Calendar', desc: 'Add an event or a reminder to the calendar. Reminders ping the owner on Telegram at that time.', args: '{"title": "text", "start": "ISO date-time with offset", "end": "optional ISO", "kind": "event|reminder", "notes": "optional"}', run: async (c, a) => {
+  calendar_add: { group: 'Calendar', write: true, desc: 'Add an event or a reminder to the calendar. Reminders ping the owner on Telegram at that time.', args: '{"title": "text", "start": "ISO date-time with offset", "end": "optional ISO", "kind?": "event|reminder", "notes": "optional"}', run: async (c, a) => {
     const start = iso(a.start, 'start'); const end = a.end ? iso(a.end, 'end') : new Date(Date.parse(start) + 30 * 60_000).toISOString();
     const doc = { title: String(a.title ?? '').slice(0, 200) || 'Untitled', start, end, kind: a.kind === 'event' ? 'event' : 'reminder', notes: String(a.notes ?? '').slice(0, 1000), createdAt: now(), updatedAt: now() };
     const ref = userCol(c.uid, 'events').doc(); await ref.set(doc); await hooks.events?.(c.uid, ref.id, doc, 'set');
@@ -108,7 +150,7 @@ export const TOOLS = {
     const rows = snap.docs.map((d) => d.data()).filter((e) => { const t = Date.parse(e.start); return t >= from && t <= to; }).sort((x, y) => x.start.localeCompare(y.start)).slice(0, 25);
     return rows.length ? rows.map((e) => `- ${e.start} [${e.kind}] ${e.title}`).join('\n') : 'Nothing scheduled in that range.';
   } },
-  task_add: { group: 'Calendar', desc: 'Add a to-do task (optionally with a due date; due tasks ping on Telegram).', args: '{"title": "text", "detail": "optional", "dueAt": "optional ISO"}', run: async (c, a) => {
+  task_add: { group: 'Calendar', write: true, desc: 'Add a to-do task (optionally with a due date; due tasks ping on Telegram).', args: '{"title": "text", "detail": "optional", "dueAt": "optional ISO"}', run: async (c, a) => {
     const doc = { title: String(a.title ?? '').slice(0, 200) || 'Untitled', detail: String(a.detail ?? '').slice(0, 2000), status: 'todo', tags: [], ...(a.dueAt ? { dueAt: iso(a.dueAt, 'dueAt') } : {}), createdAt: now(), updatedAt: now() };
     const ref = userCol(c.uid, 'tasks').doc(); await ref.set(doc); await hooks.tasks?.(c.uid, ref.id, doc, 'set');
     return `Added task "${doc.title}".`;
@@ -118,7 +160,7 @@ export const TOOLS = {
     const rows = snap.docs.map((d) => d.data()).filter((t) => (a.status ? t.status === a.status : t.status !== 'done')).slice(0, 25);
     return rows.length ? rows.map((t) => `- [${t.status}] ${t.title}${t.dueAt ? ` (due ${t.dueAt})` : ''}`).join('\n') : 'No tasks.';
   } },
-  file_write: { group: 'File System', desc: 'Save a text file (Markdown, CSV, code...) to the owner\'s Drive.', args: '{"name": "report.md", "content": "text"}', needsApproval: true, run: async (c, a) => {
+  file_write: { group: 'File System', write: true, desc: 'Save a text file (Markdown, CSV, code...) to the owner\'s Drive.', args: '{"name": "report.md", "content": "text"}', needsApproval: true, run: async (c, a) => {
     if (!artifactsReady()) throw bad('File storage is not configured yet.');
     const name = String(a.name ?? 'file.txt').replace(/[\\/:*?"<>|]/g, '_').slice(0, 100); const content = String(a.content ?? '');
     const f = await putFile(c.uid, { name, mime: name.endsWith('.md') ? 'text/markdown' : 'text/plain', buf: Buffer.from(content, 'utf8'), source: 'run', runId: c.runId });

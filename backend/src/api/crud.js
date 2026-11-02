@@ -68,11 +68,14 @@ export function registerCrud(app, { hooks = {} } = {}) {
     app.get(`/v1/${path}`, async (req) => {
       const uid = req.user.uid;
       let snap = await col(uid).limit(500).get();
-      if (def.seed && snap.empty) {
-        const ts = now(); const b = userCol(uid, def.col).firestore.batch();
-        for (const m of MATE_DEFS) b.set(col(uid).doc(m.key), defaultConfig(m, ts));
-        await b.commit();
-        snap = await col(uid).limit(500).get();
+      if (def.seed) { // seed the roster, and top it up when new Mates are added later
+        const have = new Set(snap.docs.map((d) => d.id)); const missing = MATE_DEFS.filter((m) => !have.has(m.key));
+        if (missing.length) {
+          const ts = now(); const b = userCol(uid, def.col).firestore.batch();
+          for (const m of missing) b.set(col(uid).doc(m.key), defaultConfig(m, ts));
+          await b.commit();
+          snap = await col(uid).limit(500).get();
+        }
       }
       return snap.docs.map((d) => sealOut(def, { id: d.id, ...d.data() }));
     });

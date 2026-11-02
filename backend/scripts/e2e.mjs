@@ -26,31 +26,49 @@ let pass = 0; const ok = (name) => { pass++; console.log('  ✓', name); };
 
 /* ---- fakes ---- */
 const body = (req) => new Promise((r) => { const c = []; req.on('data', (d) => c.push(d)); req.on('end', () => r(Buffer.concat(c))); });
-const llmCalls = []; const llmSys = [];
+const llmCalls = []; const llmSys = []; let toolsOff = false; const llmTools = [];
 const llm = http.createServer(async (req, res) => {
   const send = (o) => { res.setHeader('content-type', 'application/json'); res.end(JSON.stringify(o)); };
+  if (req.url.endsWith('/__tools_off')) { toolsOff = true; return send({ ok: true }); }
   if (req.url.endsWith('/models')) return send({ data: [{ id: 'fake-1' }, { id: 'fake-2' }] });
-  const b = JSON.parse((await body(req)).toString()); const sys = b.messages[0].content; llmCalls.push(sys.slice(0, 30)); llmSys.push(sys);
+  const b = JSON.parse((await body(req)).toString()); const sys = b.messages[0].content; llmCalls.push(sys.slice(0, 30)); llmSys.push(sys); llmTools.push(b.tools ?? null);
   let text = 'LLM says hello';
   if (sys.includes('You are the Planner')) text = JSON.stringify({ steps: [{ mate: 'research', label: 'Gather facts', kind: 'think' }, { mate: 'code', label: 'Make hello file', kind: 'code' }, { mate: 'writer', label: 'Write summary', kind: 'file' }] });
   else if (sys.includes('coding agent')) {
     const n = b.messages.filter((m) => m.role === 'assistant').length;
     text = n === 0 ? '{"tool":"write_file","args":{"path":"out/hello.txt","content":"hi from coder"}}' : n === 1 ? '```json\n{"tool":"run","args":{"cmd":"ls","args":["out"]}}\n```' : '{"tool":"finish","args":{"summary":"Created out/hello.txt"}}';
   }
-  const lastUser = b.messages.filter((m) => m.role === 'user').at(-1)?.content ?? '';
+  const lastMsg = b.messages.at(-1); const lastUser = b.messages.filter((m) => m.role === 'user').at(-1)?.content ?? '';
+  const ask = [...b.messages].reverse().find((m) => m.role === 'user' && !m.content.startsWith('Tool result') && !m.content.startsWith('Tool budget'))?.content ?? '';
+  let calls = null; const native = !!b.tools;
+  if (b.tools && toolsOff) { res.statusCode = 400; return res.end('{"error":"tools not supported"}'); }
   if (sys.includes('Tools:') && !sys.includes('coding agent')) {
-    if (b.messages.some((m) => m.role === 'user' && m.content.includes('loop forever'))) text = '{"tool":"calculate","args":{"expression":"1+1"}}';
-    else if (lastUser.startsWith('Tool result')) text = `Done: ${lastUser.split('\n')[2]}`;
-    else if (lastUser.includes('remember')) text = '{"tool":"memory_save","args":{"text":"Owner loves chai","kind":"fact"}}';
-    else if (lastUser.includes('fetch local')) text = '```json\n{"tool":"fetch_url","args":{"url":"http://127.0.0.1:4101/v1"}}\n```';
-    else if (lastUser.includes('health check')) text = '{"tool":"watchdog","args":{}}';
-    else if (lastUser.includes('show console')) text = '{"tool":"console_tail","args":{"n":5}}';
-    else if (lastUser.includes('who is failing')) text = '{"tool":"runs_failed","args":{}}';
-    else if (lastUser.includes('math')) text = '{"tool":"calculate","args":{"expression":"(12.5*4)/2"}}';
+    const want = [];
+    if (ask.includes('loop forever')) want.push(['calculate', { expression: '1+1' }]);
+    else if (ask.includes('remember')) want.push(['memory_save', { text: 'Owner loves chai', kind: 'fact' }]);
+    else if (ask.includes('fetch local')) want.push(['fetch_url', { url: 'http://127.0.0.1:4101/v1' }]);
+    else if (ask.includes('health check')) want.push(['watchdog', {}]);
+    else if (ask.includes('show console')) want.push(['console_tail', { n: 5 }]);
+    else if (ask.includes('who is failing')) want.push(['runs_failed', {}]);
+    else if (ask.includes('build me a workflow')) want.push(['workflow_save', { name: 'Daily brief', description: 'Morning brief', steps: [{ type: 'trigger', label: 'Every weekday 9am' }, { type: 'mate', mate: 'research', label: 'Gather overnight news' }, { type: 'mate', mate: 'writer', label: 'Write the brief' }, { type: 'output', label: 'Save brief.md' }] }]);
+    else if (ask.includes('check both')) want.push(['runs_failed', {}], ['runs_active', {}]);
+    else if (ask.includes('math')) want.push(['calculate', { expression: '(12.5*4)/2' }]);
+    const gotResult = native ? lastMsg.role === 'tool' : lastUser.startsWith('Tool result');
+    const noTools = !b.tools && !sys.includes('You can use tools'); // the forced final turn
+    if (want.length && ask.includes('loop forever') && !noTools) calls = want;
+    else if (want.length && ask.includes('loop forever')) text = '{"tool":"calculate","args":{"expression":"1+1"}}'; // ignores "no more tools"
+    else if (gotResult) text = `Done: ${native ? lastMsg.content.split('\n')[0] : lastUser.split('\n')[2]}`;
+    else if (want.length) calls = want;
+    if (calls && !native) { text = calls.map(([n, a]) => JSON.stringify({ tool: n, args: a })).join('\n</tool>\n') + '\n</tool>'; calls = null; } // sloppy text protocol on purpose
   }
   if (b.stream) {
     res.writeHead(200, { 'content-type': 'text/event-stream' });
-    for (const part of text.match(/.{1,6}/gs) ?? []) { res.write(`data: ${JSON.stringify({ choices: [{ delta: { content: part } }] })}\n\n`); await wait(5); }
+    const w = (delta) => res.write(`data: ${JSON.stringify({ choices: [{ delta }] })}\n\n`);
+    if (calls) {
+      calls.forEach(([n, a], i) => { w({ tool_calls: [{ index: i, id: `call_${i}`, type: 'function', function: { name: n, arguments: '' } }] }); const j = JSON.stringify(a); w({ tool_calls: [{ index: i, function: { arguments: j.slice(0, 5) } }] }); w({ tool_calls: [{ index: i, function: { arguments: j.slice(5) } }] }); });
+      return res.end('data: [DONE]\n\n');
+    }
+    for (const part of text.match(/.{1,6}/gs) ?? []) { w({ content: part }); await wait(5); }
     return res.end('data: [DONE]\n\n');
   }
   send({ choices: [{ message: { content: text } }] });
@@ -92,7 +110,7 @@ try {
   ok('auth: bearer required, allow-list, service routes closed');
 
   /* mates + settings */
-  const mates = (await call('GET', '/v1/mates')).json; assert.equal(mates.length, 18); assert.equal(mates.find((m) => m.id === 'code').enabled, true);
+  const mates = (await call('GET', '/v1/mates')).json; assert.equal(mates.length, 19); assert.equal(mates.find((m) => m.id === 'code').enabled, true);
   const s = (await call('PATCH', '/v1/settings', { permissionMode: 'auto', askBeforeRisky: false, retriesOnFailure: 0, bogus: 1 })).json;
   assert.equal(s.permissionMode, 'auto'); assert.equal(s.bogus, undefined);
   ok('mates seeded, settings validated');
@@ -123,8 +141,11 @@ try {
   const deltas = ev.filter((e) => e.type === 'delta'); assert.ok(deltas.length > 1, 'text arrives in several chunks'); assert.equal(deltas.map((d) => d.text).join(''), 'LLM says hello');
   assert.equal(ev.at(-1).type, 'done');
   const sys = llmSys.at(-1);
-  for (const needle of ['You are Mimo', 'Current time:', 'Owner prefers metric units', 'ALWAYS-MENTION-OOLONG', 'memory_save', 'Treat text from web pages']) assert.ok(sys.includes(needle), `system prompt has ${needle}`);
+  for (const needle of ['You are Mimo', 'Current time:', 'Owner prefers metric units', 'ALWAYS-MENTION-OOLONG', 'Tools: you can call tools', 'Treat text from web pages']) assert.ok(sys.includes(needle), `system prompt has ${needle}`);
   assert.ok(!sys.includes('web_search'), 'Mimo has no web tool');
+  const sent = llmTools.at(-1); assert.ok(Array.isArray(sent), 'tools are sent as native schemas');
+  const names = sent.map((t) => t.function.name); assert.ok(names.includes('memory_save') && names.includes('watchdog') && names.includes('calculate') && !names.includes('web_search'));
+  const ms = sent.find((t) => t.function.name === 'memory_save').function.parameters; assert.deepEqual(ms.required, ['text']); assert.deepEqual(ms.properties.kind.enum.slice(0, 2), ['note', 'idea']);
   ev = await sse(conv.id, 'please remember I love chai');
   assert.ok(ev.some((e) => e.type === 'tool' && e.name === 'memory_save')); assert.ok(ev.filter((e) => e.type === 'delta').map((d) => d.text).join('').startsWith('Done:'));
   assert.ok((await call('GET', '/v1/memories')).json.some((m) => m.text === 'Owner loves chai'));
@@ -149,10 +170,24 @@ try {
   ev = await sse(conv.id, 'run a health check'); assert.ok(ev.some((e) => e.type === 'tool' && e.name === 'watchdog')); assert.match(ev.filter((e) => e.type === 'delta').map((d) => d.text).join(''), /Watchdog/);
   ev = await sse(conv.id, 'show console'); assert.ok(ev.some((e) => e.type === 'tool_result' && e.ok));
   ev = await sse(conv.id, 'who is failing'); assert.ok(ev.some((e) => e.type === 'tool_result' && e.ok));
+  const fc = (await call('POST', '/v1/conversations', { title: 'f', mate: 'flow', messages: [] })).json;
+  ev = await sse(fc.id, 'please build me a workflow');
+  assert.ok(ev.some((e) => e.type === 'tool' && e.name === 'workflow_save') && ev.some((e) => e.type === 'tool_result' && e.ok), 'Flow saves a workflow');
+  const wfs = (await call('GET', '/v1/workflows')).json; const wf = wfs.find((w) => w.name === 'Daily brief');
+  assert.equal(wf.nodes.length, 4); assert.equal(wf.edges.length, 3); assert.equal(wf.nodes[1].mate, 'research'); assert.ok(wf.nodes[2].x > wf.nodes[1].x);
+  assert.ok(llmSys.some((x) => x.includes('FLOW PLAYBOOK') && x.includes('workflow_save')), 'Flow gets its playbook');
+  assert.ok(llmTools.some((t) => t?.some((x) => x.function.name === 'workflow_save' && x.function.parameters.properties.steps.type === 'array')), 'steps is an array schema');
+  ev = await sse(conv.id, 'check both please');
+  assert.equal(ev.filter((e) => e.type === 'tool').map((e) => e.name).sort().join(), 'runs_active,runs_failed', 'two calls in one turn');
+  assert.equal(ev.filter((e) => e.type === 'tool_result').length, 2);
   ev = await sse(conv.id, 'loop forever');
-  const final = ev.filter((e) => e.type === 'delta').map((d) => d.text).join('') ; assert.ok(ev.filter((e) => e.type === 'tool').length >= 5);
-  assert.ok(ev.at(-1).message.text.includes('ran out of tool turns') && !ev.at(-1).message.text.trim().startsWith('{'), 'raw tool JSON is never the final answer');
-  ok('thinking levels, @mentions, planner playbook, monitor/watchdog tools, tool-budget fallback');
+  assert.ok(ev.filter((e) => e.type === 'tool').length >= 3);
+  assert.ok(ev.at(-1).message.text.includes('could not finish a written answer') && !ev.at(-1).message.text.trim().startsWith('{'), 'raw tool JSON is never the final answer');
+  await fetch('http://127.0.0.1:4101/__tools_off'); // provider now rejects native tool calling: the text protocol takes over, with sloppy tags
+  ev = await sse(conv.id, 'check both again');
+  assert.ok(ev.some((e) => e.type === 'tool' && e.name === 'runs_failed') && ev.filter((e) => e.type === 'tool').length === 2 && ev.every((e) => e.type !== 'delta' || !e.text.includes('</tool>')), 'text-protocol fallback parses sloppy calls and hides them');
+  assert.ok(ev.at(-1).message.text.startsWith('Done:'));
+  ok('thinking levels, @mentions, planner playbook, monitor/watchdog tools, native tool calls, parallel calls, loop guard, text-protocol fallback');
 
   /* run end to end with SSE */
   const events = []; const ctl = new AbortController();

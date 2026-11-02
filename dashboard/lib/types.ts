@@ -3,7 +3,7 @@ export type Timestamps = { createdAt: string; updatedAt: string };
 export type Entity<T> = T & { id: ID } & Timestamps;
 
 export type MateKey =
-  | 'planner' | 'research' | 'code' | 'writer' | 'browser' | 'ops' | 'mimo' | 'orbit' | 'recall'
+  | 'planner' | 'flow' | 'research' | 'code' | 'writer' | 'browser' | 'ops' | 'mimo' | 'orbit' | 'recall'
   | 'spark' | 'zen' | 'luna' | 'scout' | 'chef' | 'tune' | 'data' | 'byte' | 'halo';
 
 /* ---------- workflows ---------- */

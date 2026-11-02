@@ -13,7 +13,7 @@ type Filter = 'all' | 'Core' | 'Personal' | 'Creative' | 'Dev';
 type Tab = 'config' | 'tools' | 'memory';
 const TOOL_TEXT: Record<string, string> = {
   'Web Search': 'Search the web and read results', Browser: 'Open pages, click and fill forms', 'File System': 'Read and write files in the workspace', Terminal: 'Run commands in a sandbox',
-  'Code Interpreter': 'Run code to analyse data', 'Vector Search': 'Search your Knowledge by meaning', Memory: 'Read and write My Space memories', Calendar: 'Read and add Schedule events', 'Run Control': 'Stop, pause and resume runs (Ops, Halo and Planner always have it)',
+  'Code Interpreter': 'Run code to analyse data', 'Vector Search': 'Search your Knowledge by meaning', Memory: 'Read and write My Space memories', Calendar: 'Read and add Schedule events', Workflows: 'Create and edit workflows on the Studio canvas', 'Run Control': 'Stop, pause and resume runs (Ops, Halo and Planner always have it)',
 };
 
 export function Agents() {

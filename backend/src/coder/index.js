@@ -6,6 +6,7 @@ import { mkdir, readdir, readFile, writeFile, rm, stat } from 'node:fs/promises'
 import { dirname, join, resolve, relative, sep } from 'node:path';
 import { env, need, num, sleep } from '../lib/env.js';
 import { svcJson } from '../lib/svc.js';
+import { parseTextCalls } from '../api/toolcalls.js';
 import { createServer, svcOnly, listen } from '../lib/server.js';
 
 for (const k of ['SERVICE_SECRET', 'API_URL']) need(k);
@@ -73,11 +74,7 @@ Each turn reply with ONE JSON object and nothing else:
 {"tool":"finish","args":{"summary":"what you did and anything left"}}
 Rules: look before you change; write whole files; keep changes small; run tests if they exist; never print secrets; the machine is tiny (512 MB), so avoid heavy installs/builds. Call finish when done or when blocked.`;
 
-const parseTurn = (text) => {
-  const t = text.replace(/```(?:json)?/gi, '').trim(); const s = t.indexOf('{'), e = t.lastIndexOf('}');
-  if (s < 0 || e <= s) return null;
-  try { const j = JSON.parse(t.slice(s, e + 1)); return j && typeof j.tool === 'string' ? j : null; } catch { return null; }
-};
+const parseTurn = (text) => { const c = parseTextCalls(text)[0]; return c ? { tool: c.name, args: c.args } : null; }; // tolerant: fences, stray tags, several calls (the first runs)
 
 /* ---------- reporting back to the API ---------- */
 async function report(job, body) {

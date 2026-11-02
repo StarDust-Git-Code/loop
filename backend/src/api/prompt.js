@@ -1,5 +1,5 @@
 // Dynamic system prompt: rebuilt on every turn from the Mate, the owner's settings, memories, skills and knowledge.
-import { MATE, PLANNER_GUIDE } from './mates.js';
+import { MATE, PLANNER_GUIDE, FLOW_GUIDE } from './mates.js';
 import { effortOf } from './llm.js';
 import { userCol } from './db.js';
 import { searchKnowledge } from './knowledge.js';
@@ -30,13 +30,15 @@ async function skillsFor(uid, mateKey) {
 
 export function toolBlock(tools) {
   if (!tools.length) return '';
-  return `You can use tools. To use one, reply with ONLY a JSON object and nothing else:\n{"tool": "<name>", "args": {...}}\nYou will then get the result and can continue. Use at most one tool per reply. When you have what you need, answer normally (no JSON). Never invent tool results.\n\nTools:\n${tools.map((t) => `- ${t.name} ${t.args} - ${t.desc}`).join('\n')}`;
+  return `Tools: you can call tools through the tool-calling interface. Work like a careful engineer:
+- Use a tool only when it actually helps; answer directly when you already know.
+- When several lookups are independent, request them together in one turn.
+- Never repeat a call you already made; read the result before deciding the next step.
+- If a tool fails, say what failed and try another approach or ask the owner.
+- Ground claims in tool results and cite them. Never invent results or pretend to have run something.
+- Write actions (saving, scheduling, stopping runs) only when the owner asked for them.`;
 }
 
-/**
- * buildSystem: layered, size-capped.
- *  mode: 'chat' | 'plan' | 'ultracode'
- */
 export const THINK_TEXT = {
   low: 'Thinking level: LOW. Answer directly and quickly. Do not over-explain.',
   medium: 'Thinking level: MEDIUM. Think briefly before answering and sanity-check the result.',
@@ -56,9 +58,9 @@ export async function buildSystem({ uid, mateKey, cfg = {}, mode = 'chat', query
   if (style.length) parts.push(style.join(' '));
   parts.push(THINK_TEXT[effortOf(cfg.thinking)]);
   if (others.length) parts.push(`This is a shared chat. Other Mates present: ${others.join(', ')}. The owner can @mention any of them; lines shown as "[Name]: ..." are their words. Answer only for yourself and do not repeat what they said.`);
-  if (mateKey === 'planner') {
+  if (mateKey === 'planner' || mateKey === 'flow') {
     const cfgs = Object.fromEntries((await userCol(uid, 'mates').get().catch(() => ({ docs: [] }))).docs.map((d) => [d.id, d.data()]));
-    parts.push(PLANNER_GUIDE(cfgs));
+    parts.push(mateKey === 'flow' ? FLOW_GUIDE(cfgs) : PLANNER_GUIDE(cfgs));
   }
   if (mode === 'plan') parts.push('Mode: PLAN. Do not carry out the work. Reply with a short numbered plan: steps, who/what does each, and what could go wrong.');
   if (mode === 'ultracode') parts.push('Mode: ULTRACODE. Treat this as a careful engineering task: restate the goal, list assumptions, then give complete, working code with brief notes on how to run and test it.');

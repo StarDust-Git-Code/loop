@@ -114,36 +114,47 @@ export async function fetchModels(uid, p) {
   return arr.map((m) => (typeof m === 'string' ? m : m.id ?? m.name)).filter(Boolean).map((s) => String(s).replace(/^models\//, ''));
 }
 
+const noTools = new Map(); // provider id -> until (ms): rejected native tool calling, so the text protocol is used for a while
+const parseArgs = (raw) => { if (raw && typeof raw === 'object') return raw; try { const v = JSON.parse(raw || '{}'); return v && typeof v === 'object' ? v : {}; } catch { return { __bad: String(raw).slice(0, 200) }; } };
+
 /**
- * Streaming completion with failover. Fails over to the next provider only until the first token arrives;
- * after that an error is thrown (a half-written answer cannot be restarted elsewhere).
- * Reasoning tokens (reasoning_content) are ignored; only the answer is streamed to onDelta.
+ * Streaming completion with failover.
+ *  tools: OpenAI-style [{type:'function',function:{name,description,parameters}}]. Used natively when the provider accepts them,
+ *  otherwise `textMessages` (which carry the text tool protocol) are sent and `mode` comes back as 'text'.
+ *  onStart({mode}) fires once, right before the first output arrives. Returns { text, toolCalls:[{id,name,args}], mode, provider, model }.
  */
-export async function chatStream(uid, { model = '', messages, temperature = 0.4, maxTokens = 2048, effort, signal } = {}, onDelta = () => {}) {
+export async function chatStream(uid, { model = '', messages, textMessages, tools, temperature = 0.4, maxTokens = 2048, effort, signal } = {}, onDelta = () => {}, onStart = () => {}) {
   const attempts = await plan(uid, model);
   if (!attempts.length) throw Object.assign(new Error('No LLM provider configured. Add one in Settings, or set NVIDIA_API_KEY / GEMINI_API_KEY on the API service.'), { statusCode: 424 });
   const errors = []; const t = Date.now();
   const live = attempts.filter((a) => (cooldown.get(a.id) ?? 0) < t);
   for (const a of live.length ? live : attempts) {
-    let got = false; let full = '';
+    let got = false; let full = ''; const calls = [];
+    const begin = (mode) => { if (!got) { got = true; onStart({ mode }); } };
     try {
+      let native = !!tools?.length && (noTools.get(a.id) ?? 0) < Date.now();
       const ex = extrasFor(a, effort);
-      const send = (extra) => fetch(`${a.baseUrl}/chat/completions`, {
+      const send = (extra, withTools) => fetch(`${a.baseUrl}/chat/completions`, {
         method: 'POST', headers: { 'content-type': 'application/json', ...authHeaders(a.baseUrl, a.key) },
-        body: JSON.stringify({ model: a.model, messages, temperature, max_tokens: effort ? Math.min(8000, Math.round(maxTokens * (TOKEN_MULT[effort] ?? 1))) : maxTokens, stream: true, ...(extra ?? {}) }),
+        body: JSON.stringify({ model: a.model, messages: withTools ? messages : (textMessages ?? messages), temperature, max_tokens: effort ? Math.min(8000, Math.round(maxTokens * (TOKEN_MULT[effort] ?? 1))) : maxTokens, stream: true, ...(withTools ? { tools, tool_choice: 'auto' } : {}), ...(extra ?? {}) }),
         signal: signal ?? AbortSignal.timeout(num('LLM_STREAM_TIMEOUT_MS', 180_000)),
       });
-      let res = await send(ex);
-      if ((res.status === 400 || res.status === 422) && ex) { noExtras.add(a.id); res = await send(null); }
+      let res = await send(ex, native);
+      if ((res.status === 400 || res.status === 422) && ex) { noExtras.add(a.id); res = await send(null, native); }
+      if ((res.status === 400 || res.status === 422) && native) { noTools.set(a.id, Date.now() + 30 * 60_000); native = false; res = await send(null, false); }
       if (!res.ok || !res.body) {
         errors.push(`${a.name}: ${res.status} ${(await res.text().catch(() => '')).slice(0, 160)}`);
         if (res.status === 429 || res.status >= 500) cooldown.set(a.id, Date.now() + 60_000);
         if (res.status === 401 || res.status === 403) cooldown.set(a.id, Date.now() + 10 * 60_000);
         continue;
       }
+      const mode = native ? 'native' : 'text';
+      const finish = () => ({ text: full, toolCalls: calls.filter((c) => c.name).map((c, i) => ({ id: c.id || `call_${Date.now().toString(36)}${i}`, name: c.name, args: parseArgs(c.args) })), mode, provider: a.name, model: a.model });
       if ((res.headers.get('content-type') || '').includes('application/json')) { // provider ignored stream:true
-        const text = (await res.json())?.choices?.[0]?.message?.content;
-        if (typeof text === 'string' && text) { onDelta(text); return { text, provider: a.name, model: a.model }; }
+        const m = (await res.json())?.choices?.[0]?.message;
+        full = typeof m?.content === 'string' ? m.content : '';
+        for (const tc of m?.tool_calls ?? []) calls.push({ id: tc.id, name: tc.function?.name, args: tc.function?.arguments });
+        if (full || calls.length) { begin(mode); if (full) onDelta(full); return finish(); }
         errors.push(`${a.name}: empty reply`); continue;
       }
       const reader = res.body.getReader(); const dec = new TextDecoder(); let buf = '';
@@ -158,11 +169,19 @@ export async function chatStream(uid, { model = '', messages, temperature = 0.4,
           const data = line.slice(5).trim();
           if (data === '[DONE]') continue;
           let j; try { j = JSON.parse(data); } catch { continue; }
-          const d = j?.choices?.[0]?.delta?.content;
-          if (typeof d === 'string' && d) { got = true; full += d; onDelta(d); }
+          const dl = j?.choices?.[0]?.delta;
+          if (typeof dl?.content === 'string' && dl.content) { begin(mode); full += dl.content; onDelta(dl.content); }
+          for (const tc of dl?.tool_calls ?? []) {
+            begin(mode);
+            const slot = tc.index ?? (tc.id || tc.function?.name ? calls.length : Math.max(0, calls.length - 1));
+            const c = (calls[slot] ??= { id: '', name: '', args: '' });
+            if (tc.id) c.id = tc.id;
+            if (tc.function?.name) c.name = tc.function.name;
+            if (typeof tc.function?.arguments === 'string') c.args += tc.function.arguments;
+          }
         }
       }
-      if (full) return { text: full, provider: a.name, model: a.model };
+      if (full || calls.some((c) => c?.name)) return finish();
       errors.push(`${a.name}: empty stream`);
     } catch (e) {
       if (got) throw Object.assign(new Error(`The answer was cut off: ${e.message}`), { statusCode: 502 });

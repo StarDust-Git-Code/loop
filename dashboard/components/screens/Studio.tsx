@@ -1,5 +1,4 @@
 'use client';
-import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 import { api } from '../../lib/api';
@@ -38,6 +37,10 @@ export function Studio() {
   useEffect(() => { if (item) { setName(item.name); setNodes(item.nodes); setEdges(item.edges); setDirty(false); } }, [item]);
   /* eslint-enable react-hooks/set-state-in-effect */
   const touch = () => setDirty(true);
+  const buildWithFlow = async () => {
+    const c = await api.conversations.create({ title: `Build: ${name}`.slice(0, 42), mate: 'flow', messages: [], mode: 'chat', members: [] });
+    router.push(`/chat?c=${c.id}&draft=${encodeURIComponent(`Build my workflow "${name}"${id ? ` (id ${id})` : ''}: `)}`);
+  };
   const patch = (nid: string, p: Partial<FlowNode>) => { setNodes((a) => a.map((n) => (n.id === nid ? { ...n, ...p } : n))); touch(); };
   const cfg = (n: FlowNode, k: string, v: string) => patch(n.id, { config: { ...n.config, [k]: v } });
 
@@ -84,7 +87,7 @@ export function Studio() {
         <div className={s.canvasCol}>
           <div className={s.bar}>
             <Tabs value={top} onChange={(v) => setTop(v)} options={[{ id: 'canvas', label: 'Canvas' }, { id: 'runs', label: 'Runs' }, { id: 'logs', label: 'Logs' }]} />
-            <Link href="/chat" style={{ fontSize: 13.5, color: '#6B6572' }}>Chat →</Link>
+            <Btn onClick={() => void buildWithFlow()}>✨ Build with Flow</Btn>
             <input value={name} onChange={(e) => { setName(e.target.value); touch(); }} aria-label="Workflow name" style={{ flex: 1, minWidth: 120, height: 40, border: '1px solid transparent', borderRadius: 10, padding: '0 10px', font: 'inherit', fontWeight: 700, fontSize: 15, background: 'transparent' }} onFocus={(e) => (e.target.style.borderColor = 'rgba(27,24,34,.17)')} onBlur={(e) => (e.target.style.borderColor = 'transparent')} />
             <div className={s.zoom}><button aria-label="Zoom out" onClick={() => setZoom((z) => Math.max(0.5, +(z - 0.1).toFixed(1)))}>−</button><span>{Math.round(zoom * 100)}%</span><button aria-label="Zoom in" onClick={() => setZoom((z) => Math.min(1.5, +(z + 0.1).toFixed(1)))}>+</button></div>
             <Btn onClick={() => void save().then(() => toast('Saved'))} disabled={!dirty && !!id}>Save</Btn>
