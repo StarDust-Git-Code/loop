@@ -1,0 +1,7 @@
+*, *::before, *::after { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body { margin: 0; background: #fff; color: #15121a; font-family: 'Inter', system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
+a { color: inherit; }
+button { font-family: inherit; cursor: pointer; color: inherit; }
+img { display: block; }
+.logo-word em { color: #6a4df4; font-style: normal; }

@@ -33,7 +33,7 @@ function RunningNow() {
           </li>
         ))}
       </ol>
-      <Link href="/dashboard/run" className={s.secondaryBtn}>
+      <Link href="/run" className={s.secondaryBtn}>
         Open live run
       </Link>
     </section>
@@ -49,7 +49,7 @@ function RecentRuns() {
       <ul className={s.runList}>
         {RECENT_RUNS.map((r) => (
           <li key={r.title}>
-            <Link href="/dashboard/run" className={s.runRow}>
+            <Link href="/run" className={s.runRow}>
               <Mate mate={r.mate} size={30} />
               <span className={s.runText}>
                 <span className={s.runName}>{r.title}</span>

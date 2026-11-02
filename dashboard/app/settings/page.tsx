@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import s from '../../../components/dashboard/dashboard.module.css';
+import s from '../../components/dashboard/dashboard.module.css';
 
 export const metadata: Metadata = { title: 'Settings' };
 

@@ -10,14 +10,14 @@ export function SavedWorkflows() {
         <h2 id="saved-workflows" className={s.h2}>
           Saved workflows
         </h2>
-        <Link href="/dashboard/workflows" className={s.viewAll}>
+        <Link href="/workflows" className={s.viewAll}>
           View all
         </Link>
       </div>
       <ul className={s.workflowGrid}>
         {SAVED_WORKFLOWS.map((w) => (
           <li key={w.title} className={s.workflowItem}>
-            <Link href="/dashboard/studio" className={`${s.card} ${s.workflowCard}`}>
+            <Link href="/studio" className={`${s.card} ${s.workflowCard}`}>
               <span className={s.stack} aria-hidden="true">
                 {w.mates.map((m) => (
                   <Mate key={m} mate={m} size={38} className={s.stackItem} />

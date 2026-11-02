@@ -1,6 +1,6 @@
 # Dashboard — Home (new task), white theme
 
-Route: `/dashboard`. Ported from `White-Home.dc.html` in the Loop design artifact.
+Route: `/`. Ported from `White-Home.dc.html` in the Loop design artifact.
 
 ## Files
 - `app/dashboard/layout.tsx` — shell (sidebar + content), fonts, noindex metadata. Future screens go under `app/dashboard/<screen>/page.tsx` and reuse it.
@@ -8,7 +8,7 @@ Route: `/dashboard`. Ported from `White-Home.dc.html` in the Loop design artifac
 - `components/dashboard/` — `Sidebar`, `HomeScreen`, `TaskComposer`, `SavedWorkflows`, `ActivityRail`, `ApprovalCard`, `Mate`, `Icon`, and `dashboard.module.css` (CSS module, so the landing page's `globals.css` is untouched).
 - `lib/dashboard/brand.ts` — `BRAND` ("Loop") and `AGENT` ("Mate"). Product name is undecided; change it here.
 - `lib/dashboard/data.ts` — all sample content (nav, workflows, run steps, approval, recent runs).
-- `public/dashboard/mates/*.png` — the six Mates used on this screen (extracted from the design).
+- `public/mates/*.png` — the six Mates used on this screen (extracted from the design).
 
 ## Needs from the repo
 `@fontsource/inter`, `@fontsource/jetbrains-mono`, `next`, `react` (all already in the landing page's stack).

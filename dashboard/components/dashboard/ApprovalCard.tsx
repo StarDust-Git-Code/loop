@@ -37,7 +37,7 @@ export function ApprovalCard() {
           <button type="button" className={s.primaryBtn} onClick={() => setApproved(true)}>
             Approve
           </button>
-          <button type="button" className={s.ghostBtn} onClick={() => router.push('/dashboard/run')}>
+          <button type="button" className={s.ghostBtn} onClick={() => router.push('/run')}>
             Review files
           </button>
         </div>

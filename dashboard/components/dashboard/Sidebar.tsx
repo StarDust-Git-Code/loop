@@ -10,11 +10,11 @@ import { LogoMark } from '../Logo';
 import s from './dashboard.module.css';
 
 // Screens that live under another nav item keep that item highlighted.
-const PARENT: Record<string, string> = { '/dashboard/studio': '/dashboard/workflows', '/dashboard/run': '/dashboard/workflows', '/dashboard/schedule': '/dashboard/my-space' };
+const PARENT: Record<string, string> = { '/studio': '/workflows', '/run': '/workflows', '/schedule': '/my-space' };
 
 function isActive(pathname: string, href?: string) {
   if (!href) return false;
-  if (href === '/dashboard') return pathname === href;
+  if (href === '/') return pathname === href;
   const here = PARENT[pathname] ?? pathname;
   return here === href || here.startsWith(href + '/');
 }
@@ -65,7 +65,7 @@ export function Sidebar() {
       <ul className={s.navList}>
         {SIDEBAR_MATES.map((key) => (
           <li key={key}>
-            <Link href="/dashboard/agents" className={`${s.navItem} ${s.agentItem}`}>
+            <Link href="/agents" className={`${s.navItem} ${s.agentItem}`}>
               <Mate mate={key} size={26} />
               <span className={s.navLabel}>{MATES[key].name}</span>
             </Link>
@@ -75,7 +75,7 @@ export function Sidebar() {
 
       <div className={s.grow} />
 
-      <Link href="/dashboard/settings" className={`${s.navItem} ${pathname === '/dashboard/settings' ? s.navActive : ''}`}>
+      <Link href="/settings" className={`${s.navItem} ${pathname === '/settings' ? s.navActive : ''}`}>
         <Icon d={GEAR_PATH} />
         <span className={s.navLabel}>Settings</span>
       </Link>

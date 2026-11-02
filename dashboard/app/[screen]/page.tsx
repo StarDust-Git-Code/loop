@@ -2,8 +2,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
-import { FitScreen } from '../../../components/dashboard/FitScreen';
-import { SCREENS } from '../../../lib/dashboard/screens';
+import { FitScreen } from '../../components/dashboard/FitScreen';
+import { SCREENS } from '../../lib/dashboard/screens';
 
 type Params = { screen: string };
 
