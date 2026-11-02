@@ -90,12 +90,12 @@ export function Studio() {
             {nodes.length === 0 && <p style={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center', color: 'var(--muted)', margin: 0 }}>Add your first node from the toolbar.</p>}
             <svg style={{ position: 'absolute', inset: 0, width: 2000, height: 1200, pointerEvents: 'none' }}>
               {edges.map((e) => { const a = nodes.find((n) => n.id === e.from), b = nodes.find((n) => n.id === e.to); if (!a || !b) return null; const p = pt(a, 'r'), q = pt(b, 'l'); const m = (p.x + q.x) / 2;
-                return <path key={e.id} d={`M${p.x},${p.y} C${m},${p.y} ${m},${q.y} ${q.x},${q.y}`} fill="none" stroke="#6a4df4" strokeWidth="2" />; })}
+                return <path key={e.id} d={`M${p.x},${p.y} C${m},${p.y} ${m},${q.y} ${q.x},${q.y}`} fill="none" stroke="#6a4df4" strokeWidth="2" pathLength={1} strokeDasharray="1" style={{ animation: 'lm-draw 0.6s ease both' }} />; })}
             </svg>
             {nodes.map((n) => (
               <div key={n.id} onPointerDown={(e) => onDown(e, n)} tabIndex={0} role="button" aria-label={n.label}
                 onKeyDown={(e) => { if (e.key === 'Delete') del(n.id); if (e.key === 'Enter') setSel(n.id); }}
-                style={{ position: 'absolute', left: n.x, top: n.y, width: W, height: H, background: '#fff', border: `2px solid ${sel === n.id ? '#6a4df4' : linkFrom === n.id ? '#1e7a46' : 'rgba(27,24,34,.17)'}`, borderRadius: 14, display: 'flex', alignItems: 'center', gap: 8, padding: '0 10px', cursor: linkFrom ? 'crosshair' : 'grab', userSelect: 'none' }}>
+                style={{ position: 'absolute', left: n.x, top: n.y, width: W, height: H, background: '#fff', border: `2px solid ${sel === n.id ? '#6a4df4' : linkFrom === n.id ? '#1e7a46' : 'rgba(27,24,34,.17)'}`, borderRadius: 14, display: 'flex', alignItems: 'center', gap: 8, padding: '0 10px', cursor: linkFrom ? 'crosshair' : 'grab', userSelect: 'none', animation: 'lm-pop 0.35s cubic-bezier(0.34,1.56,0.64,1) both', transition: 'border-color .15s, box-shadow .15s', boxShadow: sel === n.id ? '0 8px 22px rgba(106,77,244,.25)' : 'none' }}>
                 {n.mate ? <MateAvatar mate={n.mate} size={34} /> : <span style={{ width: 34, height: 34, borderRadius: 9, background: 'var(--chip)', display: 'grid', placeItems: 'center', fontSize: 11, fontWeight: 700 }}>{KIND[n.type][0]}</span>}
                 <span style={{ minWidth: 0 }}><b style={{ display: 'block', fontSize: 12.5, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{n.label}</b><small style={{ color: 'var(--muted)' }}>{KIND[n.type]}</small></span>
               </div>

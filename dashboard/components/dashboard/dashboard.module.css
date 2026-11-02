@@ -800,3 +800,38 @@
 .placeholder h1 { font-size: 34px; letter-spacing: -0.04em; margin: 0 0 10px; }
 .placeholder p { margin: 0 0 12px; color: var(--muted); line-height: 1.6; }
 .placeholder .note { display: inline-block; font-size: 12px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--accent-ink); background: #ece7ff; border-radius: 999px; padding: 5px 12px; margin-bottom: 18px; }
+
+/* ---------- motion ---------- */
+.navItem { transition: background 0.18s, color 0.18s, transform 0.18s; }
+.navItem:hover { transform: translateX(3px); }
+.navItem:active { transform: translateX(1px) scale(0.98); }
+.agentItem img { transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); }
+.agentItem:hover img { transform: scale(1.18) rotate(-6deg); }
+.brand { animation: lm-in 0.6s ease both; }
+.navList li { animation: lm-slide 0.45s cubic-bezier(0.22, 1, 0.36, 1) both; }
+.navList li:nth-child(1) { animation-delay: 30ms; } .navList li:nth-child(2) { animation-delay: 60ms; } .navList li:nth-child(3) { animation-delay: 90ms; }
+.navList li:nth-child(4) { animation-delay: 120ms; } .navList li:nth-child(5) { animation-delay: 150ms; } .navList li:nth-child(6) { animation-delay: 180ms; }
+.navList li:nth-child(n+7) { animation-delay: 210ms; }
+.heroMate { animation: lm-bob 4s ease-in-out infinite; transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); }
+.heroMate:nth-child(2) { animation-delay: -0.6s; } .heroMate:nth-child(3) { animation-delay: -1.2s; } .heroMate:nth-child(4) { animation-delay: -1.8s; }
+.heroMate:nth-child(5) { animation-delay: -2.4s; } .heroMate:nth-child(6) { animation-delay: -3s; }
+.h1, .lede { animation: lm-up 0.6s cubic-bezier(0.22, 1, 0.36, 1) both; } .lede { animation-delay: 0.08s; }
+.composer { animation: lm-pop 0.55s cubic-bezier(0.22, 1, 0.36, 1) 0.12s both; transition: box-shadow 0.25s, border-color 0.25s; }
+.composer:focus-within { box-shadow: 0 0 0 4px rgba(106, 77, 244, 0.13), 0 12px 32px rgba(106, 77, 244, 0.12); }
+.runBtn { transition: transform 0.15s, box-shadow 0.2s, background 0.2s; }
+.runBtn:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(106, 77, 244, 0.35); }
+.runBtn:active:not(:disabled) { transform: scale(0.96); }
+.chip, .chipBtn { transition: background 0.18s, color 0.18s, transform 0.15s; } .chipBtn:active { transform: scale(0.95); }
+.workflowCard { transition: transform 0.22s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.22s, border-color 0.22s; }
+.workflowCard:hover { transform: translateY(-4px); box-shadow: 0 12px 28px rgba(106, 77, 244, 0.14); border-color: rgba(106, 77, 244, 0.4); }
+.workflowCard .stackItem { transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1); }
+.workflowCard:hover .stackItem { transform: translateY(-3px); }
+.workflowCard:hover .stackItem:nth-child(2) { transition-delay: 40ms; } .workflowCard:hover .stackItem:nth-child(3) { transition-delay: 80ms; }
+.rail > * { animation: lm-slide 0.5s cubic-bezier(0.22, 1, 0.36, 1) both; } .rail > *:nth-child(2) { animation-delay: 80ms; } .rail > *:nth-child(3) { animation-delay: 160ms; }
+.runRow { transition: background 0.15s, transform 0.18s; } .runRow:hover { transform: translateX(3px); }
+.step { animation: lm-up 0.35s ease both; }
+.running { animation: lm-pulse 1.8s ease-in-out infinite; }
+.approval { animation: lm-pop 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) both; }
+.secondaryBtn, .primaryBtn, .ghostBtn, .iconBtn, .viewAll { transition: transform 0.15s, background 0.15s, box-shadow 0.15s; }
+.secondaryBtn:hover, .primaryBtn:hover, .ghostBtn:hover, .iconBtn:hover { transform: translateY(-1px); }
+.secondaryBtn:active, .primaryBtn:active, .ghostBtn:active, .iconBtn:active { transform: scale(0.96); }

@@ -65,3 +65,32 @@
 .itemMain { flex: 1; min-width: 0; }
 .itemMain b { display: block; font-size: 14px; }
 .truncate { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* ---------- motion ---------- */
+.head { animation: lm-up 0.45s cubic-bezier(0.22, 1, 0.36, 1) both; }
+.banner { animation: lm-in 0.5s ease both; }
+.btn { transition: transform 0.15s ease, border-color 0.15s, background 0.15s, color 0.15s, box-shadow 0.15s; }
+.btn:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(106, 77, 244, 0.18); }
+.btn:active:not(:disabled) { transform: translateY(0) scale(0.97); box-shadow: none; }
+.card { transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s; animation: lm-pop 0.4s cubic-bezier(0.22, 1, 0.36, 1) both; }
+.card:hover { transform: translateY(-3px); box-shadow: 0 10px 26px rgba(27, 24, 34, 0.09); border-color: rgba(106, 77, 244, 0.35); }
+.grid > .card:nth-child(1) { animation-delay: 0ms; } .grid > .card:nth-child(2) { animation-delay: 50ms; } .grid > .card:nth-child(3) { animation-delay: 100ms; }
+.grid > .card:nth-child(4) { animation-delay: 150ms; } .grid > .card:nth-child(5) { animation-delay: 200ms; } .grid > .card:nth-child(n+6) { animation-delay: 250ms; }
+.item { transition: background 0.15s; animation: lm-up 0.35s cubic-bezier(0.22, 1, 0.36, 1) both; }
+.item:hover { background: #faf9fd; }
+.list > :nth-child(1) .item, .list > .item:nth-child(1) { animation-delay: 0ms; } .list > :nth-child(2) .item, .list > .item:nth-child(2) { animation-delay: 45ms; }
+.list > :nth-child(3) .item, .list > .item:nth-child(3) { animation-delay: 90ms; } .list > :nth-child(4) .item, .list > .item:nth-child(4) { animation-delay: 135ms; }
+.list > :nth-child(n+5) .item, .list > .item:nth-child(n+5) { animation-delay: 180ms; }
+.empty { animation: lm-pop 0.5s cubic-bezier(0.22, 1, 0.36, 1) both; }
+.empty img { animation: lm-bob 3.6s ease-in-out infinite; }
+.avatar { transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1); }
+.avatar:hover { animation: lm-wiggle 0.5s ease; }
+.badge { transition: background 0.2s, color 0.2s; }
+.live { animation: lm-pulse 1.8s ease-in-out infinite; }
+.toggle { transition: background 0.2s; } .toggle::after { transition: transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1); }
+.tab { transition: background 0.18s, color 0.18s, box-shadow 0.18s; }
+.chipBtn { transition: background 0.15s, color 0.15s, transform 0.15s; } .chipBtn:hover { transform: translateY(-1px); } .chipBtn:active { transform: scale(0.95); }
+.input, .select, .textarea { transition: box-shadow 0.18s, border-color 0.18s; }
+.input:focus, .select:focus, .textarea:focus { box-shadow: 0 0 0 4px rgba(106, 77, 244, 0.14); }
+.overlay { animation: lm-in 0.2s ease both; }
+.modal { animation: lm-pop 0.32s cubic-bezier(0.22, 1, 0.36, 1) both; }

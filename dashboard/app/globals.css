@@ -5,3 +5,18 @@ a { color: inherit; }
 button { font-family: inherit; cursor: pointer; color: inherit; }
 img { display: block; }
 .logo-word em { color: #6a4df4; font-style: normal; }
+
+/* ---------- motion ---------- */
+@keyframes lm-up { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+@keyframes lm-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes lm-pop { from { opacity: 0; transform: translateY(10px) scale(0.96); } to { opacity: 1; transform: none; } }
+@keyframes lm-slide { from { opacity: 0; transform: translateX(18px); } to { opacity: 1; transform: none; } }
+@keyframes lm-bob { 0%, 100% { transform: translateY(0) rotate(-1.5deg); } 50% { transform: translateY(-7px) rotate(1.5deg); } }
+@keyframes lm-pulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(106, 77, 244, 0.45); } 50% { box-shadow: 0 0 0 6px rgba(106, 77, 244, 0); } }
+@keyframes lm-wiggle { 0%, 100% { transform: rotate(0); } 25% { transform: rotate(-9deg) scale(1.08); } 75% { transform: rotate(9deg) scale(1.08); } }
+@keyframes lm-shine { from { background-position: -200% 0; } to { background-position: 200% 0; } }
+.lm-page { animation: lm-up 0.42s cubic-bezier(0.22, 1, 0.36, 1) both; }
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.001ms !important; animation-iteration-count: 1 !important; animation-delay: 0s !important; transition-duration: 0.001ms !important; }
+}
+@keyframes lm-draw { from { stroke-dashoffset: 1; } to { stroke-dashoffset: 0; } }
