@@ -187,7 +187,7 @@ img { display: block; }
 .filters { display: inline-flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin-top: 34px; }
 .filter { min-height: 46px; padding: 0 22px; border-radius: 999px; border: 1px solid var(--line); background: #fff; font-weight: 600; font-size: 15px; transition: background 0.25s, color 0.25s, border-color 0.25s; }
 .filter[aria-pressed="true"] { background: var(--ink); color: #fff; border-color: var(--ink); }
-.dotgrid { display: grid; gap: 14px; margin-top: 36px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 160px), 1fr)); }
+.dotgrid { position: relative; display: grid; gap: 14px; margin-top: 36px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 160px), 1fr)); }
 .dotcard { border-radius: 28px; padding: 14px 14px 18px; text-align: center; box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.75), 0 12px 28px rgba(106, 77, 244, 0.08); }
 .dotcard { position: relative; cursor: pointer; will-change: transform; transition: box-shadow 0.35s; }
 .dotcard::after { content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; opacity: 0; transition: opacity 0.3s; background: radial-gradient(180px circle at var(--mx, 50%) var(--my, 50%), rgba(255, 255, 255, 0.85), rgba(255, 255, 255, 0) 70%); }
@@ -256,3 +256,21 @@ img { display: block; }
 
 /* SplitText line masks clip descenders; pad the mask without changing layout */
 .hero-h1 [style*="overflow: clip"], .h2 [style*="overflow: clip"] { padding-bottom: 0.22em; margin-bottom: -0.22em; }
+
+/* hold-to-expand Dot panel */
+.dotpop { position: absolute; z-index: 20; border-radius: 30px; padding: 20px 22px 22px; text-align: left; overflow: hidden; box-shadow: inset 0 0 0 2px rgba(255,255,255,.9), 0 40px 80px rgba(60, 40, 160, .28), 0 8px 24px rgba(60,40,160,.12); }
+.dotpop::before { content: ""; position: absolute; inset: 0; background: linear-gradient(160deg, rgba(255,255,255,.7), rgba(255,255,255,.15)); pointer-events: none; }
+.dotpop > * { position: relative; }
+.pop-top { display: flex; align-items: center; gap: 14px; }
+.pop-img { width: 112px; flex: none; }
+.pop-img img { width: 100%; height: auto; }
+.pop-tag { display: inline-block; font-size: 11px; font-weight: 800; letter-spacing: .05em; color: var(--violet-deep); background: rgba(255,255,255,.85); padding: 3px 10px; border-radius: 999px; }
+.dotpop h3 { margin: 6px 0 0; font-size: 28px; font-weight: 800; letter-spacing: -.04em; line-height: 1; }
+.pop-role { margin: 6px 0 0; font-size: 13px; color: var(--muted); }
+.pop-about { margin: 14px 0 0; font-size: 14.5px; line-height: 1.5; color: var(--ink); }
+.pop-tools { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 14px; }
+.pop-tools span { font-size: 12px; font-weight: 700; padding: 5px 11px; border-radius: 999px; background: rgba(255,255,255,.85); color: var(--violet-deep); }
+.pop-ask { margin-top: 14px; padding: 12px 14px; border-radius: 16px; background: rgba(255,255,255,.7); font-size: 13.5px; line-height: 1.45; font-style: italic; }
+.pop-ask small { display: block; font-style: normal; font-size: 10.5px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin-bottom: 3px; }
+.pop-x { position: absolute !important; top: 12px; right: 14px; width: 32px; height: 32px; border-radius: 50%; border: 0; background: rgba(255,255,255,.85); font-size: 20px; line-height: 1; cursor: pointer; z-index: 2; }
+.dotcard:focus-visible { outline: 3px solid var(--violet); outline-offset: 3px; }
