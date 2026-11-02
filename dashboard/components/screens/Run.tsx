@@ -8,6 +8,7 @@ import { useLiveRun, useRepo } from '../../lib/hooks';
 import { mateImg, mateName } from '../../lib/mates';
 import type { FlowEdge, FlowNode, Run as RunT } from '../../lib/types';
 import { useToast } from '../ui/toast';
+import { Markdown } from '../ui/Markdown';
 import { Btn, Empty, Loading, Page, Pill, Tabs } from '../ui/ui';
 
 const LABEL: Record<RunT['status'], string> = { queued: 'Queued', running: 'Running', waiting_approval: 'Needs approval', done: 'Done', failed: 'Failed', stopped: 'Stopped' };
@@ -110,7 +111,7 @@ function RunView({ id }: { id: string }) {
           <div style={{ ...card, flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
             <div style={{ padding: '12px 16px 0' }}><Tabs value={tab} onChange={setTab} options={[{ id: 'report', label: 'Report' }, { id: 'sources', label: 'Sources' }, { id: 'files', label: 'Files' }, { id: 'notes', label: 'Notes' }]} /></div>
             <div key={tab} style={{ flex: 1, minHeight: 0, overflow: 'auto', padding: 18, animation: 'lm-up .3s ease both' }}>
-              {tab === 'report' && (run.report ? <div style={{ fontSize: 14, lineHeight: 1.7, whiteSpace: 'pre-wrap' }}>{run.report}</div> : <p style={{ color: '#6B6572', margin: 0, lineHeight: 1.6 }}>The report appears here as the run writes it.</p>)}
+              {tab === 'report' && (run.report ? <Markdown text={run.report} /> : <p style={{ color: '#6B6572', margin: 0, lineHeight: 1.6 }}>The report appears here as the run writes it.</p>)}
               {tab === 'sources' && (run.sources.length === 0 ? <p style={{ color: '#6B6572', margin: 0 }}>No sources saved yet.</p> : run.sources.map((s, i) => <div key={s} style={{ display: 'flex', gap: 12, padding: '8px 0', borderBottom: '1px solid rgba(31,26,23,.07)', fontSize: 13.5 }}><span className="mono" style={{ color: '#4F34D6' }}>{String(i + 1).padStart(2, '0')}</span><span style={{ wordBreak: 'break-all' }}>{s}</span></div>))}
               {tab === 'files' && (outputs.length === 0 ? <p style={{ color: '#6B6572', margin: 0 }}>No files for this run yet.</p> : outputs.map((f) => <div key={f.id} style={{ display: 'flex', gap: 10, padding: '8px 0', borderBottom: '1px solid rgba(31,26,23,.07)', fontSize: 13.5 }}><a href="#" onClick={(e) => { e.preventDefault(); api.files.download(f.id, f.name).catch((err: Error) => toast(err.message)); }} style={{ flex: 1 }}>{f.name}</a><span style={{ color: '#6B6572' }}>{bytes(f.size)}</span></div>))}
               {tab === 'notes' && <textarea key={run.id} defaultValue={run.notes} placeholder="Your notes on this run…" onBlur={(e) => e.target.value !== run.notes && api.runs.update(run.id, { notes: e.target.value })} style={{ width: '100%', height: '100%', minHeight: 200, border: 0, outline: 0, resize: 'none', font: 'inherit', fontSize: 14, lineHeight: 1.6 }} />}

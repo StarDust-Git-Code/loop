@@ -8,6 +8,7 @@ import { useRepo, useSettings } from '../../lib/hooks';
 import { GRAD, MATES, MATE_DEFS, mateImg, mateName } from '../../lib/mates';
 import type { ChatEvent, Conversation, MateKey } from '../../lib/types';
 import { useToast } from '../ui/toast';
+import { Markdown } from '../ui/Markdown';
 import { Badge, Btn, Pill, Tabs, Toggle, confirmThen } from '../ui/ui';
 
 const SLASH = [
@@ -168,7 +169,7 @@ export function Chat() {
               </div>
             ) : (
               <div key={m.id} style={{ display: 'flex', gap: 14, maxWidth: 820, animation: 'lm-pop .3s ease both' }}>
-                <Dot k={m.mate ?? mate} /><div style={{ flex: 1, minWidth: 0 }}><div style={{ fontSize: 13, fontWeight: 600, marginBottom: 6 }}>{mateName(m.mate ?? mate)}</div>{m.thought && <Thought text={m.thought} />}<div style={{ fontSize: 15, lineHeight: 1.6, color: '#2A2631', whiteSpace: 'pre-wrap' }}>{m.text}</div></div>
+                <Dot k={m.mate ?? mate} /><div style={{ flex: 1, minWidth: 0 }}><div style={{ fontSize: 13, fontWeight: 600, marginBottom: 6 }}>{mateName(m.mate ?? mate)}</div>{m.thought && <Thought text={m.thought} />}<Markdown text={m.text} /></div>
               </div>);
           })}
           {live && live.cid === conv.id && live.segs.filter((s) => !(s.doneId && conv.messages.some((m) => m.id === s.doneId))).map((s, i, arr) => (
@@ -177,7 +178,7 @@ export function Chat() {
                 <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 6 }}>{mateName(s.mate)}</div>
                 {s.thought && <Thought text={s.thought} live answering={!!s.text} />}
                 {s.tools.length > 0 && <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 6 }}>{s.tools.map((n, j) => <span key={j} className="mono" style={{ fontSize: 11.5, background: '#ECE7FF', color: '#4F34D6', borderRadius: 7, padding: '3px 8px' }}>{TOOL_LABEL[n] ?? n}{j === s.tools.length - 1 && !s.text && !s.doneId ? '…' : ''}</span>)}</div>}
-                <div style={{ fontSize: 15, lineHeight: 1.6, color: '#2A2631', whiteSpace: 'pre-wrap' }}>{s.text || (s.tools.length === 0 && !s.doneId && !s.thought ? <span style={{ color: '#6B6572' }}>Thinking…</span> : null)}{!s.doneId && s.text && i === arr.length - 1 && <span style={{ opacity: .5 }}>▍</span>}</div>
+                <div>{s.text ? <Markdown text={s.text} /> : (s.tools.length === 0 && !s.doneId && !s.thought ? <span style={{ color: '#6B6572' }}>Thinking…</span> : null)}{!s.doneId && s.text && i === arr.length - 1 && <span style={{ opacity: .5 }}>▍</span>}</div>
               </div>
             </div>))}
           <div ref={end} />
