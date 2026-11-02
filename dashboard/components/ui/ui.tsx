@@ -112,8 +112,8 @@ export function Chips<T extends string>({ options, value, onChange }: { options:
   );
 }
 
-export function Modal({ title, onClose, onSubmit, submitLabel = 'Save', canSubmit = true, children }: {
-  title: string; onClose: () => void; onSubmit: () => void | Promise<void>; submitLabel?: string; canSubmit?: boolean; children: ReactNode;
+export function Modal({ title, onClose, onSubmit, submitLabel = 'Save', canSubmit = true, bg, children }: {
+  /** Optional background for the whole sheet (e.g. a Mate's colour). */ bg?: string; title: string; onClose: () => void; onSubmit: () => void | Promise<void>; submitLabel?: string; canSubmit?: boolean; children: ReactNode;
 }) {
   const id = useId();
   const ref = useRef<HTMLFormElement>(null);
@@ -126,7 +126,7 @@ export function Modal({ title, onClose, onSubmit, submitLabel = 'Save', canSubmi
   }, [onClose]);
   return (
     <div className={cx(u.overlay, u.sheetWrap)} onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
-      <form ref={ref} className={cx(u.modal, u.sheet)} role="dialog" aria-modal="true" aria-labelledby={id} onSubmit={(e) => { e.preventDefault(); if (canSubmit) void onSubmit(); }}>
+      <form ref={ref} className={cx(u.modal, u.sheet)} style={bg ? { background: bg } : undefined} role="dialog" aria-modal="true" aria-labelledby={id} onSubmit={(e) => { e.preventDefault(); if (canSubmit) void onSubmit(); }}>
         <h2 id={id}>{title}</h2>
         <div className={u.stack}>{children}</div>
         <div className={u.modalFoot}>

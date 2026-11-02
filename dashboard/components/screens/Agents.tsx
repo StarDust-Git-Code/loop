@@ -25,7 +25,7 @@ export function Agents() {
   const cards = MATE_DEFS.filter((m) => filter === 'all' || m.role === filter);
 
   return (
-    <Page title="Agents" sub="Eighteen Mates. Give each one a job, a model, and the tools it is allowed to use."
+    <Page title="Agents" sub={`${MATE_DEFS.length} Mates. Give each one a job, a model, and the tools it is allowed to use.`}
       actions={<><Tabs value={filter} onChange={setFilter} options={[{ id: 'all', label: 'All' }, { id: 'Core', label: 'Core' }, { id: 'Personal', label: 'Personal' }, { id: 'Creative', label: 'Creative' }, { id: 'Dev', label: 'Dev' }]} />
         <Btn variant="primary" disabled title="Custom Mates arrive with the backend">+ New agent</Btn></>}>
       <ErrorNote message={error} />
@@ -72,8 +72,8 @@ function Configure({ mate, onClose }: { mate: MateKey; onClose: () => void }) {
   const set = (p: Partial<MateConfigIn>) => setDraft((d) => ({ ...d, ...p }));
   const dirty = Object.keys(draft).length > 0;
   return (
-    <Modal title="" onClose={onClose} submitLabel="Save changes" canSubmit={dirty} onSubmit={async () => { await update(cfg.id, draft); toast('Saved'); onClose(); }}>
-      <div style={{ margin: '-26px -26px 0', padding: '26px 26px 16px', background: GRAD[mate], borderRadius: '22px 0 0 0', display: 'flex', alignItems: 'center', gap: 16 }}>
+    <Modal title="" bg={`linear-gradient(180deg, ${/#[0-9a-f]{6}/i.exec(GRAD[mate])?.[0] ?? def.tint} 0%, ${def.tint} 100%)`} onClose={onClose} submitLabel="Save changes" canSubmit={dirty} onSubmit={async () => { await update(cfg.id, draft); toast('Saved'); onClose(); }}>
+      <div style={{ padding: '4px 0 12px', display: 'flex', alignItems: 'center', gap: 16 }}>
         { }
         <img src={mateImg(mate)} alt="" width={84} height={84} style={{ animation: 'lm-bob 4s ease-in-out infinite' }} />
         <div style={{ flex: 1 }}><h2 style={{ margin: 0, fontSize: 22 }}>{mateName(mate)}</h2><p style={{ margin: '2px 0 0', color: '#3D3946', fontSize: 13 }}>{def.role}</p></div>
