@@ -23,7 +23,7 @@ export default function Cta() {
     () => {
       const el = root.current!;
       gsap.to(el.querySelector(".cta"), {
-        opacity: 1, y: 0, duration: 1, ease: "power3.out",
+        opacity: 1, y: 0, filter: "blur(0px)", duration: 1, ease: "power3.out",
         scrollTrigger: { trigger: el, start: "top 85%", once: true },
       });
       if (prefersReducedMotion()) return;

@@ -17,7 +17,7 @@ export default function DotsGrid() {
       ScrollTrigger.batch(".dotcard", {
         start: "top 92%",
         once: true,
-        onEnter: (batch) => gsap.to(batch, { opacity: 1, y: 0, duration: 0.7, stagger: 0.05, ease: "back.out(1.5)" }),
+        onEnter: (batch) => gsap.to(batch, { opacity: 1, y: 0, filter: "blur(0px)", duration: 0.7, stagger: 0.05, ease: "back.out(1.5)" }),
       });
     },
     { scope: root }

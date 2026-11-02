@@ -25,7 +25,7 @@ export default function Features() {
         start: "top 88%",
         once: true,
         onEnter: (batch) =>
-          gsap.fromTo(batch, { rotate: (i: number) => (i % 2 ? 3 : -3) }, { opacity: 1, y: 0, rotate: 0, duration: 0.9, stagger: 0.12, ease: "back.out(1.3)" }),
+          gsap.fromTo(batch, { rotate: (i: number) => (i % 2 ? 3 : -3) }, { opacity: 1, y: 0, filter: "blur(0px)", rotate: 0, duration: 0.9, stagger: 0.12, ease: "back.out(1.3)" }),
       });
       if (prefersReducedMotion()) return;
 

@@ -6,81 +6,86 @@ import { gsap, useGSAP, Draggable, prefersReducedMotion } from "@/lib/gsap";
 import { RAIL_ORDER, dot } from "@/lib/dots";
 
 const START_INDEX = 2; // Mimo is centred on load
+const N = RAIL_ORDER.length;
+const COPIES = 3; // the list is rendered 3x; position wraps so the rail never ends
 
 export default function DotRail() {
   const rail = useRef<HTMLDivElement>(null);
   const track = useRef<HTMLDivElement>(null);
+  const proxy = useRef<HTMLDivElement>(null);
   const api = useRef<{ go: (dir: number) => void } | null>(null);
 
   useGSAP(
     () => {
       const railEl = rail.current!;
       const trackEl = track.current!;
+      const proxyEl = proxy.current!;
       const wraps = Array.from(trackEl.children) as HTMLElement[];
       const cards = wraps.map((w) => w.querySelector<HTMLElement>(".rc")!);
       const reduce = prefersReducedMotion();
 
-      let centers: number[] = [];
       let cw = 0;
-      let minX = 0;
-      let maxX = 0;
+      let step = 0; // distance between neighbouring card centres
+      let setW = 0; // width of one full copy of the list
+      let baseX = 0; // track x that centres card 0 of the middle copy
+      let centers: number[] = [];
 
       const measure = () => {
         cw = railEl.clientWidth;
         centers = wraps.map((w) => w.offsetLeft + w.offsetWidth / 2);
-        maxX = cw / 2 - centers[0];
-        minX = cw / 2 - centers[centers.length - 1];
+        step = centers[1] - centers[0];
+        setW = centers[N] - centers[0];
+        baseX = cw / 2 - centers[N];
       };
 
+      // keep the track inside one cycle so there is always content on both sides
+      const wrapX = (x: number) => baseX - gsap.utils.wrap(0, setW, baseX - x);
+
+      // per-card tilt / scale / depth-of-field blur, driven by distance from the centre
       const focus = () => {
         const x = Number(gsap.getProperty(trackEl, "x"));
-        cards.forEach((card, i) => {
-          const d = Math.max(-1.25, Math.min(1.25, (centers[i] + x - cw / 2) / (cw * 0.36)));
+        for (let i = 0; i < cards.length; i++) {
+          const raw = (centers[i] + x - cw / 2) / (cw * 0.36);
+          if (raw > 2.2 || raw < -2.2) continue; // off-screen, skip work
+          const d = Math.max(-1.25, Math.min(1.25, raw));
           const a = Math.abs(d);
-          gsap.set(card, {
+          gsap.set(cards[i], {
             rotation: d * 9,
             scale: 1.08 - Math.min(a, 1) * 0.24,
             y: Math.min(a, 1) * 18,
             zIndex: Math.round(100 - a * 40),
+            filter: reduce || a < 0.12 ? "none" : `blur(${(Math.min(a, 1.25) * 2.4).toFixed(2)}px)`,
           });
-        });
+        }
       };
 
-      const nearest = (x: number) => {
-        let best = 0;
-        let bd = Infinity;
-        centers.forEach((c, i) => {
-          const dd = Math.abs(c + x - cw / 2);
-          if (dd < bd) { bd = dd; best = i; }
-        });
-        return best;
+      const apply = () => {
+        gsap.set(trackEl, { x: wrapX(Number(gsap.getProperty(proxyEl, "x"))) });
+        focus();
       };
-      const xFor = (i: number) => gsap.utils.clamp(minX, maxX, cw / 2 - centers[i]);
 
       measure();
-      gsap.set(trackEl, { x: xFor(START_INDEX) });
-      focus();
+      gsap.set(proxyEl, { x: baseX - START_INDEX * step });
+      apply();
 
-      const drag = Draggable.create(trackEl, {
+      const drag = Draggable.create(proxyEl, {
         type: "x",
+        trigger: railEl,
         inertia: true,
-        edgeResistance: 0.85,
-        bounds: { minX, maxX },
+        minimumMovement: 4,
         allowContextMenu: true,
-        cursor: "grab",
-        activeCursor: "grabbing",
-        onDrag: focus,
-        onThrowUpdate: focus,
-        snap: { x: (v: number) => xFor(nearest(v)) },
+        onDrag: apply,
+        onThrowUpdate: apply,
+        snap: { x: (v: number) => baseX - Math.round((baseX - v) / step) * step },
       })[0];
 
       const go = (dir: number) => {
-        const target = Math.max(0, Math.min(cards.length - 1, nearest(Number(gsap.getProperty(trackEl, "x"))) + dir));
-        gsap.to(trackEl, { x: xFor(target), duration: 0.8, ease: "power3.out", onUpdate: focus, overwrite: true });
+        const x = Number(gsap.getProperty(proxyEl, "x"));
+        const k = Math.round((baseX - x) / step);
+        gsap.to(proxyEl, { x: baseX - (k + dir) * step, duration: 1.15, ease: "expo.out", onUpdate: apply, overwrite: true });
       };
       api.current = { go };
 
-      // keyboard + horizontal trackpad
       const onKey = (e: KeyboardEvent) => {
         if (e.key === "ArrowRight") { e.preventDefault(); go(1); }
         if (e.key === "ArrowLeft") { e.preventDefault(); go(-1); }
@@ -92,33 +97,33 @@ export default function DotRail() {
           if (lock) return;
           lock = true;
           go(e.deltaX > 0 ? 1 : -1);
-          gsap.delayedCall(0.45, () => (lock = false));
+          gsap.delayedCall(0.4, () => (lock = false));
         }
       };
       railEl.addEventListener("keydown", onKey);
       railEl.addEventListener("wheel", onWheel, { passive: false });
 
       const ro = new ResizeObserver(() => {
+        const frac = (baseX - Number(gsap.getProperty(proxyEl, "x"))) / step;
         measure();
-        drag.applyBounds({ minX, maxX });
-        gsap.set(trackEl, { x: gsap.utils.clamp(minX, maxX, Number(gsap.getProperty(trackEl, "x"))) });
-        focus();
+        gsap.set(proxyEl, { x: baseX - frac * step });
+        apply();
       });
       ro.observe(railEl);
 
-      // intro: cards rise in (wrapper level, so it never fights the focus transforms)
+      // intro: cards rise in and de-blur (wrapper level, so it never fights the focus transforms)
       if (!reduce) {
         gsap.from(wraps, {
           y: 220,
           opacity: 0,
-          duration: 1.1,
-          ease: "back.out(1.4)",
-          stagger: { each: 0.07, from: START_INDEX },
-          delay: 0.7,
-          clearProps: "opacity,transform",
+          filter: "blur(16px)",
+          duration: 1.2,
+          ease: "back.out(1.3)",
+          stagger: { each: 0.06, from: N + START_INDEX },
+          delay: 0.6,
+          clearProps: "opacity,transform,filter",
         });
-        // friendly idle nudge so people notice it scrolls
-        gsap.fromTo(trackEl, { x: xFor(START_INDEX) + 90 }, { x: xFor(START_INDEX), duration: 1.6, ease: "elastic.out(1,0.6)", delay: 1.7, onUpdate: focus });
+        gsap.from(proxyEl, { x: `+=${90}`, duration: 1.8, ease: "elastic.out(1,0.6)", delay: 1.6, onUpdate: apply });
       }
 
       return () => {
@@ -133,19 +138,23 @@ export default function DotRail() {
 
   return (
     <div className="rail-wrap">
-      <div ref={rail} className="rail" tabIndex={0} role="region" aria-label="Meet the Dots. Drag sideways or use the arrow keys.">
+      <div ref={rail} className="rail" tabIndex={0} role="region" aria-label="Meet the Dots. Drag sideways or use the arrow keys. It loops forever.">
+        <div ref={proxy} aria-hidden="true" style={{ position: "absolute", left: 0, top: 0, width: 1, height: 1, visibility: "hidden" }} />
         <div ref={track} className="track">
-          {RAIL_ORDER.map((k, i) => {
-            const d = dot(k);
-            return (
-              <div className="rc-wrap" key={k}>
-                <article className="rc" style={{ background: d.tint }}>
-                  <span className="bubble" style={{ background: d.bubble }}>@{d.name.toLowerCase()}</span>
-                  <Image src={`/dots/${k}.png`} alt={`${d.name} Dot: ${d.role}`} width={384} height={384} priority={i < 6} draggable={false} />
-                </article>
-              </div>
-            );
-          })}
+          {Array.from({ length: COPIES }).flatMap((_, c) =>
+            RAIL_ORDER.map((k, i) => {
+              const d = dot(k);
+              const main = c === 1;
+              return (
+                <div className="rc-wrap" key={`${c}-${k}`} aria-hidden={main ? undefined : true}>
+                  <article className="rc" style={{ background: d.tint }}>
+                    <span className="bubble" style={{ background: d.bubble }}>@{d.name.toLowerCase()}</span>
+                    <Image src={`/dots/${k}.png`} alt={main ? `${d.name} Dot: ${d.role}` : ""} width={384} height={384} priority={main && i < 6} draggable={false} />
+                  </article>
+                </div>
+              );
+            })
+          )}
         </div>
       </div>
       <button className="arr" aria-label="Previous Dot" onClick={() => api.current?.go(-1)} style={{ left: "clamp(8px,2vw,24px)" }}>

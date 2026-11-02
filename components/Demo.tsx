@@ -44,13 +44,26 @@ export default function Demo() {
   const hover = useRef(false);
   const inView = useRef(false);
   const [step, setStep] = useState(0);
+  const stepRef = useRef(0);
+  const switching = useRef(false);
+
+  /** Smooth switch: blur/fade the current panel out, swap, then the new one de-blurs in. */
+  const goStep = useCallback((i: number) => {
+    if (i === stepRef.current || switching.current) return;
+    switching.current = true;
+    timer.current?.kill();
+    const commit = () => { stepRef.current = i; setStep(i); switching.current = false; };
+    if (prefersReducedMotion() || !body.current) { commit(); return; }
+    gsap.to(body.current, { opacity: 0, y: -14, filter: "blur(10px)", duration: 0.28, ease: "power2.in", onComplete: commit });
+    gsap.to(".demo-desc", { opacity: 0, y: -6, filter: "blur(6px)", duration: 0.2, ease: "power2.in" });
+  }, []);
 
   // sliding pill indicator
   useGSAP(
     () => {
       const tab = tabsRef.current?.querySelectorAll<HTMLElement>("[role=tab]")[step];
       if (!tab || !indicator.current) return;
-      gsap.to(indicator.current, { x: tab.offsetLeft, width: tab.offsetWidth, duration: prefersReducedMotion() ? 0 : 0.55, ease: "power3.inOut" });
+      gsap.to(indicator.current, { x: tab.offsetLeft, width: tab.offsetWidth, duration: prefersReducedMotion() ? 0 : 0.55, ease: "expo.inOut" });
     },
     { dependencies: [step], scope: tabsRef }
   );
@@ -61,7 +74,8 @@ export default function Demo() {
       const q = gsap.utils.selector(body.current);
       const reduce = prefersReducedMotion();
       const d = reduce ? 0 : 1;
-      gsap.from(body.current, { opacity: reduce ? 1 : 0, y: 16 * d, duration: 0.45 * d, ease: "power2.out" });
+      gsap.from(body.current, { opacity: reduce ? 1 : 0, y: 18 * d, filter: reduce ? "none" : "blur(12px)", duration: 0.7 * d, ease: "power3.out", clearProps: "filter" });
+      gsap.fromTo(root.current!.querySelector(".demo-desc"), { opacity: reduce ? 1 : 0, y: 8 * d, filter: reduce ? "none" : "blur(6px)" }, { opacity: 1, y: 0, filter: "blur(0px)", duration: 0.5 * d, ease: "power2.out", overwrite: true });
       if (step === 0) {
         gsap.fromTo(q(".prompt-text .t"), { text: "" }, { text: PROMPT, duration: reduce ? 0 : 2.4, ease: "none", delay: 0.25 });
         gsap.from(q(".d-dot"), { scale: 0, rotate: -20, duration: 0.7 * d, stagger: 0.08, ease: "back.out(2)", delay: 0.2 });
@@ -95,10 +109,10 @@ export default function Demo() {
       scaleX: 1,
       duration: AUTOPLAY_SECONDS,
       ease: "none",
-      onComplete: () => setStep((s) => (s + 1) % STEPS.length),
+      onComplete: () => goStep((stepRef.current + 1) % STEPS.length),
     });
     timer.current.paused(!inView.current || hover.current);
-  }, [step]);
+  }, [step, goStep]);
 
   useEffect(() => {
     startTimer();
@@ -117,11 +131,11 @@ export default function Demo() {
         },
       });
       gsap.to(".demo-shell", {
-        opacity: 1, y: 0, duration: 0.9, ease: "power3.out",
+        opacity: 1, y: 0, filter: "blur(0px)", duration: 0.9, ease: "power3.out",
         scrollTrigger: { trigger: ".demo-shell", start: "top 85%", once: true },
       });
       gsap.to(".demo-tabs", {
-        opacity: 1, y: 0, duration: 0.7, ease: "power3.out",
+        opacity: 1, y: 0, filter: "blur(0px)", duration: 0.7, ease: "power3.out",
         scrollTrigger: { trigger: ".demo-tabs", start: "top 90%", once: true },
       });
     },
@@ -138,7 +152,7 @@ export default function Demo() {
         <div ref={tabsRef} className="demo-tabs" role="tablist" aria-label="Demo steps" data-reveal>
           <span ref={indicator} className="pill-indicator" aria-hidden="true" />
           {STEPS.map((s, i) => (
-            <button key={s.title} role="tab" aria-selected={step === i} className="pill-tab" onClick={() => setStep(i)}>
+            <button key={s.title} role="tab" aria-selected={step === i} className="pill-tab" onClick={() => goStep(i)}>
               <span className="n">{i + 1}</span>
               {s.title}
               <span className="bar" aria-hidden="true" />

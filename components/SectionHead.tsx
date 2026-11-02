@@ -27,7 +27,7 @@ export default function SectionHead({
         scrollTrigger: { trigger: root.current, start: "top 82%", once: true },
       });
       if (tagEl) {
-        tl.to(root.current.querySelector(".tag"), { opacity: 1, y: 0, duration: 0.5, ease: "power3.out" }, 0);
+        tl.to(root.current.querySelector(".tag"), { opacity: 1, y: 0, filter: "blur(0px)", duration: 0.5, ease: "power3.out" }, 0);
         tl.to(tagEl, { duration: 0.9, scrambleText: { text: tag, chars: "upperCase", speed: 0.6 } }, 0);
       }
       if (h) {
@@ -36,12 +36,12 @@ export default function SectionHead({
           mask: "lines",
           autoSplit: true,
           onSplit: (self) => {
-            gsap.set(h, { opacity: 1, y: 0 });
-            return tl.from(self.lines, { yPercent: 115, duration: 1, stagger: 0.12, ease: "power4.out" }, 0.1);
+            gsap.set(h, { opacity: 1, y: 0, filter: "blur(0px)" });
+            return tl.from(self.lines, { yPercent: 115, filter: "blur(14px)", duration: 1.1, stagger: 0.12, ease: "power4.out" }, 0.1);
           },
         });
       }
-      if (sub) tl.to(sub, { opacity: 1, y: 0, duration: 0.7, ease: "power3.out" }, 0.45);
+      if (sub) tl.to(sub, { opacity: 1, y: 0, filter: "blur(0px)", duration: 0.7, ease: "power3.out" }, 0.45);
     },
     { scope: root }
   );

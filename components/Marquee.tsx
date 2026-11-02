@@ -16,7 +16,7 @@ export default function Marquee() {
     () => {
       const track = root.current!.querySelector<HTMLElement>(".marquee-track")!;
       gsap.to(root.current!.querySelector(".marquee-label"), {
-        opacity: 1, y: 0, duration: 0.7, scrollTrigger: { trigger: root.current, start: "top 90%", once: true },
+        opacity: 1, y: 0, filter: "blur(0px)", duration: 0.7, scrollTrigger: { trigger: root.current, start: "top 90%", once: true },
       });
       if (prefersReducedMotion()) return;
       const loop = gsap.to(track, { xPercent: -50, duration: 28, ease: "none", repeat: -1 });

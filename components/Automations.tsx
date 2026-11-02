@@ -25,7 +25,7 @@ export default function Automations() {
       const steps = q(".step") as HTMLElement[];
       gsap.set(steps, { opacity: 0, y: 40 });
       gsap.to(steps, {
-        opacity: 1, y: 0, duration: 0.7, stagger: 0.1, ease: "back.out(1.4)",
+        opacity: 1, y: 0, filter: "blur(0px)", duration: 0.7, stagger: 0.1, ease: "back.out(1.4)",
         scrollTrigger: { trigger: ".pipe", start: "top 82%", once: true },
       });
       if (prefersReducedMotion()) { steps.forEach((s) => s.classList.add("on")); gsap.set(".pipe-line i", { scaleX: 1 }); return; }

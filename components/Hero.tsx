@@ -16,7 +16,7 @@ export default function Hero() {
 
       // nav drops in
       tl.from(document.querySelector(".nav-inner"), { y: -60, opacity: 0, duration: 0.8 }, 0);
-      tl.to(".hero-tag", { opacity: 1, y: 0, duration: 0.7 }, 0.15);
+      tl.to(".hero-tag", { opacity: 1, y: 0, filter: "blur(0px)", duration: 0.7 }, 0.15);
 
       SplitText.create(h1, {
         type: "lines",
@@ -24,12 +24,12 @@ export default function Hero() {
         autoSplit: true,
         onSplit: (self) => {
           gsap.set(h1, { visibility: "visible" });
-          return tl.from(self.lines, { yPercent: 115, duration: 1.1, stagger: 0.14, ease: "power4.out" }, 0.25);
+          return tl.from(self.lines, { yPercent: 115, filter: "blur(16px)", duration: 1.2, stagger: 0.14, ease: "power4.out" }, 0.25);
         },
       });
 
-      tl.to(".hero-sub", { opacity: 1, y: 0, duration: 0.8 }, 0.9);
-      tl.to(".hero-cta > *", { opacity: 1, y: 0, duration: 0.7, stagger: 0.1 }, 1.05);
+      tl.to(".hero-sub", { opacity: 1, y: 0, filter: "blur(0px)", duration: 0.8 }, 0.9);
+      tl.to(".hero-cta > *", { opacity: 1, y: 0, filter: "blur(0px)", duration: 0.7, stagger: 0.1 }, 1.05);
 
       // soft floating background blobs + scroll parallax
       gsap.utils.toArray<HTMLElement>(".hero-blob").forEach((b, i) => {
@@ -49,7 +49,7 @@ export default function Hero() {
     <section ref={root} id="top" className="hero">
       <div className="hero-blob" aria-hidden="true" style={{ width: 520, height: 520, right: "-8%", top: "4%", background: "rgba(106,77,244,.16)" }} />
       <div className="hero-blob" aria-hidden="true" style={{ width: 460, height: 460, left: "-6%", top: "14%", background: "rgba(255,170,200,.35)" }} />
-      <div className="hero-blob" aria-hidden="true" style={{ width: 520, height: 320, left: "30%", bottom: "-6%", background: "rgba(255,226,150,.5)" }} />
+      <div className="hero-blob" aria-hidden="true" style={{ width: 760, height: 300, left: "calc(50% - 380px)", top: "52%", background: "rgba(255,226,150,.38)" }} />
 
       <a href="#features" className="tag hero-tag" data-reveal>
         <i>

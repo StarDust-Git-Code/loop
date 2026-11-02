@@ -26,7 +26,7 @@ export default function Safety() {
       ScrollTrigger.batch(".safe-card", {
         start: "top 90%",
         once: true,
-        onEnter: (b) => gsap.fromTo(b, { rotate: (i: number) => (i % 2 ? 4 : -4) }, { opacity: 1, y: 0, rotate: 0, duration: 0.8, stagger: 0.12, ease: "back.out(1.5)" }),
+        onEnter: (b) => gsap.fromTo(b, { rotate: (i: number) => (i % 2 ? 4 : -4) }, { opacity: 1, y: 0, filter: "blur(0px)", rotate: 0, duration: 0.8, stagger: 0.12, ease: "back.out(1.5)" }),
       });
     },
     { scope: root }

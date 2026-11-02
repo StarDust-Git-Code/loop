@@ -23,7 +23,7 @@ export default function MySpace() {
         scrollTrigger: { trigger: ".checks", start: "top 85%", once: true },
       });
       gsap.to(q(".chat-shell"), {
-        opacity: 1, y: 0, duration: 0.9, ease: "power3.out",
+        opacity: 1, y: 0, filter: "blur(0px)", duration: 0.9, ease: "power3.out",
         scrollTrigger: { trigger: ".chat-shell", start: "top 85%", once: true },
       });
 
@@ -40,10 +40,10 @@ export default function MySpace() {
         if (el === typing) return;
         const isAi = el.classList.contains("ai") || el.classList.contains("event");
         if (isAi) {
-          tl.set(typing, { opacity: 1, y: 0, scale: 1 }, ">+0.1");
+          tl.set(typing, { opacity: 1, y: 0, filter: "blur(0px)", scale: 1 }, ">+0.1");
           tl.set(typing, { opacity: 0 }, ">+0.8");
         }
-        tl.to(el, { opacity: 1, y: 0, scale: 1, duration: 0.5, ease: "back.out(1.6)" }, isAi ? ">" : ">+0.5");
+        tl.to(el, { opacity: 1, y: 0, filter: "blur(0px)", scale: 1, duration: 0.5, ease: "back.out(1.6)" }, isAi ? ">" : ">+0.5");
       });
     },
     { scope: root }
