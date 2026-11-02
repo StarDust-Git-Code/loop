@@ -60,6 +60,7 @@ export function Sidebar() {
         </span>
       </div>
 
+      <div className={s.sideScroll}>
       <ul className={`${s.navList} ${s.navRel}`} ref={listRef}>
         <span ref={barRef} className={s.navBar} aria-hidden="true" />
         {NAV.map((item) => {
@@ -98,9 +99,9 @@ export function Sidebar() {
           </li>
         ))}
       </ul>
+      </div>
 
-      <div className={s.grow} />
-
+      <div className={s.sideFoot}>
       <Link href="/settings" className={`${s.navItem} ${pathname === '/settings' ? s.navActive : ''}`}>
         <Icon d={GEAR_PATH} />
         <span className={s.navLabel}>Settings</span>
@@ -114,6 +115,7 @@ export function Sidebar() {
           <div className={s.profileName}>{name}</div>
           <div className={s.profilePlan}>{session?.signedIn ? (session.plan ?? 'Signed in') : 'Not signed in'}</div>
         </div>
+      </div>
       </div>
     </nav>
   );

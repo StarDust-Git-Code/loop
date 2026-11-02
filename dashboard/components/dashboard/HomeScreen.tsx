@@ -19,6 +19,7 @@ export function HomeScreen() {
           <span className={s.workspace}>{settings?.workspaceName ?? ''}</span>
           {!api.capabilities.backend && <span className={s.workspace} style={{ color: '#6b5200' }}>Backend not connected: runs are queued only</span>}
         </header>
+        <div className={s.stage}>
         <section className={s.hero}>
           <div className={s.heroMates} aria-hidden="true">
             {HERO.map((m) => <Mate key={m} mate={m} size={76} className={s.heroMate} />)}
@@ -28,6 +29,7 @@ export function HomeScreen() {
         </section>
         <TaskComposer />
         <SavedWorkflows />
+        </div>
       </div>
       <ActivityRail />
     </main>
