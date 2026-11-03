@@ -153,7 +153,7 @@ export function Chat() {
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
             <div style={{ display: 'flex', paddingLeft: 10 }}>{members.map((m) => <span key={m} style={{ marginLeft: -10 }}><Dot k={m} s={36} /></span>)}</div>
-            <Btn onClick={startRun}>Start a run</Btn><Btn href="/studio">Open in Studio</Btn>
+            <Btn href={`/call?mate=${mate}&conv=${conv.id}`}>Call {MATES[mate].name}</Btn><Btn onClick={startRun}>Start a run</Btn><Btn href="/studio">Open in Studio</Btn>
           </div>
           {list && (
             <div style={{ position: 'absolute', top: 76, left: 0, width: 360, maxHeight: 420, overflow: 'auto', background: '#fff', border: '1px solid rgba(31,26,23,.14)', borderRadius: 16, boxShadow: '0 16px 40px rgba(31,26,23,.16)', padding: 8, zIndex: 20, animation: 'lm-pop .2s ease both' }}>

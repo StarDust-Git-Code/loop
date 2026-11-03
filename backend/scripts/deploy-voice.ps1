@@ -22,11 +22,14 @@ if (Test-Path -LiteralPath $EnvFile) {
 }
 function C([string]$k, [string]$d = '') { if ($cfg.ContainsKey($k) -and $cfg[$k]) { return $cfg[$k] }; return $d }
 $key = C 'RENDER_KEY_VOICE'; if (-not $key) { $key = $env:RENDER_API_KEY }
-if (-not $key) { throw 'Set RENDER_KEY_VOICE in deploy.env (or the RENDER_API_KEY environment variable).' }
-$gemini = C 'GEMINI_API_KEY'; if (-not $gemini) { throw 'GEMINI_API_KEY is empty in deploy.env.' }
+if (-not $key) { $sec = Read-Host 'Paste your Render API key (input is hidden)' -AsSecureString; $key = [Runtime.InteropServices.Marshal]::PtrToStringAuto([Runtime.InteropServices.Marshal]::SecureStringToBSTR($sec)) }
+if (-not $key) { throw 'No Render API key given.' }
+$gemini = C 'GEMINI_API_KEY'; if ($env:GEMINI_API_KEY) { $gemini = $env:GEMINI_API_KEY }
+if (-not $gemini) { $sec = Read-Host 'Paste your Gemini API key (input is hidden)' -AsSecureString; $gemini = [Runtime.InteropServices.Marshal]::PtrToStringAuto([Runtime.InteropServices.Marshal]::SecureStringToBSTR($sec)) }
 $origin = C 'DASHBOARD_ORIGIN' 'https://dashboard-loopmates.vercel.app'
 $fb = C 'FIREBASE_SERVICE_ACCOUNT_FILE'
-if (-not $fb -or -not (Test-Path -LiteralPath $fb)) { throw 'FIREBASE_SERVICE_ACCOUNT_FILE is missing or the file does not exist.' }
+if (-not $fb -or -not (Test-Path -LiteralPath $fb)) { $fb = (Read-Host 'Path to your Firebase service-account JSON file').Trim('"') }
+if (-not (Test-Path -LiteralPath $fb)) { throw 'That Firebase service-account file does not exist.' }
 $fbB64 = [Convert]::ToBase64String([IO.File]::ReadAllBytes($fb))
 $repo = C 'GITHUB_REPO' 'https://github.com/StarDust-Git-Code/loop'; $branch = C 'GITHUB_BRANCH' 'main'; $region = C 'REGION' 'singapore'
 $name = 'loopmates-voice'

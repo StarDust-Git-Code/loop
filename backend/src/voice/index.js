@@ -8,12 +8,18 @@ import { auth, userCol } from '../api/db.js';
 import { buildSystem } from '../api/prompt.js';
 import { getSettings } from '../api/settings.js';
 import { MATE, defaultConfig } from '../api/mates.js';
+import { toolsFor, runTool } from '../api/tools.js';
+import { toSchema } from '../api/toolcalls.js';
 
 const MAX_CALLS = num('VOICE_MAX_CALLS', 3);
 const MAX_SECONDS = num('VOICE_MAX_SECONDS', 600);
 const IDLE_SECONDS = 90;
 const GEMINI_WS = env('VOICE_UPSTREAM') || 'wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent';
-const VOICES = { planner: 'Kore', mimo: 'Puck', research: 'Charon', writer: 'Aoede', code: 'Fenrir', ops: 'Orus', halo: 'Zephyr' };
+// One distinct Gemini prebuilt voice per Mate.
+const VOICES = { planner: 'Kore', research: 'Charon', code: 'Fenrir', flow: 'Aoede', writer: 'Leda', browser: 'Puck', ops: 'Orus', mimo: 'Zephyr', orbit: 'Achernar', recall: 'Sulafat', spark: 'Callirrhoe', zen: 'Vindemiatrix', luna: 'Despina', scout: 'Algenib', chef: 'Achird', tune: 'Enceladus', data: 'Iapetus', byte: 'Umbriel', halo: 'Gacrux' };
+// Voice-friendly tools only: quick lookups plus a few safe writes. Everything still passes through the normal tool runner.
+const VOICE_TOOLS = ['web_search', 'fetch_url', 'weather', 'currency_convert', 'wikipedia', 'calculate', 'unit_convert', 'time_now', 'date_math', 'tz_convert', 'knowledge_search', 'memory_recall', 'memory_save', 'memory_list', 'calendar_list', 'calendar_add', 'task_list', 'task_add', 'task_update', 'task_done', 'runs_active', 'runs_failed', 'run_status', 'system_status', 'watchdog', 'mates_list', 'file_find', 'file_read', 'scratch_read', 'scratch_write'];
+const gType = (n) => { if (Array.isArray(n)) return n.map(gType); if (n && typeof n === 'object') return Object.fromEntries(Object.entries(n).map(([k, v]) => [k, k === 'type' && typeof v === 'string' ? v.toUpperCase() : gType(v)])); return n; };
 let active = 0;
 
 /** Newest Live-capable model this key can use, unless VOICE_MODEL pins one. */
@@ -59,12 +65,32 @@ async function handle(ws, q) {
     const cfg = cfgDoc.exists ? cfgDoc.data() : defaultConfig(MATE[mateKey], now());
     const base = await buildSystem({ uid: user.uid, mateKey, cfg, mode: 'chat', query: '', settings, tools: [], others: [] });
     const reason = String(q.get('reason') ?? '').slice(0, 300);
-    const system = `${base}\n\nThis is a live VOICE CALL with the owner. Speak naturally in short sentences, one or two at a time. No markdown, lists, URLs or code read aloud. Ask one question at a time. If you cannot do something by voice, say you will put it in chat.${reason ? `\nYou called the owner because: ${reason}. Start by saying why.` : ''}`;
+    // Context: the most recent chat (the one the call was started from, else the newest with this Mate) so the call continues it.
+    let recap = '';
+    try {
+      const convs = (await userCol(user.uid, 'conversations').limit(60).get()).docs.map((d) => ({ id: d.id, ...d.data() })).sort((a, b) => String(b.updatedAt ?? b.createdAt).localeCompare(String(a.updatedAt ?? a.createdAt)));
+      const c = convs.find((x) => x.id === q.get('conv')) ?? convs.find((x) => x.mate === mateKey) ?? convs[0];
+      const msgs = (c?.messages ?? []).filter((m) => m.role !== 'system' && m.text).slice(-10);
+      if (msgs.length) recap = `\n\nRecent chat "${String(c.title ?? '').slice(0, 60)}" (for context, continue naturally):\n${msgs.map((m) => `${m.role === 'user' ? 'Owner' : MATE[m.mate]?.name ?? 'Mate'}: ${String(m.text).slice(0, 300)}`).join('\n')}`;
+    } catch { /* context is best effort */ }
+    const allowed = toolsFor(cfg.tools, { ...settings, permissionMode: settings.permissionMode }, mateKey).filter((t) => VOICE_TOOLS.includes(t.name) && !(t.needsApproval && settings.permissionMode !== 'auto'));
+    const declarations = allowed.map((t) => { const f = toSchema(t).function; return { name: f.name, description: f.description, ...(Object.keys(f.parameters.properties).length ? { parameters: gType(f.parameters) } : {}) }; });
+    const system = `${base}\n\nThis is a live VOICE CALL with the owner. Speak naturally in short sentences, one or two at a time. No markdown, lists, URLs or code read aloud. Ask one question at a time. If you cannot do something by voice, say you will put it in chat.${reason ? `\nYou called the owner because: ${reason}. Start by saying why.` : ''}${declarations.length ? '\nYou have tools. Use them quietly when they help (look something up, check the schedule, save a note) and say the answer, not the tool name. Only change things (save, add, update) when the owner asked.' : ''}${recap}`;
     up = new WebSocket(`${GEMINI_WS}?key=${encodeURIComponent(env('GEMINI_API_KEY'))}`);
-    up.on('open', () => up.send(JSON.stringify({ setup: { model: `models/${model}`, generationConfig: { responseModalities: ['AUDIO'], speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: VOICES[mateKey] ?? 'Puck' } } } }, systemInstruction: { parts: [{ text: system }] }, inputAudioTranscription: {}, outputAudioTranscription: {} } })));
+    up.on('open', () => up.send(JSON.stringify({ setup: { model: `models/${model}`, generationConfig: { responseModalities: ['AUDIO'], speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: VOICES[mateKey] ?? 'Puck' } } } }, systemInstruction: { parts: [{ text: system }] }, ...(declarations.length ? { tools: [{ functionDeclarations: declarations }] } : {}), inputAudioTranscription: {}, outputAudioTranscription: {} } })));
     up.on('message', (raw) => {
       let m; try { m = JSON.parse(raw.toString()); } catch { return; }
       if (m.setupComplete) { say({ type: 'ready', mate: mateKey, name: MATE[mateKey].name, model }); if (reason || q.get('greet')) up.send(JSON.stringify({ realtimeInput: { text: reason ? 'Start the call now.' : 'Greet the owner briefly.' } })); return; }
+      if (m.toolCall?.functionCalls?.length) {
+        last = Date.now();
+        void Promise.all(m.toolCall.functionCalls.map(async (fc) => {
+          say({ type: 'tool', name: fc.name });
+          const r = await runTool(fc.name, fc.args ?? {}, { uid: user.uid, settings, mate: mateKey, convId: q.get('conv') || undefined }, allowed);
+          return { id: fc.id, name: fc.name, response: r.ok ? { output: r.text.slice(0, 3000) } : { error: r.text.slice(0, 500) } };
+        })).then((functionResponses) => { if (up?.readyState === WebSocket.OPEN) up.send(JSON.stringify({ toolResponse: { functionResponses } })); }).catch(() => {});
+        return;
+      }
+      if (m.toolCallCancellation) return;
       const sc = m.serverContent; if (!sc) return;
       last = Date.now();
       if (sc.interrupted) say({ type: 'interrupted' });

@@ -2,7 +2,7 @@
 import { idToken } from './auth';
 
 export const VOICE_URL = process.env.NEXT_PUBLIC_VOICE_URL ?? '';
-export type CallEvent = { type: 'ready'; name: string } | { type: 'transcript'; who: 'you' | 'mate'; text: string } | { type: 'interrupted' | 'turn' } | { type: 'error'; message: string } | { type: 'end'; why: string };
+export type CallEvent = { type: 'ready'; name: string } | { type: 'transcript'; who: 'you' | 'mate'; text: string } | { type: 'interrupted' | 'turn' } | { type: 'tool'; name: string } | { type: 'error'; message: string } | { type: 'end'; why: string };
 
 const WORKLET = `class Cap extends AudioWorkletProcessor {
   constructor() { super(); this.buf = []; this.pos = 0; }
@@ -18,13 +18,14 @@ registerProcessor('cap', Cap);`;
 
 export type CallHandle = { hangup(): void; mute(on: boolean): void; level(): number };
 
-export async function startCall(mate: string, reason: string, on: (e: CallEvent) => void): Promise<CallHandle> {
+export async function startCall(mate: string, reason: string, on: (e: CallEvent) => void, conv = ''): Promise<CallHandle> {
   if (!VOICE_URL) throw new Error('Voice is not set up yet (NEXT_PUBLIC_VOICE_URL is missing).');
   const token = await idToken();
   const media = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } });
   const ac = new AudioContext(); await ac.resume();
   const url = new URL('/live', VOICE_URL.replace(/^http/, 'ws'));
-  url.searchParams.set('mate', mate); if (token) url.searchParams.set('token', token); if (reason) url.searchParams.set('reason', reason); else url.searchParams.set('greet', '1');
+  url.searchParams.set('mate', mate); if (token) url.searchParams.set('token', token); if (conv) url.searchParams.set('conv', conv);
+  if (reason) url.searchParams.set('reason', reason); else url.searchParams.set('greet', '1');
   const ws = new WebSocket(url); ws.binaryType = 'arraybuffer';
   let muted = false, playAt = 0, peak = 0; const playing = new Set<AudioBufferSourceNode>();
   const stopPlayback = () => { for (const s of playing) { try { s.stop(); } catch { /* already ended */ } } playing.clear(); playAt = 0; };
