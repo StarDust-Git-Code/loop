@@ -70,15 +70,16 @@ if ($null -eq $found) {
   $payload = @{
     type = 'web_service'; name = $name; ownerId = $ownerId; repo = $repo; branch = $branch; autoDeploy = 'yes'; rootDir = 'backend'
     envVars = $envs
-    serviceDetails = @{ runtime = 'node'; plan = 'free'; region = $region; healthCheckPath = '/healthz'; envSpecificDetails = @{ buildCommand = 'npm ci --omit=dev --omit=optional'; startCommand = 'node src/voice/index.js' } }
+    serviceDetails = @{ runtime = 'node'; plan = 'free'; region = $region; healthCheckPath = '/healthz'; envSpecificDetails = @{ buildCommand = 'npm ci --omit=dev'; startCommand = 'node src/voice/index.js' } }
   }
   $created = Unwrap (Render 'POST' '/services' $payload) 'service'
   $id = [string]$created.id; $url = [string]$created.serviceDetails.url
   Write-Host "  created $id"
 } else {
   $id = [string]$found.id; $url = [string]$found.serviceDetails.url
+  Render 'PATCH' "/services/$id" @{ branch = $branch; rootDir = 'backend'; autoDeploy = 'yes'; serviceDetails = @{ healthCheckPath = '/healthz'; envSpecificDetails = @{ buildCommand = 'npm ci --omit=dev'; startCommand = 'node src/voice/index.js' } } } | Out-Null
   Render 'PUT' "/services/$id/env-vars" $envs | Out-Null
-  Render 'POST' "/services/$id/deploys" @{ clearCache = 'do_not_clear' } | Out-Null
+  Render 'POST' "/services/$id/deploys" @{ clearCache = 'clear' } | Out-Null
   Write-Host "  updated $id and started a deploy"
 }
 if (-not $url) { $url = "https://$name.onrender.com" }
