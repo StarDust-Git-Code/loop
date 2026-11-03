@@ -4,7 +4,9 @@
   "private": true,
   "type": "module",
   "description": "Loopmates backend: api (Render 3), coder (Render 1), artifacts (Render 2). One codebase, three start commands.",
-  "engines": { "node": ">=20" },
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
     "start:api": "node src/api/index.js",
     "start:coder": "node src/coder/index.js",
@@ -15,6 +17,7 @@
   "dependencies": {
     "@fastify/cors": "^10.0.0",
     "@fastify/multipart": "^9.0.0",
+    "@google-cloud/firestore": "^7.11.6",
     "fastify": "^5.0.0",
     "firebase-admin": "^13.0.0",
     "ws": "^8.18.0"
