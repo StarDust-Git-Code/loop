@@ -56,7 +56,7 @@ export const api = {
   skills: repo<Skill>('/skills'),
   workflows: repo<Workflow>('/workflows'),
   connections: { ...repo<Connection>('/connections'), test: (id: string) => call<{ status: string; message?: string }>('POST', `/connections/${id}/test`) },
-  telegramCode: (connectionId?: string) => call<{ code: string; link?: string; botName?: string }>('POST', '/telegram/link-code', { connectionId }),
+  telegramCode: (connectionId?: string) => call<{ code: string; bot?: string | null }>('POST', '/telegram/link-code', { connectionId }).then((r) => ({ code: r.code, link: r.bot ? `https://t.me/${r.bot.replace(/^@/, '')}` : undefined })),
   files: { list: () => call<FileItem[]>('GET', '/files'), remove: (id: string) => call<void>('DELETE', `/files/${id}`) },
 };
 

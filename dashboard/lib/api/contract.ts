@@ -33,7 +33,7 @@ export interface Api {
   memories: Repo<Memory, MemoryIn>;
   skills: Repo<Skill, SkillIn>;
   mcp: Repo<McpServer, McpIn> & { verify(id: ID): Promise<McpServer> };
-  connections: Repo<Connection, ConnectionIn> & { test(id: ID): Promise<Connection>; /** Chats the bridge can see (WhatsApp). Empty until the backend lists them. */ chats(id: ID): Promise<{ id: string; name: string; meta: string }[]> };
+  connections: Repo<Connection, ConnectionIn> & { /** One-time code to send to the Telegram bot as /start CODE. */ telegramLinkCode(): Promise<{ code: string; bot: string | null; expiresInMinutes: number }>; test(id: ID): Promise<Connection>; /** Chats the bridge can see (WhatsApp). Empty until the backend lists them. */ chats(id: ID): Promise<{ id: string; name: string; meta: string }[]> };
   conversations: Repo<Conversation, ConversationIn> & { send(id: ID, text: string, mate?: string): Promise<Message>; /** Same as send, but the reply arrives live through onEvent. Resolves when the answer is complete. */ sendStream(id: ID, text: string, mate: string | undefined, onEvent: (e: ChatEvent) => void): Promise<void> };
   events: Repo<CalEvent, CalEventIn>;
   files: Repo<FileItem, FileIn> & { upload(file: File): Promise<FileItem>; downloadUrl(id: ID): string; /** Authenticated download: fetches with the sign-in token and saves the file. */ download(id: ID, name: string): Promise<void> };

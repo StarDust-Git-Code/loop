@@ -19,7 +19,7 @@ const CORE: MateKey[] = ['research', 'code', 'planner', 'writer', 'browser', 'op
 const pill = (c?: Connection) => { const ok = c?.status === 'connected'; return <span style={{ background: ok ? '#E6F4EA' : c ? '#FFF3D6' : '#ECE9F4', color: ok ? '#1E7A46' : c ? '#8A5A00' : '#6B6572', fontSize: 12, fontWeight: 600, borderRadius: 99, padding: '4px 12px', whiteSpace: 'nowrap' }}>{ok ? 'Connected' : c ? (c.status === 'error' ? 'Error' : 'Waiting for backend') : 'Not connected'}</span>; };
 
 export function Connections() {
-  const { items, loading, error, create, update, remove } = useRepo(api.connections);
+  const { items, loading, error, create, update, remove, reload } = useRepo(api.connections);
   const toast = useToast();
   const wa = items.find((c) => c.provider === 'whatsapp'), tg = items.find((c) => c.provider === 'telegram');
   const [sheet, setSheet] = useState<Provider | null>(null); const [cfg, setCfg] = useState<Record<string, string>>({});
@@ -34,7 +34,8 @@ export function Connections() {
   const toggleChat = (id: string) => wa && patch(wa, 'chats', (sel.includes(id) ? sel.filter((x) => x !== id) : [...sel, id]).join(','));
   const on = (c: Connection, k: string) => (c.config[k] ?? 'on') === 'on';
   const mates = (tg?.config.mates ?? CORE.join(',')).split(',').filter(Boolean);
-  const [tgForm, setTgForm] = useState({ botToken: '', chatId: '' });
+  const [link, setLink] = useState<{ code: string; bot: string | null; expiresInMinutes: number } | null>(null); const [linking, setLinking] = useState(false);
+  useEffect(() => { if (!link || tg) return; const t = setInterval(() => { void reload(); }, 3000); return () => clearInterval(t); }, [link, tg, reload]);
   const def = sheet && OTHER[sheet];
 
   return (
@@ -65,13 +66,20 @@ export function Connections() {
           <section style={card}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}><span style={{ width: 48, height: 48, borderRadius: 12, background: '#DCEBFF', color: '#1F5FBF', fontWeight: 700, display: 'grid', placeItems: 'center' }}>TG</span><div style={{ flex: 1 }}><b style={{ fontSize: 20 }}>Telegram</b><div style={{ color: '#6B6572', fontSize: 13.5 }}>Your Loop bot messages you and takes quick replies</div></div>{pill(tg)}</div>
             {!tg ? (
-              <form onSubmit={async (e) => { e.preventDefault(); await save('telegram', 'Telegram', { ...tgForm }); toast('Telegram saved. Waiting for the backend to verify'); }} style={{ display: 'flex', flexDirection: 'column', gap: 12, margin: 'auto', width: 'min(420px,100%)' }}>
-                <p style={{ color: '#6B6572', margin: 0, fontSize: 13.5, lineHeight: 1.55 }}>Create a bot with @BotFather, paste its token here, then send it a message so Loop can learn your chat ID.</p>
-                <Field label="Bot token"><Input type="password" autoComplete="off" value={tgForm.botToken} onChange={(e) => setTgForm({ ...tgForm, botToken: e.target.value })} /></Field>
-                <Field label="Chat ID"><Input value={tgForm.chatId} onChange={(e) => setTgForm({ ...tgForm, chatId: e.target.value })} /></Field>
-                <Btn type="submit" variant="primary" disabled={!tgForm.botToken.trim()}>Connect Telegram</Btn>
-                {!api.capabilities.backend && <p style={{ margin: 0, fontSize: 12, color: '#6B6572' }}>Saved in this browser only until a backend is connected. Do not enter a real token in this mode.</p>}
-              </form>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12, margin: 'auto', width: 'min(440px,100%)' }}>
+                <p style={{ color: '#6B6572', margin: 0, fontSize: 13.5, lineHeight: 1.55 }}>The bot itself is set up on the server. To link <b>your</b> Telegram chat: get a code here, then send it to the bot as <b>/start CODE</b>.</p>
+                {!link ? <Btn variant="primary" disabled={linking} onClick={async () => { setLinking(true); try { setLink(await api.connections.telegramLinkCode()); } catch (e) { toast(e instanceof Error ? e.message : 'Could not get a code'); } finally { setLinking(false); } }}>{linking ? 'Getting a code…' : 'Get link code'}</Btn> : (
+                  <div style={{ background: '#F4F0FF', border: '1px solid rgba(106,77,244,.3)', borderRadius: 14, padding: 16, display: 'flex', flexDirection: 'column', gap: 10 }}>
+                    <p style={cap}>SEND THIS TO {(link.bot ?? 'YOUR BOT').toUpperCase()}</p>
+                    <code style={{ fontSize: 20, fontWeight: 700, letterSpacing: '.04em', userSelect: 'all' }}>/start {link.code}</code>
+                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                      <Btn small onClick={() => { void navigator.clipboard.writeText(`/start ${link.code}`); toast('Copied'); }}>Copy</Btn>
+                      {link.bot && <Btn small onClick={() => window.open(`https://t.me/${link.bot!.replace(/^@/, '')}`, '_blank', 'noopener')}>Open Telegram</Btn>}
+                      <Btn small onClick={() => setLink(null)}>New code</Btn>
+                    </div>
+                    <p style={{ margin: 0, fontSize: 12.5, color: '#6B6572' }}>Expires in {link.expiresInMinutes} minutes. This page updates by itself once the bot says "Linked".</p>
+                  </div>)}
+              </div>
             ) : (
               <div style={{ display: 'grid', gridTemplateColumns: 'minmax(220px,250px) minmax(0,1fr)', gap: 18, flex: 1, minHeight: 0, overflow: 'auto' }}>
                 <div style={{ background: '#EBE3D3', borderRadius: 18, padding: 14, display: 'flex', flexDirection: 'column', gap: 10, alignSelf: 'start' }} aria-label="Preview of Telegram messages">

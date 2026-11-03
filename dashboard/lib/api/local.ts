@@ -82,6 +82,7 @@ export function createLocalApi(): Api {
   conversations.sendStream = async (id, text, mate) => { await conversations.send(id, text, mate); };
   mcp.verify = async (id) => mcp.update(id, { status: 'unverified' } as never);
   connections.chats = async () => [];
+  connections.telegramLinkCode = async () => { throw new Error('Linking Telegram needs the backend.'); };
   connections.test = async (id) => connections.update(id, { status: 'pending' } as never);
   files.upload = async (file) => files.create({ name: file.name, size: file.size, mime: file.type || 'application/octet-stream', source: 'upload' } as never);
   files.downloadUrl = () => '#';

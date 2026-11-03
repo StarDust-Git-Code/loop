@@ -105,6 +105,7 @@ export function createHttpApi(base: string): Api {
   const connections = repo('/connections') as Api['connections'];
   connections.chats = (id) => call("GET", `/connections/${id}/chats`);
   connections.test = (id) => act(`/connections/${id}/test`);
+  connections.telegramLinkCode = () => call('POST', '/telegram/link-code', {});
   const files = repo('/files') as Api['files'];
   files.upload = async (file) => { const fd = new FormData(); fd.append('file', file); return act('/files', fd); };
   files.downloadUrl = (id) => `${base}/v1/files/${id}/content`;
