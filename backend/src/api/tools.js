@@ -45,7 +45,30 @@ async function safeFetch(url, init = {}, hops = 3) {
 }
 
 /* ---------- web search ---------- */
+// Preferred: Gemini with Google Search grounding (fast, ~1,500 grounded requests a day on the free tier, no RPM limit).
+// We stop at GROUND_DAILY_CAP (default 1400) and then fall back to Brave or DuckDuckGo. The counter is per API process.
+const ground = { day: '', n: 0 };
+async function groundedSearch(query) {
+  const key = env('GEMINI_API_KEY'); const day = new Date().toISOString().slice(0, 10);
+  if (!key || env('GROUNDED_SEARCH') === 'off') return null;
+  if (ground.day !== day) { ground.day = day; ground.n = 0; }
+  if (ground.n >= Number(env('GROUND_DAILY_CAP', '1400'))) return null;
+  ground.n++;
+  try {
+    const model = env('GEMINI_SEARCH_MODEL', 'gemini-2.5-flash');
+    const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
+      method: 'POST', headers: { 'content-type': 'application/json', 'x-goog-api-key': key }, signal: AbortSignal.timeout(25_000),
+      body: JSON.stringify({ contents: [{ role: 'user', parts: [{ text: `Search the web and answer with the facts only (specs, numbers, dates, names), tersely, in plain text. Question: ${query}` }] }], tools: [{ google_search: {} }], generationConfig: { maxOutputTokens: 900, temperature: 0.2 } }),
+    });
+    if (!r.ok) return null;
+    const j = await r.json(); const c = j.candidates?.[0];
+    const text = (c?.content?.parts ?? []).map((p) => p.text ?? '').join('').trim(); if (!text) return null;
+    const srcs = [...new Map((c.groundingMetadata?.groundingChunks ?? []).filter((x) => x.web?.uri).map((x) => [x.web.uri, x.web.title ?? x.web.uri])).entries()].slice(0, 5);
+    return `${text}${srcs.length ? `\n\nSources (Google Search via Gemini):\n${srcs.map(([u, n]) => `- ${n}: ${u}`).join('\n')}` : ''}`;
+  } catch { return null; }
+}
 async function search(query) {
+  const g = await groundedSearch(query); if (g) return g;
   if (env('BRAVE_API_KEY')) {
     const r = await fetch(`https://api.search.brave.com/res/v1/web/search?q=${encodeURIComponent(query)}&count=6`, { headers: { 'x-subscription-token': env('BRAVE_API_KEY'), accept: 'application/json' }, signal: AbortSignal.timeout(15_000) });
     if (!r.ok) throw bad(`Search provider answered ${r.status}`);
@@ -117,7 +140,7 @@ export const TOOLS = {
   ...MONITOR_TOOLS,
   ...TOOLKIT,
   ...WF_TOOLS,
-  web_search: { group: 'Web Search', net: true, desc: 'Search the web. Returns titles, URLs and snippets.', args: '{"query": "text"}', run: async (_c, a) => cap(await search(String(a.query ?? '').slice(0, 200))) },
+  web_search: { group: 'Web Search', net: true, desc: 'Search the web (Google-grounded). Fast: use this for specs, prices, facts and news instead of opening a browser. Returns an answer with source links.', args: '{"query": "text"}', run: async (_c, a) => cap(await search(String(a.query ?? '').slice(0, 200))) },
   fetch_url: { group: 'Web Search', net: true, desc: 'Open a public web page and read its text.', args: '{"url": "https://..."}', run: async (_c, a) => {
     const res = await safeFetch(String(a.url));
     if (!res.ok) throw bad(`The page answered ${res.status}`);

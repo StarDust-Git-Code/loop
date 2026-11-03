@@ -33,7 +33,7 @@ export function toolBlock(tools) {
   return `Tools: you can call tools through the tool-calling interface. Work like a careful engineer:
 - Use a tool only when it actually helps; answer directly when you already know.
 - When several lookups are independent, request them together in one turn.
-- Never repeat a call you already made; read the result before deciding the next step.
+${tools.some((t) => t.name === 'web_search') ? '- For quick lookups (specs, prices, facts, news) use web_search: it is fast and Google-grounded. Open pages or a browser only when you must read a specific page or interact with one.\n' : ''}- Never repeat a call you already made; read the result before deciding the next step.
 - If a tool fails, say what failed and try another approach or ask the owner.
 - Ground claims in tool results and cite them. Never invent results or pretend to have run something.
 - Write actions (saving, scheduling, stopping runs) only when the owner asked for them.`;
