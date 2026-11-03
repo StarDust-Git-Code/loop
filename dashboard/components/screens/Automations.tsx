@@ -9,6 +9,7 @@ import { MATES, mateImg, mateName } from '../../lib/mates';
 import type { Automation, AutomationIn, Schedule } from '../../lib/types';
 import { useToast } from '../ui/toast';
 import { Btn, confirmThen, Empty, ErrorNote, Field, Input, Loading, Modal, Page, Select, Textarea, Toggle } from '../ui/ui';
+import { Icon } from '../ui/Icon';
 
 const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const describe = (s: Schedule) => s.kind === 'manual' ? 'On demand' : s.kind === 'daily' ? `Every day ${s.time ?? '09:00'}` : s.kind === 'weekly' ? `${(s.days ?? []).map((d) => DAYS[d]).join(', ') || 'No days'} ${s.time ?? '09:00'}` : `Cron ${s.cron ?? ''}`;
@@ -53,7 +54,7 @@ export function Automations() {
                 <Btn onClick={() => setEdit(cur)}>Edit</Btn>
                 {wf && <Btn href={`/studio?id=${wf.id}`}>Edit in Studio</Btn>}
                 <Btn variant="primary" onClick={() => runNow(cur)}>Run now</Btn>
-                <Btn variant="danger" small aria-label="Delete automation" onClick={() => confirmThen(`Delete “${cur.name}”?`, () => remove(cur.id))}>✕</Btn>
+                <Btn variant="danger" small aria-label="Delete automation" onClick={() => confirmThen(`Delete “${cur.name}”?`, () => remove(cur.id))}><Icon name="close" size={16} /></Btn>
               </div>
               {cur.description && <p style={{ margin: 0, color: '#3D3946', fontSize: 14.5 }}>{cur.description}</p>}
 

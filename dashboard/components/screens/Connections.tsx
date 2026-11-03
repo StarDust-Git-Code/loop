@@ -6,6 +6,7 @@ import { mateImg, mateName } from '../../lib/mates';
 import type { Connection, MateKey, Provider } from '../../lib/types';
 import { useToast } from '../ui/toast';
 import { Btn, confirmThen, ErrorNote, Field, Input, Loading, Modal, Page, Toggle } from '../ui/ui';
+import { Icon } from '../ui/Icon';
 
 const card = { background: '#fff', border: '1px solid rgba(27,24,34,.17)', borderRadius: 20, boxShadow: '0 2px 6px rgba(31,26,23,.05)', padding: 22, display: 'flex', flexDirection: 'column', gap: 14, minHeight: 0 } as const;
 const cap = { fontSize: 12, fontWeight: 700, letterSpacing: '.08em', color: '#3D3946', margin: 0 } as const;
@@ -100,14 +101,14 @@ export function Connections() {
               <div style={{ display: 'flex', gap: 12, marginTop: 'auto' }}>
                 <Btn style={{ flex: 1, height: 48 }} onClick={async () => { await api.connections.test(tg.id); toast(api.capabilities.backend ? 'Test message sent' : 'Needs the backend to send') }}>Send test message</Btn>
                 <Btn variant="primary" style={{ flex: 1, height: 48 }} onClick={() => toast('Telegram settings saved')}>Save</Btn>
-                <Btn variant="danger" small aria-label="Disconnect Telegram" onClick={() => confirmThen('Disconnect Telegram?', () => remove(tg.id))}>✕</Btn>
+                <Btn variant="danger" small aria-label="Disconnect Telegram" onClick={() => confirmThen('Disconnect Telegram?', () => remove(tg.id))}><Icon name="close" size={16} /></Btn>
               </div></>}
           </section>
 
           {(Object.keys(OTHER) as Provider[]).some((p) => items.some((c) => c.provider === p)) && (
             <section style={{ ...card, gridColumn: '1 / -1' }}>
               <p style={cap}>OTHER CONNECTIONS</p>
-              {items.filter((c) => OTHER[c.provider]).map((c) => <div key={c.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '8px 0', borderTop: '1px solid rgba(31,26,23,.08)' }}><b style={{ flex: 1 }}>{c.label}</b>{pill(c)}<Btn small onClick={() => { setCfg(c.config); setSheet(c.provider); }}>Edit</Btn><Btn small variant="danger" onClick={() => confirmThen(`Disconnect ${c.label}?`, () => remove(c.id))}>✕</Btn></div>)}
+              {items.filter((c) => OTHER[c.provider]).map((c) => <div key={c.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '8px 0', borderTop: '1px solid rgba(31,26,23,.08)' }}><b style={{ flex: 1 }}>{c.label}</b>{pill(c)}<Btn small onClick={() => { setCfg(c.config); setSheet(c.provider); }}>Edit</Btn><Btn small variant="danger" onClick={() => confirmThen(`Disconnect ${c.label}?`, () => remove(c.id))}><Icon name="close" size={16} /></Btn></div>)}
             </section>)}
         </div>)}
 

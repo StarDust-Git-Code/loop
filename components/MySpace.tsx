@@ -58,7 +58,7 @@ export default function MySpace() {
           </SectionHead>
           <ul className="checks">
             {BULLETS.map((b) => (
-              <li key={b}><i>✓</i><span>{b}</span></li>
+              <li key={b}><i aria-hidden="true"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12.5l4.5 4.5L19 7" /></svg></i><span>{b}</span></li>
             ))}
           </ul>
         </div>

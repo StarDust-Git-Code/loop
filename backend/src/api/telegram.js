@@ -46,7 +46,7 @@ export async function handleUpdate(update) {
   if (start) {
     const ref = db.collection('telegramLinks').doc(start[1].toUpperCase());
     const d = await ref.get();
-    if (!d.exists || d.data().exp < Date.now()) return send(chatId, 'That code expired. Make a new one in Loopmates → Connections.');
+    if (!d.exists || d.data().exp < Date.now()) return send(chatId, 'That code expired. Make a new one in Loopmates > Connections.');
     const { uid, connectionId } = d.data();
     const col = userCol(uid, 'connections');
     const ref2 = connectionId ? col.doc(connectionId) : col.doc();
@@ -54,12 +54,12 @@ export async function handleUpdate(update) {
     await ref2.set({ provider: 'telegram', label: cur.label || 'Telegram', ...cur, status: 'connected', config: { ...(cur.config ?? {}), chatId, username: m.from?.username ?? '' }, createdAt: cur.createdAt ?? now(), updatedAt: now() }, { merge: true });
     await db.collection('telegramChats').doc(chatId).set({ uid, linkedAt: now() });
     await ref.delete();
-    return send(chatId, 'Linked ✅ Reminders and run updates will arrive here. Send me a message any time.');
+    return send(chatId, 'Linked. Reminders and run updates will arrive here. Send me a message any time.');
   }
   if (text.startsWith('/')) return send(chatId, 'Send me any message and your Mimo mate will reply. Use /start CODE to link this chat.');
   // Only linked chats may talk to the LLM (otherwise anyone who finds the bot spends your quota).
   const uid = (await db.collection('telegramChats').doc(chatId).get()).data()?.uid;
-  if (!uid) return send(chatId, 'This chat is not linked yet. Open Loopmates → Connections → Telegram and send me the /start code.');
+  if (!uid) return send(chatId, 'This chat is not linked yet. Open Loopmates > Connections → Telegram and send me the /start code.');
   const r = await chat(uid, { messages: [{ role: 'system', content: `${persona('mimo')} You are replying inside Telegram: keep it short.` }, { role: 'user', content: text }], maxTokens: 700 });
   return send(chatId, r.text);
 }

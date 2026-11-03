@@ -5,6 +5,7 @@ import { ago, bytes } from '../../lib/format';
 import { useRepo } from '../../lib/hooks';
 import { useToast } from '../ui/toast';
 import { Btn, confirmThen, Empty, ErrorNote, Loading, Page, Tabs } from '../ui/ui';
+import { Icon } from '../ui/Icon';
 
 type F = 'all' | 'upload' | 'run';
 const ext = (n: string) => (n.includes('.') ? n.split('.').pop()!.slice(0, 4).toUpperCase() : 'FILE');
@@ -38,7 +39,7 @@ export function Files() {
                   <span style={{ background: x.source === 'run' ? '#E6F4EA' : '#ECE7FF', color: x.source === 'run' ? '#1E7A46' : '#4F34D6', borderRadius: 6, padding: '2px 8px', fontSize: 12 }}>{x.source === 'run' ? 'From a run' : 'Upload'}</span>
                   <span style={{ flex: 1 }} />
                   {api.capabilities.backend && <a href="#" onClick={(e) => { e.preventDefault(); api.files.download(x.id, x.name).catch((err: Error) => toast(err.message)); }} style={{ fontSize: 13, color: '#4F34D6', fontWeight: 600 }}>Download</a>}
-                  <button aria-label={`Delete ${x.name}`} onClick={() => confirmThen(`Delete ${x.name}?`, () => remove(x.id))} style={{ border: 0, background: 'none', color: '#6B6572', cursor: 'pointer' }}>✕</button>
+                  <button aria-label={`Delete ${x.name}`} onClick={() => confirmThen(`Delete ${x.name}?`, () => remove(x.id))} style={{ border: 0, background: 'none', color: '#6B6572', cursor: 'pointer' }}><Icon name="close" size={16} /></button>
                 </div>
               </article>))}
           </div>)}

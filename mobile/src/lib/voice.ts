@@ -27,7 +27,7 @@ export async function startCall(mate: string, reason: string, on: (e: CallEvent)
   const ctx = new AudioContext({ sampleRate: 24000 });
   const out = ctx.createBufferQueueSource();
   out.connect(ctx.destination);
-  out.start();
+  out.start(0, 0);
   const rec = new AudioRecorder();
   let muted = false, peak = 0, closed = false;
 

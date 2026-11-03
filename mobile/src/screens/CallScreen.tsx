@@ -30,7 +30,7 @@ export default function CallScreen({ mate: mateParam, reason, conv }: { mate?: s
   const h = useRef<CallHandle | null>(null); const id = useRef(0);
 
   useEffect(() => { if (mateParam) setMate(mateParam as MateKey); }, [mateParam]);
-  useEffect(() => { if (state !== 'live') return; const t = setInterval(() => { setSecs((x) => x + 1); setLvl(h.current?.level() ?? 0); }, 250); return () => clearInterval(t); }, [state]);
+  useEffect(() => { if (state !== 'live') return; const t0 = Date.now(); const t = setInterval(() => { setSecs(Math.floor((Date.now() - t0) / 1000)); setLvl(h.current?.level() ?? 0); }, 250); return () => clearInterval(t); }, [state]);
   useEffect(() => () => h.current?.hangup(), []);
 
   const add = (who: Line['who'], text: string) => setLines((ls) => { const last = ls[ls.length - 1]; return last?.who === who ? [...ls.slice(0, -1), { ...last, text: last.text + text }] : [...ls, { id: id.current++, who, text }]; });
@@ -66,7 +66,7 @@ export default function CallScreen({ mate: mateParam, reason, conv }: { mate?: s
         renderItem={({ item }) => (
           <View style={{ alignSelf: item.who === 'you' ? 'flex-end' : 'flex-start', maxWidth: '85%', backgroundColor: item.who === 'you' ? C.tint : '#fff', borderWidth: 1, borderColor: C.line, borderRadius: R.lg, paddingHorizontal: 12, paddingVertical: 8 }}>
             <Text style={{ fontSize: 14.5, lineHeight: 21, color: C.ink }}>{item.text}</Text></View>)} />
-      <View style={{ flexDirection: 'row', justifyContent: 'center', gap: 14, paddingBottom: PILL_SPACE - 40 }}>
+      <View style={{ flexDirection: 'row', justifyContent: 'center', gap: 14, paddingBottom: PILL_SPACE + 12 }}>
         {state === 'idle' ? <Btn label={`Call ${mateName(mate)}`} icon="phone" onPress={dial} style={{ minWidth: 220 }} /> : (
           <>
             <Press onPress={() => { h.current?.mute(!muted); setMuted(!muted); }} accessibilityLabel={muted ? 'Unmute' : 'Mute'} style={{ width: 64, height: 64, borderRadius: 32, backgroundColor: muted ? C.ink : C.card, borderWidth: 1, borderColor: C.line2, alignItems: 'center', justifyContent: 'center' }}><Icon name={muted ? 'micoff' : 'mic'} size={26} color={muted ? '#fff' : C.ink} /></Press>

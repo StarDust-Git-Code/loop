@@ -5,6 +5,7 @@ import { MATES, MATE_DEFS, mateImg, mateName } from '../../lib/mates';
 import { startCall, VOICE_URL, type CallHandle } from '../../lib/voice';
 import type { MateKey } from '../../lib/types';
 import { Btn, ErrorNote, Page } from '../ui/ui';
+import { Icon } from '../ui/Icon';
 
 const Dot = ({ k, s }: { k: MateKey; s: number }) => <img src={mateImg(k)} alt="" width={s} height={s} />;
 
@@ -21,7 +22,7 @@ export function Call() {
   const conv = qp.get('conv') ?? '';
   const [tool, setTool] = useState('');
 
-  useEffect(() => { if (state !== 'live') return; const t = setInterval(() => { setSecs((s) => s + 1); setLvl(h.current?.level() ?? 0); }, 250); return () => clearInterval(t); }, [state]);
+  useEffect(() => { if (state !== 'live') return; const t0 = Date.now(); const t = setInterval(() => { setSecs(Math.floor((Date.now() - t0) / 1000)); setLvl(h.current?.level() ?? 0); }, 250); return () => clearInterval(t); }, [state]);
   useEffect(() => { end.current?.scrollIntoView({ block: 'end' }); }, [lines]);
   useEffect(() => () => h.current?.hangup(), []);
 
@@ -40,23 +41,31 @@ export function Call() {
   }
   const mm = String(Math.floor(secs / 60)).padStart(2, '0'), ss = String(secs % 60).padStart(2, '0');
 
+  const live = state === 'live';
+  const row: React.CSSProperties = { display: 'inline-flex', alignItems: 'center', gap: 8 };
   return (
-    <Page title="Call" sub="Talk to a Mate by voice, hands free. Works on your phone over the internet.">
+    <Page title="Call" sub="Talk to a Mate by voice, hands free.">
       <ErrorNote message={err || (!VOICE_URL ? 'Voice server is not connected yet: set NEXT_PUBLIC_VOICE_URL in the dashboard.' : '')} />
-      <div style={{ maxWidth: 560, margin: '0 auto', width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 18, padding: '8px 0 24px' }}>
-        <div style={{ position: 'relative', display: 'grid', placeItems: 'center' }}>
-          <span aria-hidden="true" style={{ position: 'absolute', width: 150, height: 150, borderRadius: '50%', background: 'rgba(106,77,244,.16)', transform: `scale(${1 + Math.min(lvl * 1.6, .45)})`, transition: 'transform .12s' }} />
-          <Dot k={mate} s={110} />
+      <div style={{ maxWidth: 520, margin: '0 auto', width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 22, padding: '12px 0 28px' }}>
+        <div style={{ position: 'relative', width: 180, height: 180, display: 'grid', placeItems: 'center' }}>
+          <span aria-hidden="true" style={{ position: 'absolute', inset: 0, borderRadius: '50%', background: 'rgba(106,77,244,.14)', opacity: live ? 1 : 0.5, transform: `scale(${live ? 1 + Math.min(lvl * 1.4, .3) : 0.9})`, transition: 'transform .15s ease-out, opacity .3s' }} />
+          <span aria-hidden="true" style={{ position: 'absolute', inset: 22, borderRadius: '50%', background: 'rgba(106,77,244,.14)' }} />
+          <Dot k={mate} s={104} />
         </div>
-        <div style={{ textAlign: 'center' }}><b style={{ fontSize: 20 }}>{mateName(mate)}</b><div style={{ color: '#6B6572', fontSize: 13.5, marginTop: 2 }}>{state === 'live' ? `On a call · ${mm}:${ss}` : state === 'connecting' ? 'Connecting…' : MATES[mate].blurb}</div></div>
+        <div style={{ textAlign: 'center' }}>
+          <b style={{ fontSize: 22 }}>{mateName(mate)}</b>
+          <div style={{ color: '#6B6572', fontSize: 14, marginTop: 4, fontVariantNumeric: 'tabular-nums' }}>
+            {live ? <span style={{ ...row, gap: 6 }}><span style={{ width: 8, height: 8, borderRadius: '50%', background: '#1E8E3E' }} />{mm}:{ss}</span> : state === 'connecting' ? 'Connecting…' : MATES[mate].blurb}
+          </div>
+        </div>
         {state === 'idle' && (
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'center' }}>
-            {MATE_DEFS.map((d) => <button key={d.key} type="button" onClick={() => setMate(d.key)} aria-pressed={mate === d.key} style={{ border: '1px solid rgba(31,26,23,.16)', background: mate === d.key ? '#ECE7FF' : '#fff', borderRadius: 999, padding: '8px 12px', minHeight: 36, fontSize: 13, fontWeight: mate === d.key ? 700 : 500 }}>{d.name}</button>)}
+            {MATE_DEFS.map((d) => <button key={d.key} type="button" onClick={() => setMate(d.key)} aria-pressed={mate === d.key} style={{ border: '1px solid rgba(31,26,23,.16)', background: mate === d.key ? '#ECE7FF' : '#fff', borderRadius: 999, padding: '8px 14px', minHeight: 36, fontSize: 13, fontWeight: mate === d.key ? 700 : 500 }}>{d.name}</button>)}
           </div>)}
         <div style={{ display: 'flex', gap: 12 }}>
-          {state === 'idle' ? <Btn variant="primary" onClick={() => void dial()} disabled={!VOICE_URL}>📞 Call {mateName(mate)}</Btn> : <>
-            <Btn onClick={() => { h.current?.mute(!muted); setMuted(!muted); }}>{muted ? '🔇 Unmute' : '🎙 Mute'}</Btn>
-            <button type="button" onClick={() => h.current?.hangup()} style={{ border: 0, borderRadius: 12, background: '#B3261E', color: '#fff', fontWeight: 700, padding: '0 20px', minHeight: 44 }}>Hang up</button></>}
+          {state === 'idle' ? <Btn variant="primary" onClick={() => void dial()} disabled={!VOICE_URL}><span style={row}><Icon name="phone" />Call {mateName(mate)}</span></Btn> : <>
+            <Btn onClick={() => { h.current?.mute(!muted); setMuted(!muted); }}><span style={row}><Icon name={muted ? 'micoff' : 'mic'} />{muted ? 'Unmute' : 'Mute'}</span></Btn>
+            <button type="button" onClick={() => h.current?.hangup()} style={{ ...row, border: 0, borderRadius: 12, background: '#B3261E', color: '#fff', fontWeight: 700, padding: '0 20px', minHeight: 44 }}><Icon name="hangup" />Hang up</button></>}
         </div>
         {tool && <span className="mono" style={{ fontSize: 12, background: '#ECE7FF', color: '#4F34D6', borderRadius: 8, padding: '4px 10px' }}>Using {tool.replace(/_/g, ' ')}…</span>}
         {lines.length > 0 && (

@@ -3,7 +3,7 @@ import { useRouter } from 'expo-router';
 import { useMemo, useState } from 'react';
 import { Text, TextInput, View } from 'react-native';
 import Animated, { FadeInDown, LinearTransition } from 'react-native-reanimated';
-import { Avatar, Btn, Empty, ErrorNote, Press } from '../components/ui';
+import { Avatar, Btn, Empty, ErrorNote, Icon, Press } from '../components/ui';
 import { Field, Row, Screen, Sheet } from '../components/kit';
 import { api } from '../lib/api';
 import { ago, useList } from '../lib/hooks';
@@ -30,7 +30,7 @@ export default function Chats() {
         <Animated.View key={x.id} entering={FadeInDown.delay(Math.min(i, 8) * 30).duration(260)} layout={LinearTransition}>
           <Row onPress={() => router.push(`/chat/${x.id}`)} onLongPress={() => { void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); setSel(x); setName(x.title); }}>
             <Avatar k={x.mate ?? 'planner'} size={40} />
-            <View style={{ flex: 1 }}><Text numberOfLines={1} style={{ fontSize: 14.5, fontWeight: '800', color: C.ink }}>{x.pinned ? '📌 ' : ''}{x.title}</Text><Text numberOfLines={1} style={{ fontSize: 12.5, color: C.muted }}>{hit(x).replace(/\s+/g, ' ')}</Text></View>
+            <View style={{ flex: 1 }}><View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>{x.pinned ? <Icon name="pin" size={13} color={C.brandDeep} /> : null}<Text numberOfLines={1} style={{ flexShrink: 1, fontSize: 14.5, fontWeight: '800', color: C.ink }}>{x.title}</Text></View><Text numberOfLines={1} style={{ fontSize: 12.5, color: C.muted }}>{hit(x).replace(/\s+/g, ' ')}</Text></View>
             <Text style={{ fontSize: 12, color: C.muted }}>{ago(x.updatedAt ?? x.createdAt)}</Text>
           </Row>
         </Animated.View>))}

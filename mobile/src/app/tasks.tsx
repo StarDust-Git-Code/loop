@@ -2,7 +2,7 @@ import * as Haptics from 'expo-haptics';
 import { useState } from 'react';
 import { Text, View } from 'react-native';
 import Animated, { FadeInDown, LinearTransition } from 'react-native-reanimated';
-import { Btn, Chip, Empty, ErrorNote, Press } from '../components/ui';
+import { Btn, Chip, Empty, ErrorNote, Icon, Press } from '../components/ui';
 import { Field, Row, Screen, Sheet } from '../components/kit';
 import { api } from '../lib/api';
 import { useList } from '../lib/hooks';
@@ -10,7 +10,7 @@ import { C } from '../lib/theme';
 import type { Task } from '../lib/types';
 
 const NEXT: Record<Task['status'], Task['status']> = { todo: 'doing', doing: 'done', done: 'todo' };
-const MARK = { todo: '○', doing: '◐', done: '●' } as const;
+const MARK = { todo: 'circle', doing: 'circlehalf', done: 'circlecheck' } as const;
 
 export default function Tasks() {
   const t = useList(() => api.tasks.list(), [], 'tasks');
@@ -34,7 +34,7 @@ export default function Tasks() {
       {t.loading ? <Empty text="Loading…" /> : rows.length === 0 ? <Empty text="Nothing here. Tap + to add a task." /> : rows.map((x, i) => (
         <Animated.View key={x.id} entering={FadeInDown.delay(Math.min(i, 8) * 35).duration(260)} layout={LinearTransition}>
           <Row onPress={() => setEdit(x)}>
-            <Press onPress={() => cycle(x)} accessibilityLabel={`Mark ${NEXT[x.status]}`} haptic={false} style={{ width: 36, height: 36, alignItems: 'center', justifyContent: 'center' }}><Text style={{ fontSize: 24, color: x.status === 'done' ? C.good : C.brandDeep }}>{MARK[x.status]}</Text></Press>
+            <Press onPress={() => cycle(x)} accessibilityLabel={`Mark ${NEXT[x.status]}`} haptic={false} style={{ width: 36, height: 36, alignItems: 'center', justifyContent: 'center' }}><Icon name={MARK[x.status]} size={24} color={x.status === 'done' ? C.good : C.brandDeep} /></Press>
             <View style={{ flex: 1 }}><Text style={{ fontSize: 15, fontWeight: '700', color: C.ink, textDecorationLine: x.status === 'done' ? 'line-through' : 'none' }}>{x.title}</Text>
               {x.dueAt || x.detail ? <Text numberOfLines={1} style={{ fontSize: 12.5, color: C.muted }}>{x.dueAt ? `Due ${new Date(x.dueAt).toLocaleDateString()}` : ''}{x.dueAt && x.detail ? ' · ' : ''}{x.detail}</Text> : null}</View>
           </Row>

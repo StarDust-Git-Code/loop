@@ -9,6 +9,7 @@ import { chain, TEMPLATES } from '../../lib/templates';
 import type { MateKey, Workflow } from '../../lib/types';
 import { useToast } from '../ui/toast';
 import { Btn, confirmThen, Empty, ErrorNote, Loading, Page, Tabs } from '../ui/ui';
+import { Icon } from '../ui/Icon';
 
 type F = 'all' | 'scheduled' | 'manual' | 'draft';
 const STATE = { active: ['Active', '#E6F4EA', '#1E7A46'], scheduled: ['Scheduled', '#E6F4EA', '#1E7A46'], manual: ['Manual', '#ECE9F4', '#6B6572'], draft: ['Draft', '#FFF3D6', '#8A5A00'] } as const;
@@ -54,7 +55,7 @@ export function Workflows() {
                     <span style={{ background: st[1], color: st[2], fontSize: 12, fontWeight: 600, borderRadius: 99, padding: '4px 12px' }}>{st[0]}</span>
                     <Btn href={`/studio?id=${w.id}`}>Open</Btn>
                     <Btn variant="primary" onClick={() => run(w)}>Run</Btn>
-                    <Btn variant="danger" small aria-label={`Delete ${w.name}`} onClick={() => confirmThen(`Delete “${w.name}”?`, () => remove(w.id))}>✕</Btn>
+                    <Btn variant="danger" small aria-label={`Delete ${w.name}`} onClick={() => confirmThen(`Delete “${w.name}”?`, () => remove(w.id))}><Icon name="close" size={16} /></Btn>
                   </div>);
               })}
             </div>)}

@@ -79,7 +79,7 @@ function ask(st, step, text) {
   const approval = { id: rid(), mate: step.mate, text, paths: [], status: 'pending' };
   emit(st, { type: 'approval', approval });
   emit(st, { type: 'status', status: 'waiting_approval' });
-  if (st.unattended) void notify(st.uid, `🛑 Approval needed for "${st.run.title}": ${text}\nOpen the Loopmates dashboard to approve or deny.`);
+  if (st.unattended) void notify(st.uid, `Approval needed for "${st.run.title}": ${text}\nOpen the Loopmates dashboard to approve or deny.`);
   void save(st);
   return new Promise((resolve) => { st.approvals.set(approval.id, resolve); });
 }
@@ -129,7 +129,7 @@ async function stepFile(st, step) {
 }
 
 async function stepNotify(st, step) {
-  const sent = await notify(st.uid, `🔔 ${st.run.title}\n${step.label}\n\n${st.run.notes.slice(-600)}`);
+  const sent = await notify(st.uid, `${st.run.title}\n${step.label}\n\n${st.run.notes.slice(-600)}`);
   log(st, step.mate, sent ? `Sent to ${sent} Telegram chat(s).` : 'No Telegram chat is linked, nothing sent.');
 }
 
@@ -175,10 +175,10 @@ async function execute(st) {
     const fin = await chat(st.uid, { model: st.settings.model, maxTokens: 1500, effort: effortOf(st.mates.writer?.thinking), messages: [{ role: 'system', content: persona('writer') }, { role: 'user', content: `Write the final report (Markdown, brief, with the answer first) for this job.\n\nJob:\n${st.run.prompt}\n\nNotes:\n${st.run.notes}` }] }).catch(() => null);
     st.run.report = fin?.text ?? st.run.notes;
     emit(st, { type: 'status', status: 'done' });
-    if (st.settings.notifyTelegram) void notify(st.uid, `✅ Done: ${st.run.title}\n\n${st.run.report.slice(0, 700)}`);
+    if (st.settings.notifyTelegram) void notify(st.uid, `Done: ${st.run.title}\n\n${st.run.report.slice(0, 700)}`);
   } catch (e) {
     if (e instanceof Stopped) { emit(st, { type: 'status', status: 'stopped' }); log(st, 'ops', 'Stopped.'); }
-    else { st.run.error = String(e.message).slice(0, 500); log(st, 'ops', `Failed: ${st.run.error}`); emit(st, { type: 'status', status: 'failed' }); if (st.settings.notifyTelegram) void notify(st.uid, `❌ Failed: ${st.run.title}\n${st.run.error}`); }
+    else { st.run.error = String(e.message).slice(0, 500); log(st, 'ops', `Failed: ${st.run.error}`); emit(st, { type: 'status', status: 'failed' }); if (st.settings.notifyTelegram) void notify(st.uid, `Failed: ${st.run.title}\n${st.run.error}`); }
   } finally {
     await save(st);
     await activeRef(st.run.id).delete().catch(() => {});

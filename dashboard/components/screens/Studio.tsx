@@ -10,13 +10,14 @@ import type { FlowEdge, FlowNode, MateKey, NodeType } from '../../lib/types';
 import { ModelPicker } from '../ui/ModelPicker';
 import { useToast } from '../ui/toast';
 import { Btn, Loading, Page, Tabs, Toggle } from '../ui/ui';
+import { Icon } from '../ui/Icon';
 import s from './studio.module.css';
 
 const W = 200, H = 84;
 const KIND: Record<NodeType, { name: string; sub: string; icon: string }> = {
-  trigger: { name: 'Trigger', sub: 'Starts the workflow', icon: '⚡' }, knowledge: { name: 'Knowledge', sub: 'Search my notes', icon: '▤' }, input: { name: 'Input', sub: 'User message', icon: '◌' },
-  mate: { name: 'Agent', sub: 'Mate', icon: '✦' }, tool: { name: 'Tool', sub: 'Run a tool', icon: '⚒' }, condition: { name: 'Condition', sub: 'Branch on a check', icon: '⑃' },
-  transform: { name: 'Transform', sub: 'Reshape the data', icon: '⇄' }, filter: { name: 'Filter', sub: 'Keep what matches', icon: '▽' }, output: { name: 'Output', sub: 'Send result', icon: '➤' },
+  trigger: { name: 'Trigger', sub: 'Starts the workflow', icon: 'bolt' }, knowledge: { name: 'Knowledge', sub: 'Search my notes', icon: 'book' }, input: { name: 'Input', sub: 'User message', icon: 'input' },
+  mate: { name: 'Agent', sub: 'Mate', icon: 'spark' }, tool: { name: 'Tool', sub: 'Run a tool', icon: 'tool' }, condition: { name: 'Condition', sub: 'Branch on a check', icon: 'branch' },
+  transform: { name: 'Transform', sub: 'Reshape the data', icon: 'swap' }, filter: { name: 'Filter', sub: 'Keep what matches', icon: 'filter' }, output: { name: 'Output', sub: 'Send result', icon: 'flag' },
 };
 const PALETTE: NodeType[] = ['mate', 'tool', 'condition', 'transform', 'filter', 'output'];
 
@@ -88,11 +89,11 @@ export function Studio() {
         <div className={s.canvasCol}>
           <div className={s.bar}>
             <Tabs value={top} onChange={(v) => setTop(v)} options={[{ id: 'canvas', label: 'Canvas' }, { id: 'runs', label: 'Runs' }, { id: 'logs', label: 'Logs' }]} />
-            <Btn onClick={() => void buildWithFlow()}>✨ Build with Flow</Btn>
+            <Btn onClick={() => void buildWithFlow()}><span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><Icon name="spark" size={16} />Build with Flow</span></Btn>
             <input value={name} onChange={(e) => { setName(e.target.value); touch(); }} aria-label="Workflow name" style={{ flex: 1, minWidth: 120, height: 40, border: '1px solid transparent', borderRadius: 10, padding: '0 10px', font: 'inherit', fontWeight: 700, fontSize: 15, background: 'transparent' }} onFocus={(e) => (e.target.style.borderColor = 'rgba(27,24,34,.17)')} onBlur={(e) => (e.target.style.borderColor = 'transparent')} />
             <div className={s.zoom}><button aria-label="Zoom out" onClick={() => setZoom((z) => Math.max(0.5, +(z - 0.1).toFixed(1)))}>−</button><span>{Math.round(zoom * 100)}%</span><button aria-label="Zoom in" onClick={() => setZoom((z) => Math.min(1.5, +(z + 0.1).toFixed(1)))}>+</button></div>
             <Btn onClick={() => void save().then(() => toast('Saved'))} disabled={!dirty && !!id}>Save</Btn>
-            <Btn onClick={test} disabled={nodes.length === 0}>▶ Test Run</Btn>
+            <Btn onClick={test} disabled={nodes.length === 0}><span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><Icon name="play" size={14} />Test Run</span></Btn>
           </div>
 
           {top === 'canvas' && <>
@@ -109,7 +110,7 @@ export function Studio() {
                     <div key={n.id} role="button" tabIndex={0} aria-label={n.label} className={`${s.node} ${sel === n.id ? s.sel : ''} ${linkFrom === n.id ? s.src : ''}`} style={{ left: n.x, top: n.y, minHeight: H, cursor: linkFrom ? 'crosshair' : 'grab' }}
                       onPointerDown={(e) => onDown(e, n)} onKeyDown={(e) => { if (e.key === 'Delete' || e.key === 'Backspace') del(n.id); if (e.key === 'Enter') setSel(n.id); }}>
                       <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-                        {n.mate ? <img src={mateImg(n.mate)} alt="" width={36} height={36} draggable={false} /> : <span className={s.ico}>{k.icon}</span>}
+                        {n.mate ? <img src={mateImg(n.mate)} alt="" width={36} height={36} draggable={false} /> : <span className={s.ico}><Icon name={k.icon} size={18} /></span>}
                         <div style={{ minWidth: 0 }}><b style={{ display: 'block', fontSize: 14, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{n.label}</b><small style={{ color: '#6B6572', fontSize: 12 }}>{m ? m.blurb.slice(0, 26) : n.config?.when || k.sub}</small></div>
                       </div>
                       <span className={`${s.port} ${linkFrom === n.id ? s.on : ''}`} role="button" aria-label={`Connect from ${n.label}`} onPointerDown={(e) => { e.stopPropagation(); setLinkFrom(linkFrom === n.id ? null : n.id); }} />
@@ -119,8 +120,8 @@ export function Studio() {
             </div>
             <div className={s.pal}>
               <b>Add node</b>
-              {PALETTE.map((t) => <button key={t} className={s.palBtn} onClick={() => add(t)}><span className={s.ico}>{KIND[t].icon}</span>{KIND[t].name}</button>)}
-              <button className={s.palBtn} onClick={() => add('trigger')}><span className={s.ico}>{KIND.trigger.icon}</span>Trigger</button>
+              {PALETTE.map((t) => <button key={t} className={s.palBtn} onClick={() => add(t)}><span className={s.ico}><Icon name={KIND[t].icon} size={18} /></span>{KIND[t].name}</button>)}
+              <button className={s.palBtn} onClick={() => add('trigger')}><span className={s.ico}><Icon name={KIND.trigger.icon} size={18} /></span>Trigger</button>
               <select value={mate} onChange={(e) => setMate(e.target.value as MateKey)} aria-label="Mate for Agent node" className={s.sel2} style={{ width: 150, marginLeft: 'auto' }}>{MATE_DEFS.map((m) => <option key={m.key} value={m.key}>{m.name}</option>)}</select>
               {linkFrom && <span style={{ fontSize: 12.5, color: '#4F34D6', fontWeight: 600 }}>Click a node to connect…</span>}
             </div>
@@ -132,7 +133,7 @@ export function Studio() {
 
         <aside className={`${s.panel} ${s.cfg}`} aria-label="Node settings">
           {!selected ? <div style={{ margin: 'auto', textAlign: 'center', color: '#6B6572', fontSize: 13.5, lineHeight: 1.6 }}><img src={mateImg('mimo')} alt="" width={56} style={{ display: 'block', margin: '0 auto 6px', animation: 'lm-bob 3.6s ease-in-out infinite' }} /><p>Select a node to configure it.<br />Drag to move, use the dot on its right edge to link, press Delete to remove.</p></div> : <>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>{selected.mate ? <img src={mateImg(selected.mate)} alt="" width={40} /> : <span className={s.ico}>{KIND[selected.type].icon}</span>}<input value={selected.label} onChange={(e) => patch(selected.id, { label: e.target.value })} aria-label="Node label" style={{ flex: 1, border: 0, background: 'none', font: 'inherit', fontWeight: 700, fontSize: 17, minWidth: 0 }} /></div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>{selected.mate ? <img src={mateImg(selected.mate)} alt="" width={40} /> : <span className={s.ico}><Icon name={KIND[selected.type].icon} size={18} /></span>}<input value={selected.label} onChange={(e) => patch(selected.id, { label: e.target.value })} aria-label="Node label" style={{ flex: 1, border: 0, background: 'none', font: 'inherit', fontWeight: 700, fontSize: 17, minWidth: 0 }} /></div>
             <Tabs value={cfgTab} onChange={setCfgTab} options={[{ id: 'config', label: 'Config' }, { id: 'tools', label: 'Tools' }, { id: 'memory', label: 'Memory' }]} />
             <div key={cfgTab + selected.id} style={{ animation: 'lm-up .3s ease both', display: 'flex', flexDirection: 'column', gap: 12 }}>
               {cfgTab === 'config' && <>

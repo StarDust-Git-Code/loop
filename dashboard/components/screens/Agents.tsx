@@ -8,6 +8,7 @@ import type { MateConfigIn, MateKey } from '../../lib/types';
 import { ModelPicker } from '../ui/ModelPicker';
 import { useToast } from '../ui/toast';
 import { Btn, ErrorNote, Field, Loading, Modal, Page, Select, Tabs, Textarea, Toggle } from '../ui/ui';
+import { Icon } from '../ui/Icon';
 
 type Filter = 'all' | 'Core' | 'Personal' | 'Creative' | 'Dev';
 type Tab = 'config' | 'tools' | 'memory';
@@ -39,7 +40,7 @@ export function Agents() {
       <ErrorNote message={error} />
       {!loading && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap', background: 'linear-gradient(160deg,#F1ECFF,#FAF8FF)', border: '1px solid rgba(106,77,244,.2)', borderRadius: 16, padding: '12px 16px', marginBottom: 14 }}>
-          <span aria-hidden="true" style={{ fontSize: 20 }}>🧠</span>
+          <span aria-hidden="true" style={{ color: '#4F34D6', display: 'grid' }}><Icon name="brain" size={22} /></span>
           <div style={{ flex: 1, minWidth: 220 }}><b style={{ fontSize: 14.5 }}>Reasoning for every agent</b><div style={{ color: '#6B6572', fontSize: 12.5 }}>Every agent thinks at <b>High</b> unless you change it. Set one level for all of them here, or tune each agent in Configure.</div></div>
           <Select value={lvl} onChange={(e) => setLvl(e.target.value as typeof lvl)} aria-label="Thinking level for all agents" style={{ width: 190 }}>{[['default', 'Default (high)'], ['low', 'Low'], ['medium', 'Medium'], ['high', 'High'], ['xhigh', 'XHigh']].map(([k, n]) => <option key={k} value={k}>{n}</option>)}</Select>
           <Btn variant="primary" onClick={() => void applyAll()} disabled={busy || same}>{busy ? 'Applying…' : same ? 'Applied' : 'Apply to all'}</Btn>
@@ -63,7 +64,7 @@ export function Agents() {
                   <div style={{ display: 'flex', gap: 6, marginTop: 10 }}>
                     <button type="button" onClick={() => router.replace(`/agents?mate=${d.key}`)} style={{ flex: 1, height: 40, background: '#F3F1F8', border: '1px solid rgba(31,26,23,.1)', borderRadius: 10, color: '#1B1822', fontSize: 12.5, fontWeight: 500 }}>Configure</button>
                     <button type="button" aria-pressed={on} onClick={() => c && update(c.id, { enabled: !on }).then(() => toast(on ? `${d.name} removed from your sidebar` : `${d.name} added to your sidebar`))}
-                      style={{ flex: 1, height: 40, background: on ? '#6A4DF4' : '#ECE7FF', border: `1px solid ${on ? '#6A4DF4' : 'rgba(106,77,244,.4)'}`, borderRadius: 10, color: on ? '#fff' : '#4F34D6', fontSize: 12.5, fontWeight: 600, transition: 'background .2s, color .2s' }}>{on ? 'Added ✓' : 'Add'}</button>
+                      style={{ flex: 1, height: 40, background: on ? '#6A4DF4' : '#ECE7FF', border: `1px solid ${on ? '#6A4DF4' : 'rgba(106,77,244,.4)'}`, borderRadius: 10, color: on ? '#fff' : '#4F34D6', fontSize: 12.5, fontWeight: 600, transition: 'background .2s, color .2s' }}>{on ? <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}><Icon name="check" size={14} />Added</span> : 'Add'}</button>
                   </div>
                 </div>
               </article>);

@@ -28,7 +28,7 @@ export default function Workflows() {
               <View style={{ flexDirection: 'row' }}>{(mates.length ? mates.slice(0, 3) : ['planner' as const]).map((m, k) => <View key={k} style={{ marginLeft: k ? -10 : 0 }}><Avatar k={m} size={32} /></View>)}</View>
               <View style={{ flex: 1 }}><Text numberOfLines={1} style={{ fontSize: 15, fontWeight: '800', color: C.ink }}>{x.name}</Text><Text numberOfLines={1} style={{ fontSize: 12.5, color: C.muted }}>{x.nodes.length} steps{x.description ? ` · ${x.description}` : ''}</Text></View>
               {x.state ? <Pill label={x.state} tone="muted" /> : null}
-              <Btn label="Run" small kind="soft" busy={busy === x.id} onPress={() => run(x.id, x.name, x.description, x.nodes.map((n) => n.label).join(' → '))} />
+              <Btn label="Run" small kind="soft" busy={busy === x.id} onPress={() => run(x.id, x.name, x.description, x.nodes.map((n) => n.label).join(' > '))} />
             </Row>
           </Animated.View>);
       })}

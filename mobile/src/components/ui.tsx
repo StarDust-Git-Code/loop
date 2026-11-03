@@ -25,6 +25,10 @@ const ICONS: Record<string, string> = {
   chat: 'M21 12a8 8 0 0 1-11.5 7.2L4 20l1.1-4.3A8 8 0 1 1 21 12z',
   chevron: 'M6 9l6 6 6-6',
   check: 'M5 12l5 5 9-10',
+  pin: 'M9 4h6l-1 5 3 3H7l3-3zM12 12v8',
+  circle: 'M12 4a8 8 0 1 0 0 16 8 8 0 0 0 0-16z',
+  circlehalf: 'M12 4a8 8 0 1 0 0 16zM12 4v16',
+  circlecheck: 'M12 4a8 8 0 1 0 0 16 8 8 0 0 0 0-16zM8.5 12l2.5 2.5 4.5-5',
   clip: 'M21 12l-8.5 8.5a5 5 0 0 1-7-7L14 5a3.3 3.3 0 0 1 4.7 4.7L10 18.4a1.7 1.7 0 0 1-2.4-2.4L15 8.6',
   close: 'M6 6l12 12M18 6L6 18',
 };

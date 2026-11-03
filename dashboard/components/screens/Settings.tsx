@@ -9,10 +9,11 @@ import type { ProviderCfg, SettingsData } from '../../lib/types';
 import { ModelPicker } from '../ui/ModelPicker';
 import { useToast } from '../ui/toast';
 import { Btn, confirmThen, Loading, Page, Tabs, Toggle } from '../ui/ui';
+import { Icon } from '../ui/Icon';
 import s from './settings.module.css';
 
 type Sec = 'general' | 'models' | 'safety' | 'notify' | 'data' | 'dev';
-const SECS: { id: Sec; label: string; icon: string }[] = [{ id: 'general', label: 'General', icon: '◐' }, { id: 'models', label: 'Models & providers', icon: '✦' }, { id: 'safety', label: 'Safety & limits', icon: '⛨' }, { id: 'notify', label: 'Notifications', icon: '◔' }, { id: 'data', label: 'Data & account', icon: '▤' }, { id: 'dev', label: 'Developer options', icon: '⌘' }];
+const SECS: { id: Sec; label: string; icon: string }[] = [{ id: 'general', label: 'General', icon: 'contrast' }, { id: 'models', label: 'Models & providers', icon: 'spark' }, { id: 'safety', label: 'Safety & limits', icon: 'shield' }, { id: 'notify', label: 'Notifications', icon: 'bell' }, { id: 'data', label: 'Data & account', icon: 'db' }, { id: 'dev', label: 'Developer options', icon: 'code' }];
 const TINT = ['#ECE7FF', '#FFF3D6', '#E3F0FF', '#E6F4EA', '#FDE8EE', '#E4EAFF'];
 const tint = (id: string) => TINT[[...id].reduce((a, c) => a + c.charCodeAt(0), 0) % TINT.length];
 
@@ -31,7 +32,7 @@ export function Settings() {
         <div className={s.wrap}>
           <nav className={s.rail} aria-label="Settings sections">
             <span className={s.railBar} style={{ transform: `translateY(${idx * 50}px)` }} aria-hidden="true" />
-            {SECS.map((x) => <button key={x.id} className={s.railBtn} aria-current={x.id === sec} onClick={() => setSec(x.id)}><span aria-hidden="true" style={{ width: 18, textAlign: 'center' }}>{x.icon}</span>{x.label}</button>)}
+            {SECS.map((x) => <button key={x.id} className={s.railBtn} aria-current={x.id === sec} onClick={() => setSec(x.id)}><span aria-hidden="true" style={{ width: 18, display: 'grid', placeItems: 'center' }}><Icon name={x.icon} size={16} /></span>{x.label}</button>)}
           </nav>
           <div key={sec} className={s.pane}>
             {sec === 'general' && <General st={settings} set={update} />}

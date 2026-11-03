@@ -7,6 +7,7 @@ import { CATALOG, CATS, type Cat } from '../../lib/mcpCatalog';
 import type { McpIn, MateKey, McpServer, SettingsData, SkillIn } from '../../lib/types';
 import { useToast } from '../ui/toast';
 import { Btn, Chips, confirmThen, Empty, ErrorNote, Field, Input, Loading, Modal, Page, Tabs, Textarea, Toggle } from '../ui/ui';
+import { Icon } from '../ui/Icon';
 
 const card = { background: '#fff', border: '1px solid rgba(27,24,34,.17)', borderRadius: 16, boxShadow: '0 2px 6px rgba(31,26,23,.05)' } as const;
 const cap = { fontSize: 12, fontWeight: 700, letterSpacing: '.08em', color: '#6B6572', margin: '0 0 12px' } as const;
@@ -48,7 +49,7 @@ export function Skills() {
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12.5, color: '#6B6572' }}>
                     <span style={{ display: 'flex' }}>{s.mates.slice(0, 3).map((m, k) => <img key={m} src={mateImg(m)} alt="" width={22} height={22} style={{ marginLeft: k ? -5 : 0 }} />)}</span><span style={{ flex: 1 }}>{s.mates.length ? s.mates.map((m) => MATE_DEFS.find((x) => x.key === m)?.name).join(', ') : 'All Mates'}</span>
                     <button onClick={() => setSk(s)} style={{ border: 0, background: 'none', color: '#4F34D6', cursor: 'pointer', fontWeight: 600 }}>Edit</button>
-                    <button aria-label={`Delete ${s.name}`} onClick={() => confirmThen(`Delete “${s.name}”?`, () => skills.remove(s.id))} style={{ border: 0, background: 'none', color: '#6B6572', cursor: 'pointer' }}>✕</button>
+                    <button aria-label={`Delete ${s.name}`} onClick={() => confirmThen(`Delete “${s.name}”?`, () => skills.remove(s.id))} style={{ border: 0, background: 'none', color: '#6B6572', cursor: 'pointer' }}><Icon name="close" size={16} /></button>
                   </div>
                 </div>))}
               <button onClick={() => setSk({ ...blankSkill })} style={{ border: '1.5px dashed rgba(27,24,34,.25)', borderRadius: 16, background: 'none', minHeight: 130, cursor: 'pointer', font: 'inherit', color: '#6B6572', transition: 'background .2s' }} onMouseEnter={(e) => (e.currentTarget.style.background = '#F4F0FF')} onMouseLeave={(e) => (e.currentTarget.style.background = 'none')}>+ New skill</button>
@@ -65,8 +66,8 @@ export function Skills() {
                   <div style={{ flex: 1, minWidth: 0 }}><b style={{ fontSize: 14.5 }}>{m.name}</b><div style={{ color: '#6B6572', fontSize: 12.5, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.description || m.url || m.command}</div></div>
                   <button onClick={() => verify(m)} title="Verify" style={{ background: st[1], color: st[2], border: 0, borderRadius: 99, padding: '4px 12px', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>{st[0]}</button>
                   <Toggle label={`Enable ${m.name}`} checked={m.enabled} onChange={(v) => mcp.update(m.id, { enabled: v })} />
-                  <button aria-label={`Edit ${m.name}`} onClick={() => setMc(m)} style={{ border: 0, background: 'none', cursor: 'pointer', color: '#6B6572' }}>✎</button>
-                  <button aria-label={`Remove ${m.name}`} onClick={() => confirmThen(`Remove “${m.name}”?`, () => mcp.remove(m.id))} style={{ border: 0, background: 'none', cursor: 'pointer', color: '#6B6572' }}>✕</button>
+                  <button aria-label={`Edit ${m.name}`} onClick={() => setMc(m)} style={{ border: 0, background: 'none', cursor: 'pointer', color: '#6B6572' }}><Icon name="edit" size={16} /></button>
+                  <button aria-label={`Remove ${m.name}`} onClick={() => confirmThen(`Remove “${m.name}”?`, () => mcp.remove(m.id))} style={{ border: 0, background: 'none', cursor: 'pointer', color: '#6B6572' }}><Icon name="close" size={16} /></button>
                 </div>); })}
             </div>)}
           <div style={{ background: '#F4F0FF', border: '1px solid rgba(106,77,244,.25)', borderRadius: 14, padding: 16, fontSize: 13.5, lineHeight: 1.55, color: '#3D3946', marginTop: 14 }}>Each Mate only sees the servers you attach to it. Tools that write or send need approval under the harness rules.</div>

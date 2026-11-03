@@ -10,6 +10,7 @@ import type { ChatEvent, Conversation, MateKey } from '../../lib/types';
 import { useToast } from '../ui/toast';
 import { Markdown } from '../ui/Markdown';
 import { Badge, Btn, Pill, Tabs, Toggle, confirmThen } from '../ui/ui';
+import { Icon } from '../ui/Icon';
 
 const SLASH = [
   { cmd: '/btw', desc: 'Ask a side question without stopping the run' }, { cmd: '/ultracode', desc: 'Hand a coding task to a Mate for a long run' },
@@ -31,7 +32,7 @@ function Thought({ text, live, answering }: { text: string; live?: boolean; answ
     <div style={{ marginBottom: 8 }}>
       <button type="button" onClick={() => setManual(!open)} aria-expanded={open} style={{ display: 'inline-flex', alignItems: 'center', gap: 8, border: 0, background: thinking ? '#ECE7FF' : '#F4F2FA', color: '#4F34D6', borderRadius: 999, padding: '5px 12px', fontSize: 12.5, fontWeight: 600 }}>
         <span aria-hidden="true" style={{ display: 'inline-block', animation: thinking ? 'lm-pulse 1.4s ease-in-out infinite' : 'none', width: 8, height: 8, borderRadius: 99, background: '#6A4DF4' }} />
-        {thinking ? 'Thinking…' : 'Thought process'}<span aria-hidden="true" style={{ transition: 'transform .2s', transform: open ? 'rotate(180deg)' : 'none' }}>▾</span>
+        {thinking ? 'Thinking…' : 'Thought process'}<span aria-hidden="true" style={{ display: 'inline-grid', transition: 'transform .2s', transform: open ? 'rotate(180deg)' : 'none' }}><Icon name="chevron" size={14} /></span>
       </button>
       {open && <div style={{ marginTop: 8, borderLeft: '3px solid #CFC5FF', padding: '4px 0 4px 14px', fontSize: 13.5, lineHeight: 1.55, color: '#6B6572', whiteSpace: 'pre-wrap', maxHeight: 240, overflowY: 'auto', animation: 'lm-up .25s ease both' }}>{text}</div>}
     </div>
@@ -128,13 +129,13 @@ export function Chat() {
     try {
       if (texty && f.size <= 60_000) {
         const body = await f.text();
-        await api.conversations.send(conv.id, `📎 ${f.name}\n\n\`\`\`\n${body}\n\`\`\``, mate);
+        await api.conversations.send(conv.id, `Attached: ${f.name}\n\n\`\`\`\n${body}\n\`\`\``, mate);
         return;
       }
       if (texty) { toast(`${f.name} is too big to paste into a chat (60 KB max). Add it to Knowledge instead.`); return; }
       if (f.size > 15 * 1024 * 1024) { toast('That file is over 15 MB.'); return; }
       await api.files.upload(f);
-      await api.conversations.send(conv.id, `📎 ${f.name} (saved to Files, ${Math.round(f.size / 1024)} KB)`, mate);
+      await api.conversations.send(conv.id, `Attached: ${f.name} (saved to Files, ${Math.round(f.size / 1024)} KB)`, mate);
     } catch (e) {
       toast(e instanceof Error && /not configured|501/i.test(e.message) ? 'File storage (Google Drive) is not set up yet, so only text files can be attached for now.' : `Could not attach ${f.name}: ${e instanceof Error ? e.message : 'upload failed'}`);
     }
@@ -147,7 +148,7 @@ export function Chat() {
           <div style={{ minWidth: 0 }}>
             <button type="button" onClick={() => setList((o) => !o)} aria-expanded={list} style={{ border: 0, background: 'none', padding: 0, display: 'flex', alignItems: 'center', gap: 8, maxWidth: '100%' }}>
               <h1 style={{ margin: 0, fontSize: 22, fontWeight: 600, letterSpacing: '-.01em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{conv.title}</h1>
-              <span style={{ color: '#6B6572', transition: 'transform .2s', transform: list ? 'rotate(180deg)' : 'none' }}>▾</span>
+              <span style={{ color: '#6B6572', display: 'inline-grid', transition: 'transform .2s', transform: list ? 'rotate(180deg)' : 'none' }}><Icon name="chevron" size={16} /></span>
             </button>
             <div style={{ marginTop: 4, fontSize: 13, color: '#6B6572' }}>{settings?.workspaceName} · started {new Date(conv.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
           </div>
@@ -163,7 +164,7 @@ export function Chat() {
                   <Link href={`/chat?c=${c.id}`} onClick={() => setList(false)} style={{ flex: 1, minWidth: 0, display: 'flex', gap: 10, alignItems: 'center', padding: '8px 10px', borderRadius: 10, textDecoration: 'none', background: c.id === conv.id ? '#F3F1F8' : 'transparent' }}>
                     <Dot k={c.mate ?? 'planner'} s={30} /><span style={{ minWidth: 0 }}><b style={{ display: 'block', fontSize: 13.5, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.title}</b><small style={{ color: '#6B6572' }}>{ago(c.messages.at(-1)?.at ?? c.createdAt)}</small></span>
                   </Link>
-                  <button type="button" aria-label={`Delete ${c.title}`} onClick={() => confirmThen('Delete this chat?', () => { void remove(c.id); setList(false); if (c.id === conv.id) router.replace('/chat'); })} style={{ border: 0, background: 'none', color: '#B3261E', fontSize: 16, width: 32 }}>×</button>
+                  <button type="button" aria-label={`Delete ${c.title}`} onClick={() => confirmThen('Delete this chat?', () => { void remove(c.id); setList(false); if (c.id === conv.id) router.replace('/chat'); })} style={{ border: 0, background: 'none', color: '#B3261E', width: 32, display: 'grid', placeItems: 'center' }}><Icon name="close" size={16} /></button>
                 </div>))}
             </div>)}
         </header>
@@ -203,7 +204,7 @@ export function Chat() {
                 <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 6 }}>{mateName(s.mate)}</div>
                 {s.thought && <Thought text={s.thought} live answering={!!s.text} />}
                 {s.tools.length > 0 && <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 6 }}>{s.tools.map((n, j) => <span key={j} className="mono" style={{ fontSize: 11.5, background: '#ECE7FF', color: '#4F34D6', borderRadius: 7, padding: '3px 8px' }}>{TOOL_LABEL[n] ?? n}{j === s.tools.length - 1 && !s.text && !s.doneId ? '…' : ''}</span>)}</div>}
-                <div>{s.text ? <Markdown text={s.text} /> : (s.tools.length === 0 && !s.doneId && !s.thought ? <span style={{ color: '#6B6572' }}>Thinking…</span> : null)}{!s.doneId && s.text && i === arr.length - 1 && <span style={{ opacity: .5 }}>▍</span>}</div>
+                <div>{s.text ? <Markdown text={s.text} /> : (s.tools.length === 0 && !s.doneId && !s.thought ? <span style={{ color: '#6B6572' }}>Thinking…</span> : null)}{!s.doneId && s.text && i === arr.length - 1 && <span aria-hidden="true" style={{ opacity: .5, display: 'inline-block', width: 2, height: '1em', background: 'currentColor', verticalAlign: 'text-bottom', marginLeft: 2 }} />}</div>
               </div>
             </div></Fragment>))}
           <div ref={end} />
@@ -232,7 +233,7 @@ export function Chat() {
                 onChange={(e) => { setText(e.target.value); setMenu(true); setSel(0); }}
                 onKeyDown={(e) => { const n = showMention ? mentionOpts.length : slash.length; const open = showMention || showMenu; if (open && e.key === 'ArrowDown') { e.preventDefault(); setSel((x) => x + 1); } if (open && e.key === 'ArrowUp') { e.preventDefault(); setSel((x) => x + n - 1); } if (open && e.key === 'Tab') { e.preventDefault(); if (showMention) pickMention(mentionOpts[sel % n].key); else pickCmd(slash[sel % n].cmd); } if (e.key === 'Escape') setMenu(false); }}
                 style={{ flex: 1, minWidth: 0, height: 44, background: 'none', border: 0, outline: 0, fontSize: 15, fontFamily: 'inherit' }} />
-              <button type="submit" aria-label="Send" disabled={!text.trim()} style={{ width: 44, height: 44, borderRadius: 12, background: '#6A4DF4', border: 0, color: '#fff', fontSize: 20, opacity: text.trim() ? 1 : 0.4, transition: 'opacity .15s, transform .15s' }}>↑</button>
+              <button type="submit" aria-label="Send" disabled={!text.trim()} style={{ width: 44, height: 44, borderRadius: 12, background: '#6A4DF4', border: 0, color: '#fff', display: 'grid', placeItems: 'center', opacity: text.trim() ? 1 : 0.4, transition: 'opacity .15s, transform .15s' }}><Icon name="up" size={20} /></button>
             </form>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 6, flexWrap: 'wrap' }}>
               <Tabs value={mode} onChange={(m) => patch({ mode: m })} options={[{ id: 'chat', label: 'Chat' }, { id: 'plan', label: 'Plan' }, { id: 'ultracode', label: 'Ultracode' }, { id: 'brainstorm', label: 'Brainstorm' }]} />

@@ -49,7 +49,7 @@ export const Markdown = memo(function Markdown({ text, color = C.ink }: { text: 
         if (b.t === 'hr') return <View key={i} style={{ height: 1, backgroundColor: C.line }} />;
         if (b.t === 'ul' || b.t === 'ol') return (
           <View key={i} style={{ gap: 4 }}>{b.items!.map((it, j) => (
-            <View key={j} style={{ flexDirection: 'row', gap: 8 }}><Text style={{ ...base, width: 20, color: C.brandDeep, fontWeight: '700' }}>{b.t === 'ol' ? `${j + 1}.` : '•'}</Text><Text style={{ ...base, flex: 1 }}>{inline(it, `l${i}${j}`)}</Text></View>))}</View>);
+            <View key={j} style={{ flexDirection: 'row', gap: 8 }}><Text style={{ ...base, width: 20, color: C.brandDeep, fontWeight: '700' }}>{b.t === 'ol' ? `${j + 1}.` : '-'}</Text><Text style={{ ...base, flex: 1 }}>{inline(it, `l${i}${j}`)}</Text></View>))}</View>);
         return <Text key={i} selectable style={base}>{inline(b.text!, `p${i}`)}</Text>;
       })}
     </View>

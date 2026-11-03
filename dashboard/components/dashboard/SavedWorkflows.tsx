@@ -30,7 +30,7 @@ export function SavedWorkflows() {
                   </span>
                   <span className={s.workflowTitle}>{w.name}</span>
                   <span className={s.workflowSub}>{w.description || 'No description'}</span>
-                  <span className={s.meta}>{mates.map((m) => MATES[m].name).join(' → ') || 'Empty workflow'}</span>
+                  <span className={s.meta}>{mates.map((m) => MATES[m].name).join(' > ') || 'Empty workflow'}</span>
                 </Link>
               </li>
             );

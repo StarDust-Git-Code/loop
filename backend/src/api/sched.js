@@ -55,9 +55,9 @@ async function fire(j) {
     if (!a) return;
     await startRun(j.uid, { prompt: a.description || a.name, workflowId: a.workflowId, title: a.name, unattended: true });
     await userCol(j.uid, 'automations').doc(j.refId).set({ lastRunAt: now() }, { merge: true });
-    await notify(j.uid, `▶️ Automation started: ${a.name}`);
+    await notify(j.uid, `Automation started: ${a.name}`);
   } else if (j.kind === 'task') await notify(j.uid, `⏰ Task due: ${j.title}`);
-  else await notify(j.uid, `${j.ev === 'event' ? '📅 Starting in 10 min' : '⏰ Reminder'}: ${j.title}`);
+  else await notify(j.uid, `${j.ev === 'event' ? 'Starting in 10 min' : 'Reminder'}: ${j.title}`);
 }
 
 let busy = false;

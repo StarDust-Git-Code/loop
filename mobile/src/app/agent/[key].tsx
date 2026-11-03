@@ -36,7 +36,7 @@ export default function AgentSettings() {
           <View style={{ gap: 8 }}><Caption>TOOLS ({tools.length})</Caption>
             <Card style={{ padding: 12 }}><Text style={{ color: C.ink2, fontSize: 13.5, lineHeight: 20 }}>{tools.length ? tools.join(', ') : 'No extra tools.'}</Text></Card>
             <Text style={{ color: C.muted, fontSize: 12.5 }}>Tools are changed from the web dashboard for now.</Text></View>
-          <Btn label={saved ? 'Saved ✓' : 'Save changes'} onPress={save} busy={busy} />
+          <Btn label={saved ? 'Saved' : 'Save changes'} onPress={save} busy={busy} />
         </>) : cfgs.loading ? <Text style={{ color: C.muted }}>Loading…</Text> : <Text style={{ color: C.muted }}>No settings found for this agent yet. Open the Agents tab once to create them.</Text>}
     </Screen>
   );

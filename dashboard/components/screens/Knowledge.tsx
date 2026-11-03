@@ -7,6 +7,7 @@ import { mateImg } from '../../lib/mates';
 import type { Knowledge as K, KnowledgeIn, SettingsData } from '../../lib/types';
 import { useToast } from '../ui/toast';
 import { Btn, confirmThen, Empty, ErrorNote, Field, Input, Loading, Modal, Page, Tabs, Textarea, Toggle } from '../ui/ui';
+import { Icon } from '../ui/Icon';
 
 type View = 'graph' | 'sources' | 'memory' | 'retrieval';
 const card = { background: '#fff', border: '1px solid rgba(27,24,34,.17)', borderRadius: 16, boxShadow: '0 2px 6px rgba(31,26,23,.05)' } as const;
@@ -46,7 +47,7 @@ export function Knowledge() {
             <div key={k.id} onClick={() => { setSel(k.id); setView('graph'); }} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 0', borderBottom: '1px solid rgba(31,26,23,.08)', cursor: 'pointer', animation: `lm-up .3s ${Math.min(i, 8) * 30}ms ease both` }}>
               <span style={{ width: 40, height: 40, borderRadius: 10, background: b[1], color: b[2], fontSize: 11, fontWeight: 700, display: 'grid', placeItems: 'center', flex: 'none' }}>{b[0]}</span>
               <div style={{ minWidth: 0, flex: 1 }}><b style={{ fontSize: 14, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{k.name}</b><span style={{ fontSize: 12.5, color: k.status === 'indexed' ? '#1E7A46' : k.status === 'error' ? '#B3261E' : '#6B6572' }}>{k.status === 'pending' ? 'Not indexed yet' : k.status === 'indexed' ? 'Indexed' : 'Error'}</span></div>
-              <button aria-label={`Remove ${k.name}`} onClick={(e) => { e.stopPropagation(); confirmThen(`Remove “${k.name}”?`, () => remove(k.id)); }} style={{ border: 0, background: 'none', color: '#6B6572', cursor: 'pointer', fontSize: 16 }}>✕</button>
+              <button aria-label={`Remove ${k.name}`} onClick={(e) => { e.stopPropagation(); confirmThen(`Remove “${k.name}”?`, () => remove(k.id)); }} style={{ border: 0, background: 'none', color: '#6B6572', cursor: 'pointer', fontSize: 16 }}><Icon name="close" size={16} /></button>
             </div>);
         })}
       </div>

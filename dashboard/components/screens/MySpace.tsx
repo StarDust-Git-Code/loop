@@ -9,6 +9,7 @@ import { parseWhen } from '../../lib/parse';
 import type { MemoryIn } from '../../lib/types';
 import { useToast } from '../ui/toast';
 import { Btn, Chips, confirmThen, ErrorNote, Field, Modal, Page, Tabs, Textarea, Toggle } from '../ui/ui';
+import { Icon } from '../ui/Icon';
 
 type Kind = MemoryIn['kind'];
 type Filter = 'all' | Kind;
@@ -40,7 +41,7 @@ export function MySpace() {
   const scopeLine = (m: MemoryIn) => (m.scope === 'shared' ? 'Shared with Mates' : 'Only Mimo');
 
   return (
-    <Page fill title="My Space" sub="Your private second brain: today's schedule, memories, journal and recall. Talk to Mimo in Chat." actions={<><span style={{ background: '#F1ECFF', color: '#4F34D6', borderRadius: 99, padding: '8px 16px', fontSize: 13, fontWeight: 600 }}>🔒 Private. Other Mates see only what you share.</span><Btn variant="primary" onClick={() => setAdd({ kind: 'idea', text: '', scope: 'private' })}>+ Add memory</Btn></>}>
+    <Page fill title="My Space" sub="Your private second brain: today's schedule, memories, journal and recall. Talk to Mimo in Chat." actions={<><span style={{ background: '#F1ECFF', color: '#4F34D6', borderRadius: 99, padding: '8px 16px', fontSize: 13, fontWeight: 600 }}><Icon name="lock" size={14} style={{ verticalAlign: -2, marginRight: 4 }} />Private. Other Mates see only what you share.</span><Btn variant="primary" onClick={() => setAdd({ kind: 'idea', text: '', scope: 'private' })}>+ Add memory</Btn></>}>
       <ErrorNote message={mem.error ?? ev.error} />
       <div style={{ flex: 1, minHeight: 0, display: 'grid', gridTemplateColumns: 'minmax(260px,330px) minmax(0,1fr) minmax(280px,380px)', gap: 18 }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14, minHeight: 0 }}>
@@ -77,7 +78,7 @@ export function MySpace() {
           </div>
           <div style={{ borderTop: '1px solid rgba(31,26,23,.08)', padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: 10 }}>
             <p style={{ margin: 0, fontSize: 12.5, color: '#6B6572' }}>Want to talk it through? Mimo lives in Chat, with the same memories you see here.</p>
-            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>{QUICK.map((q2) => <button key={q2} onClick={() => (q2 === 'Add a memory' ? setAdd({ kind: 'note', text: '', scope: 'private' }) : void openMimo(q2))} style={{ border: '1px solid rgba(27,24,34,.17)', borderRadius: 99, padding: '7px 14px', background: '#F7F5FB', font: 'inherit', fontSize: 13.5, cursor: 'pointer', transition: 'background .15s' }}>{q2}</button>)}<button onClick={() => void openMimo()} style={{ border: 0, borderRadius: 99, padding: '7px 14px', background: '#6A4DF4', color: '#fff', font: 'inherit', fontSize: 13.5, cursor: 'pointer' }}>Open chat with Mimo →</button></div>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>{QUICK.map((q2) => <button key={q2} onClick={() => (q2 === 'Add a memory' ? setAdd({ kind: 'note', text: '', scope: 'private' }) : void openMimo(q2))} style={{ border: '1px solid rgba(27,24,34,.17)', borderRadius: 99, padding: '7px 14px', background: '#F7F5FB', font: 'inherit', fontSize: 13.5, cursor: 'pointer', transition: 'background .15s' }}>{q2}</button>)}<button onClick={() => void openMimo()} style={{ border: 0, borderRadius: 99, padding: '7px 14px', background: '#6A4DF4', color: '#fff', font: 'inherit', fontSize: 13.5, cursor: 'pointer' }}>Open chat with Mimo</button></div>
           </div>
         </section>
 
@@ -90,11 +91,11 @@ export function MySpace() {
               <article key={m.id} style={{ ...card, padding: '12px 16px', animation: `lm-up .3s ${Math.min(i, 6) * 30}ms ease both` }}>
                 <div style={{ display: 'flex', alignItems: 'center' }}><span style={{ background: KC[m.kind][0], color: KC[m.kind][1], borderRadius: 6, padding: '2px 8px', fontSize: 12, textTransform: 'capitalize' }}>{m.kind}</span><span style={{ marginLeft: 'auto', color: '#6B6572', fontSize: 12.5 }}>{m.pinned ? 'Pinned' : new Date(m.createdAt).toLocaleDateString([], { day: 'numeric', month: 'short' })}</span></div>
                 <b style={{ display: 'block', fontSize: 14.5, margin: '8px 0', lineHeight: 1.4 }}>{m.text}</b>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#6B6572', fontSize: 12.5 }}>🔒 {scopeLine(m)}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#6B6572', fontSize: 12.5 }}><Icon name="lock" size={14} />{scopeLine(m)}
                   <span style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
                     <button onClick={() => mem.update(m.id, { pinned: !m.pinned })} style={{ border: 0, background: 'none', color: '#4F34D6', cursor: 'pointer', fontSize: 12.5 }}>{m.pinned ? 'Unpin' : 'Pin'}</button>
                     <button onClick={() => mem.update(m.id, { scope: m.scope === 'shared' ? 'private' : 'shared' })} style={{ border: 0, background: 'none', color: '#4F34D6', cursor: 'pointer', fontSize: 12.5 }}>{m.scope === 'shared' ? 'Make private' : 'Share'}</button>
-                    <button aria-label="Delete memory" onClick={() => confirmThen('Delete this memory?', () => mem.remove(m.id))} style={{ border: 0, background: 'none', color: '#6B6572', cursor: 'pointer' }}>✕</button>
+                    <button aria-label="Delete memory" onClick={() => confirmThen('Delete this memory?', () => mem.remove(m.id))} style={{ border: 0, background: 'none', color: '#6B6572', cursor: 'pointer' }}><Icon name="close" size={16} /></button>
                   </span></div>
               </article>))}
           </div>

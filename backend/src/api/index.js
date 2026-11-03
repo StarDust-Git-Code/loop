@@ -190,7 +190,7 @@ await app.register(async (v1) => {
       if (c.provider === 'telegram') {
         if (!telegramReady()) error = 'TELEGRAM_BOT_TOKEN is not set on the API service.';
         else if (!c.config?.chatId) { status = 'pending'; error = 'Not linked yet. Get a code and send /start CODE to the bot.'; }
-        else { await tgSend(c.config.chatId, 'Loopmates test ✅'); status = 'connected'; }
+        else { await tgSend(c.config.chatId, 'Loopmates test message: connected'); status = 'connected'; }
       } else if (c.provider === 'whatsapp') {
         const w = waStatus(); status = w.status === 'open' ? 'connected' : 'pending'; error = status === 'pending' ? `Bridge is ${w.status}.` : '';
       } else if (c.provider === 'gdrive') {

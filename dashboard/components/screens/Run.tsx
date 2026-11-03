@@ -10,6 +10,7 @@ import type { FlowEdge, FlowNode, Run as RunT } from '../../lib/types';
 import { useToast } from '../ui/toast';
 import { Markdown } from '../ui/Markdown';
 import { Btn, Empty, Loading, Page, Pill, Tabs } from '../ui/ui';
+import { Icon } from '../ui/Icon';
 
 const LABEL: Record<RunT['status'], string> = { queued: 'Queued', running: 'Running', waiting_approval: 'Needs approval', done: 'Done', failed: 'Failed', stopped: 'Stopped' };
 const TONE = { queued: 'warn', running: 'live', waiting_approval: 'warn', done: 'ok', failed: 'bad', stopped: 'warn' } as const;
@@ -98,7 +99,7 @@ function RunView({ id }: { id: string }) {
           </div>
           <form onSubmit={async (e) => { e.preventDefault(); if (steer.trim()) { await api.runs.steer(run.id, steer.trim()); setSteer(''); toast('Sent to the run'); } }} style={{ display: 'flex', gap: 10, alignItems: 'center', ...card, padding: '8px 8px 8px 16px' }}>
             <input value={steer} onChange={(e) => setSteer(e.target.value)} aria-label="Steer this run" placeholder="Steer this run, e.g. also compare pricing tiers…" style={{ flex: 1, border: 0, outline: 0, fontSize: 14.5, fontFamily: 'inherit', height: 40, background: 'none' }} />
-            <button type="submit" aria-label="Send" disabled={!steer.trim()} style={{ width: 40, height: 40, borderRadius: 10, border: 0, background: '#6A4DF4', color: '#fff', opacity: steer.trim() ? 1 : 0.4 }}>↑</button>
+            <button type="submit" aria-label="Send" disabled={!steer.trim()} style={{ width: 40, height: 40, borderRadius: 10, border: 0, background: '#6A4DF4', color: '#fff', opacity: steer.trim() ? 1 : 0.4, display: 'grid', placeItems: 'center' }}><Icon name="up" size={18} /></button>
           </form>
         </div>
 
