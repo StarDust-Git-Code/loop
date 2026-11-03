@@ -132,7 +132,7 @@ export default function Chat() {
         <Press onPress={() => router.back()} accessibilityLabel="Back" style={{ width: 44, height: 44, alignItems: 'center', justifyContent: 'center' }}><Icon name="back" size={22} /></Press>
         <Avatar k={mate} size={38} />
         <View style={{ flex: 1, minWidth: 0 }}><Text numberOfLines={1} style={{ fontSize: 16, fontWeight: '800', color: C.ink }}>{conv?.title ?? 'Chat'}</Text><Text numberOfLines={1} style={{ fontSize: 12.5, color: C.muted }}>{subtitle}</Text></View>
-        <Press onPress={() => router.push({ pathname: '/call', params: { mate, conv: id } })} accessibilityLabel={`Call ${mateName(mate)}`} style={{ width: 44, height: 44, borderRadius: 14, backgroundColor: C.brand, alignItems: 'center', justifyContent: 'center' }}><Icon name="phone" size={20} color="#fff" /></Press>
+        <Press onPress={() => router.navigate({ pathname: '/', params: { tab: 'call', mate, conv: id } })} accessibilityLabel={`Call ${mateName(mate)}`} style={{ width: 44, height: 44, borderRadius: 14, backgroundColor: C.brand, alignItems: 'center', justifyContent: 'center' }}><Icon name="phone" size={20} color="#fff" /></Press>
       </View>
 
       <FlatList inverted data={rows} keyExtractor={(r) => r.key} keyboardShouldPersistTaps="handled" style={{ flex: 1 }}

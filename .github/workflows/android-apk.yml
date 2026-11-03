@@ -30,8 +30,16 @@ jobs:
       - run: npx tsc --noEmit
       - name: Generate the native Android project
         run: npx expo prebuild --platform android --no-install --clean
+      - name: Show the signing SHA-1 (add it in Firebase for Google sign-in)
+        run: |
+          SHA=$(keytool -list -v -keystore android/app/debug.keystore -alias androiddebugkey -storepass android -keypass android | grep 'SHA1:' | sed 's/.*SHA1: //')
+          echo "Signing SHA-1: $SHA"
+          echo "### Signing SHA-1 for Firebase" >> "$GITHUB_STEP_SUMMARY"
+          echo "\`$SHA\`  (package com.loopmates.app)" >> "$GITHUB_STEP_SUMMARY"
       - name: Build the APK (signed with the debug key so it installs directly)
         working-directory: mobile/android
+        env:
+          EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID: ${{ vars.GOOGLE_WEB_CLIENT_ID }}
         run: ./gradlew assembleRelease --no-daemon -Dorg.gradle.jvmargs="-Xmx4g" -PreactNativeArchitectures=arm64-v8a
       - name: Name the APK
         run: cp android/app/build/outputs/apk/release/app-release.apk Loopmates.apk

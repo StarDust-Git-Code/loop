@@ -1,14 +1,16 @@
 import { useRouter } from 'expo-router';
 import { useMemo, useState } from 'react';
 import { RefreshControl, ScrollView, Text, View } from 'react-native';
+import Animated, { FadeInDown, LinearTransition } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Avatar, Card, Caption, Empty, ErrorNote, Press } from '../../components/ui';
-import { api } from '../../lib/api';
-import type { Settings } from '../../lib/types';
-import { useAuth } from '../../lib/auth';
-import { ago, useList } from '../../lib/hooks';
-import { mateName } from '../../lib/mates';
-import { C, R } from '../../lib/theme';
+import { PILL_SPACE } from '../components/PillBar';
+import { Avatar, Card, Caption, Empty, ErrorNote, Press } from '../components/ui';
+import { api } from '../lib/api';
+import type { Settings } from '../lib/types';
+import { useAuth } from '../lib/auth';
+import { ago, useList } from '../lib/hooks';
+import { mateName } from '../lib/mates';
+import { C, R } from '../lib/theme';
 
 const greet = () => { const h = new Date().getHours(); return h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening'; };
 
@@ -34,7 +36,7 @@ export default function Home() {
     catch { /* shown by the list's error note on the next refresh */ } finally { setBusy(false); }
   };
   return (
-    <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingTop: insets.top + 16, paddingHorizontal: 18, paddingBottom: 28, gap: 16 }} refreshControl={<RefreshControl refreshing={all.refreshing} onRefresh={all.refresh} tintColor={C.brand} />}>
+    <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingTop: insets.top + 16, paddingHorizontal: 18, paddingBottom: PILL_SPACE + 16, gap: 16 }} refreshControl={<RefreshControl refreshing={all.refreshing} onRefresh={all.refresh} tintColor={C.brand} />}>
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
         <View><Text style={{ fontSize: 13, color: C.muted }}>{new Date().toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' })}</Text>
           <Text style={{ fontSize: 26, fontWeight: '800', color: C.ink, letterSpacing: -0.3 }}>{greet()}, {name}</Text></View>
@@ -43,40 +45,40 @@ export default function Home() {
       </View>
       <ErrorNote message={all.error} onRetry={all.reload} />
 
-      <View style={{ borderRadius: 22, padding: 18, backgroundColor: C.brand, overflow: 'hidden' }}>
+      <Animated.View entering={FadeInDown.delay(60).springify().damping(16)} style={{ borderRadius: 22, padding: 18, backgroundColor: C.brand, overflow: 'hidden' }}>
         <Caption style={{ color: 'rgba(255,255,255,0.9)', letterSpacing: 1.2 }}>WHAT SHOULD LOOP DO TODAY</Caption>
         <Text style={{ color: '#fff', fontSize: 19, fontWeight: '800', marginTop: 8, maxWidth: 230, lineHeight: 25 }}>Hand a goal to your Mates</Text>
         <View style={{ flexDirection: 'row', gap: 8, marginTop: 14 }}>
           <Press onPress={() => open('planner')} style={{ minHeight: 44, borderRadius: 12, backgroundColor: '#fff', paddingHorizontal: 16, justifyContent: 'center' }}><Text style={{ color: C.brandDeep, fontWeight: '800', fontSize: 14 }}>Ask Planner</Text></Press>
-          <Press onPress={() => router.push('/agents')} style={{ minHeight: 44, borderRadius: 12, borderWidth: 1, borderColor: 'rgba(255,255,255,0.55)', paddingHorizontal: 16, justifyContent: 'center' }}><Text style={{ color: '#fff', fontWeight: '800', fontSize: 14 }}>All agents</Text></Press>
+          <Press onPress={() => router.navigate({ pathname: '/', params: { tab: 'agents' } })} style={{ minHeight: 44, borderRadius: 12, borderWidth: 1, borderColor: 'rgba(255,255,255,0.55)', paddingHorizontal: 16, justifyContent: 'center' }}><Text style={{ color: '#fff', fontWeight: '800', fontSize: 14 }}>All agents</Text></Press>
         </View>
         <View style={{ position: 'absolute', right: -6, bottom: -8 }}><Avatar k="planner" size={104} /></View>
-      </View>
+      </Animated.View>
 
-      <View style={{ flexDirection: 'row', gap: 10 }}>
+      <Animated.View entering={FadeInDown.delay(140).springify().damping(16)} style={{ flexDirection: 'row', gap: 10 }}>
         {[[due, 'Open tasks'], [running, 'Runs in progress'], [waiting, 'Needs approval']].map(([n, l]) => (
           <Card key={l as string} style={{ flex: 1, paddingVertical: 12, paddingHorizontal: 14 }}><Text style={{ fontSize: 24, fontWeight: '800', color: C.ink }}>{n}</Text><Text style={{ fontSize: 12.5, color: C.muted }}>{l}</Text></Card>))}
-      </View>
+      </Animated.View>
 
-      <View><Caption style={{ marginBottom: 8 }}>TODAY</Caption>
+      <Animated.View entering={FadeInDown.delay(220).springify().damping(16)}><Caption style={{ marginBottom: 8 }}>TODAY</Caption>
         <Card>{todays.length === 0 ? <Empty text="Nothing scheduled today." /> : todays.map((e, i) => (
           <View key={e.id} style={{ flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14, borderTopWidth: i ? 1 : 0, borderTopColor: C.line }}>
             <Text style={{ width: 52, fontWeight: '800', color: C.brandDeep, fontSize: 13 }}>{new Date(e.start).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', hour12: false })}</Text>
-            <Text style={{ flex: 1, fontSize: 14.5, color: C.ink }}>{e.title}</Text></View>))}</Card></View>
+            <Text style={{ flex: 1, fontSize: 14.5, color: C.ink }}>{e.title}</Text></View>))}</Card></Animated.View>
 
       <View>
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 8 }}>
-          <Caption>RECENT CHATS</Caption><Press onPress={() => router.push('/agents')}><Text style={{ color: C.brandDeep, fontWeight: '800', fontSize: 13 }}>New chat</Text></Press></View>
+          <Caption>RECENT CHATS</Caption><Press onPress={() => router.navigate({ pathname: '/', params: { tab: 'agents' } })}><Text style={{ color: C.brandDeep, fontWeight: '800', fontSize: 13 }}>New chat</Text></Press></View>
         <View style={{ gap: 8 }}>
-          {all.loading ? <Empty text="Loading…" /> : recent.length === 0 ? <Empty text="No chats yet. Pick an agent to start." /> : recent.map((c) => {
+          {all.loading ? <Empty text="Loading…" /> : recent.length === 0 ? <Empty text="No chats yet. Pick an agent to start." /> : recent.map((c, i) => {
             const last = c.messages[c.messages.length - 1];
             return (
-              <Press key={c.id} onPress={() => router.push(`/chat/${c.id}`)} style={{ flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: '#fff', borderWidth: 1, borderColor: C.line, borderRadius: R.lg, padding: 10, paddingHorizontal: 12, minHeight: 60 }}>
+              <Animated.View key={c.id} entering={FadeInDown.delay(300 + i * 50).springify().damping(16)} layout={LinearTransition}><Press onPress={() => router.push(`/chat/${c.id}`)} style={{ flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: '#fff', borderWidth: 1, borderColor: C.line, borderRadius: R.lg, padding: 10, paddingHorizontal: 12, minHeight: 60 }}>
                 <Avatar k={c.mate ?? 'planner'} size={40} />
                 <View style={{ flex: 1 }}><Text numberOfLines={1} style={{ fontSize: 14.5, fontWeight: '800', color: C.ink }}>{c.title}</Text>
                   <Text numberOfLines={1} style={{ fontSize: 12.5, color: C.muted }}>{last?.text.replace(/\s+/g, ' ') ?? 'No messages yet'}</Text></View>
                 <Text style={{ fontSize: 12, color: C.muted }}>{ago(c.updatedAt ?? c.createdAt)}</Text>
-              </Press>);
+              </Press></Animated.View>);
           })}
         </View>
       </View>

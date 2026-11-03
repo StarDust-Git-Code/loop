@@ -2,9 +2,10 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getApp, getApps, initializeApp } from 'firebase/app';
 // getReactNativePersistence is exported by firebase/auth's React Native build.
 // @ts-ignore: not present in the default (web) type declarations
-import { getReactNativePersistence, initializeAuth, getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, sendPasswordResetEmail, signOut as fbSignOut, type Auth, type User } from 'firebase/auth';
+import { getReactNativePersistence, initializeAuth, getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, sendPasswordResetEmail, signOut as fbSignOut, GoogleAuthProvider, signInWithCredential, type Auth, type User } from 'firebase/auth';
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
-import { firebaseConfig } from './firebaseConfig';
+import { GoogleSignin, isSuccessResponse, statusCodes } from '@react-native-google-signin/google-signin';
+import { firebaseConfig, GOOGLE_WEB_CLIENT_ID } from './firebaseConfig';
 
 let auth: Auth | null = null;
 export function firebaseAuth(): Auth {
@@ -43,4 +44,23 @@ const nice = (e: unknown) => {
 export const signIn = (email: string, pw: string) => signInWithEmailAndPassword(firebaseAuth(), email.trim(), pw).catch((e) => { throw new Error(nice(e)); });
 export const signUp = (email: string, pw: string) => createUserWithEmailAndPassword(firebaseAuth(), email.trim(), pw).catch((e) => { throw new Error(nice(e)); });
 export const resetPassword = (email: string) => sendPasswordResetEmail(firebaseAuth(), email.trim()).catch((e) => { throw new Error(nice(e)); });
-export const signOut = () => fbSignOut(firebaseAuth());
+/** Returns false when the person closes the Google sheet without choosing an account. */
+export async function signInGoogle(): Promise<boolean> {
+  if (!GOOGLE_WEB_CLIENT_ID) throw new Error('Google sign-in is not set up in this build yet. Use email for now.');
+  try {
+    GoogleSignin.configure({ webClientId: GOOGLE_WEB_CLIENT_ID, offlineAccess: false });
+    await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
+    const r = await GoogleSignin.signIn();
+    if (!isSuccessResponse(r)) return false;
+    const idt = r.data.idToken; if (!idt) throw new Error('Google did not return a token. Try again.');
+    await signInWithCredential(firebaseAuth(), GoogleAuthProvider.credential(idt));
+    return true;
+  } catch (e) {
+    const code = (e as { code?: string }).code;
+    if (code === statusCodes.SIGN_IN_CANCELLED || code === statusCodes.IN_PROGRESS) return false;
+    if (code === statusCodes.PLAY_SERVICES_NOT_AVAILABLE) throw new Error('Google Play services are missing or out of date on this phone.');
+    if (code === '10' || /DEVELOPER_ERROR/i.test(String((e as Error).message))) throw new Error('Google sign-in is not fully configured: add this app\'s SHA-1 in Firebase.');
+    throw new Error(e instanceof Error && e.message ? e.message : 'Could not sign in with Google.');
+  }
+}
+export const signOut = async () => { try { await GoogleSignin.signOut(); } catch { /* not signed in with Google */ } await fbSignOut(firebaseAuth()); };

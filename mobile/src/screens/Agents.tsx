@@ -1,13 +1,15 @@
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
+import Animated, { FadeInDown, LinearTransition } from 'react-native-reanimated';
 import { FlatList, Switch, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Avatar, Chip, ErrorNote, Icon, Press, Title } from '../../components/ui';
-import { api } from '../../lib/api';
-import { useList } from '../../lib/hooks';
-import { MATE_DEFS, mateName } from '../../lib/mates';
-import { C, R } from '../../lib/theme';
-import type { MateConfig } from '../../lib/types';
+import { PILL_SPACE } from '../components/PillBar';
+import { Avatar, Chip, ErrorNote, Icon, Press, Title } from '../components/ui';
+import { api } from '../lib/api';
+import { useList } from '../lib/hooks';
+import { MATE_DEFS, mateName } from '../lib/mates';
+import { C, R } from '../lib/theme';
+import type { MateConfig } from '../lib/types';
 
 const LEVELS = ['low', 'default', 'high'];
 export default function Agents() {
@@ -38,16 +40,16 @@ export default function Agents() {
         <ErrorNote message={err ?? cfg.error} onRetry={() => { setErr(null); cfg.reload(); }} />
       </View>
       <FlatList data={sorted} keyExtractor={(m) => m.key} onRefresh={cfg.refresh} refreshing={cfg.refreshing}
-        contentContainerStyle={{ paddingHorizontal: 18, paddingBottom: 24, gap: 10 }}
-        renderItem={({ item: m }) => {
+        contentContainerStyle={{ paddingHorizontal: 18, paddingBottom: PILL_SPACE + 16, gap: 10 }}
+        renderItem={({ item: m, index }) => {
           const on = !!byKey.get(m.key)?.enabled;
           return (
-            <Press onPress={() => chat(m.key)} style={{ flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: m.tint, borderRadius: R.lg, borderWidth: 1, borderColor: C.line, padding: 12, opacity: on ? 1 : 0.72 }}>
+            <Animated.View entering={FadeInDown.delay(Math.min(index, 8) * 45).springify().damping(16)} layout={LinearTransition}><Press onPress={() => chat(m.key)} style={{ flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: m.tint, borderRadius: R.lg, borderWidth: 1, borderColor: C.line, padding: 12, opacity: on ? 1 : 0.72 }}>
               <Avatar k={m.key} size={52} />
               <View style={{ flex: 1 }}><Text style={{ fontSize: 15.5, fontWeight: '800', color: C.ink }}>{mateName(m.key)}</Text><Text numberOfLines={2} style={{ fontSize: 12.5, color: C.ink2 }}>{m.blurb}</Text></View>
-              <Press onPress={() => router.push({ pathname: '/call', params: { mate: m.key } })} accessibilityLabel={`Call ${mateName(m.key)}`} style={{ width: 44, height: 44, borderRadius: 14, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center' }}><Icon name="phone" size={20} color={C.brandDeep} /></Press>
+              <Press onPress={() => router.navigate({ pathname: '/', params: { tab: 'call', mate: m.key } })} accessibilityLabel={`Call ${mateName(m.key)}`} style={{ width: 44, height: 44, borderRadius: 14, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center' }}><Icon name="phone" size={20} color={C.brandDeep} /></Press>
               <Switch value={on} onValueChange={(v) => toggle(m.key, v)} trackColor={{ true: C.brand, false: '#D5D1DE' }} thumbColor="#fff" accessibilityLabel={`${mateName(m.key)} on or off`} />
-            </Press>);
+            </Press></Animated.View>);
         }} />
     </View>
   );

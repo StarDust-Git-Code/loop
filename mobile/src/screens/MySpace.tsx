@@ -1,11 +1,13 @@
 import { useMemo, useState } from 'react';
+import Animated, { FadeInDown, LinearTransition } from 'react-native-reanimated';
 import { FlatList, Modal, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Btn, Caption, Chip, Empty, ErrorNote, Press, Title } from '../../components/ui';
-import { api } from '../../lib/api';
-import { ago, useList } from '../../lib/hooks';
-import { C, R } from '../../lib/theme';
-import type { Memory } from '../../lib/types';
+import { PILL_SPACE } from '../components/PillBar';
+import { Btn, Caption, Chip, Empty, ErrorNote, Press, Title } from '../components/ui';
+import { api } from '../lib/api';
+import { ago, useList } from '../lib/hooks';
+import { C, R } from '../lib/theme';
+import type { Memory } from '../lib/types';
 
 const KINDS: [string, string[]][] = [['All', []], ['Notes', ['note', 'journal', 'link']], ['Ideas', ['idea']], ['Decisions', ['decision']], ['Facts', ['fact']]];
 const BADGE: Record<string, [string, string]> = { decision: [C.brandDeep, C.tint], idea: ['#0B5E4A', '#D6F3EA'], fact: [C.ink2, '#EEECF3'], note: ['#7A4A00', '#FFEBC8'], journal: ['#7A4A00', '#FFEBC8'], link: ['#7A4A00', '#FFEBC8'] };
@@ -39,12 +41,12 @@ export default function MySpace() {
         <ErrorNote message={mem.error} onRetry={mem.reload} />
       </View>
       <FlatList data={rows} keyExtractor={(m) => m.id} onRefresh={mem.refresh} refreshing={mem.refreshing}
-        contentContainerStyle={{ paddingHorizontal: 18, paddingBottom: 24, gap: 10 }}
+        contentContainerStyle={{ paddingHorizontal: 18, paddingBottom: PILL_SPACE + 16, gap: 10 }}
         ListEmptyComponent={mem.loading ? <Empty text="Loading…" /> : <Empty text="No memories here yet." />}
-        renderItem={({ item: m }) => {
+        renderItem={({ item: m, index }) => {
           const [fg, bg] = BADGE[m.kind] ?? BADGE.note;
           return (
-            <View style={{ backgroundColor: '#fff', borderRadius: R.lg, borderWidth: 1, borderColor: m.pinned ? 'rgba(106,77,244,0.35)' : C.line, padding: 14 }}>
+            <Animated.View entering={FadeInDown.delay(Math.min(index, 8) * 45).springify().damping(16)} layout={LinearTransition} style={{ backgroundColor: '#fff', borderRadius: R.lg, borderWidth: 1, borderColor: m.pinned ? 'rgba(106,77,244,0.35)' : C.line, padding: 14 }}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
                 <Text style={{ fontSize: 11, fontWeight: '800', letterSpacing: 0.7, color: fg, backgroundColor: bg, borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3, overflow: 'hidden' }}>{m.kind.toUpperCase()}</Text>
                 <Text style={{ flex: 1, fontSize: 11.5, color: C.muted }}>{m.pinned ? 'Pinned · ' : ''}{m.by ?? 'You'} · {ago(m.createdAt)}</Text>
@@ -52,7 +54,7 @@ export default function MySpace() {
                 <Press onPress={() => del(m)} accessibilityLabel="Delete" style={{ minHeight: 32, justifyContent: 'center' }}><Text style={{ color: C.bad, fontWeight: '800', fontSize: 12.5 }}>Delete</Text></Press>
               </View>
               <Text selectable style={{ fontSize: 14.5, lineHeight: 21, marginTop: 8, color: C.ink }}>{m.text}</Text>
-            </View>);
+            </Animated.View>);
         }} />
       <Modal visible={adding} transparent animationType="slide" onRequestClose={() => setAdding(false)}>
         <View style={{ flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.35)' }}>

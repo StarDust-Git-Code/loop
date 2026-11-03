@@ -1,14 +1,14 @@
 import * as Haptics from 'expo-haptics';
 import { useKeepAwake } from 'expo-keep-awake';
-import { useLocalSearchParams } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { FlatList, ScrollView, Text, View } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Avatar, Btn, Chip, ErrorNote, Icon, Press } from '../../components/ui';
-import { MATE_DEFS, mateName, type MateKey } from '../../lib/mates';
-import { C, R } from '../../lib/theme';
-import { startCall, type CallHandle } from '../../lib/voice';
+import { PILL_SPACE } from '../components/PillBar';
+import { Avatar, Btn, Chip, ErrorNote, Icon, Press } from '../components/ui';
+import { MATE_DEFS, mateName, type MateKey } from '../lib/mates';
+import { C, R } from '../lib/theme';
+import { startCall, type CallHandle } from '../lib/voice';
 
 type Line = { id: number; who: 'you' | 'mate'; text: string };
 const WHY: Record<string, string> = { silence: 'Call ended after a long silence.', 'time limit': 'Call ended at the time limit.', busy: 'The line is busy. Try again in a moment.' };
@@ -20,17 +20,16 @@ function Pulse({ level, live }: { level: number; live: boolean }) {
   return <Animated.View style={[{ position: 'absolute', width: 170, height: 170, borderRadius: 85, backgroundColor: 'rgba(106,77,244,0.16)' }, a]} />;
 }
 
-export default function CallTab() {
+export default function CallScreen({ mate: mateParam, reason, conv }: { mate?: string; reason?: string; conv?: string }) {
   useKeepAwake();
   const insets = useSafeAreaInsets();
-  const qp = useLocalSearchParams<{ mate?: string; reason?: string; conv?: string }>();
-  const [mate, setMate] = useState<MateKey>((qp.mate as MateKey) || 'mimo');
+  const [mate, setMate] = useState<MateKey>((mateParam as MateKey) || 'mimo');
   const [state, setState] = useState<'idle' | 'connecting' | 'live'>('idle');
   const [err, setErr] = useState(''); const [lines, setLines] = useState<Line[]>([]); const [muted, setMuted] = useState(false);
   const [secs, setSecs] = useState(0); const [lvl, setLvl] = useState(0); const [tool, setTool] = useState('');
   const h = useRef<CallHandle | null>(null); const id = useRef(0);
 
-  useEffect(() => { if (qp.mate) setMate(qp.mate as MateKey); }, [qp.mate]);
+  useEffect(() => { if (mateParam) setMate(mateParam as MateKey); }, [mateParam]);
   useEffect(() => { if (state !== 'live') return; const t = setInterval(() => { setSecs((x) => x + 1); setLvl(h.current?.level() ?? 0); }, 250); return () => clearInterval(t); }, [state]);
   useEffect(() => () => h.current?.hangup(), []);
 
@@ -38,13 +37,13 @@ export default function CallTab() {
   const dial = async () => {
     setErr(''); setLines([]); setSecs(0); setMuted(false); setState('connecting'); void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     try {
-      h.current = await startCall(mate, qp.reason ?? '', (e) => {
+      h.current = await startCall(mate, reason ?? '', (e) => {
         if (e.type === 'ready') setState('live');
         else if (e.type === 'tool') { setTool(e.name); setTimeout(() => setTool(''), 2500); }
         else if (e.type === 'transcript') add(e.who, e.text);
         else if (e.type === 'error') { setErr(e.message); setState('idle'); }
         else if (e.type === 'end') { setState('idle'); h.current = null; if (e.why && WHY[e.why]) setErr(WHY[e.why]); }
-      }, qp.conv ?? '');
+      }, conv ?? '');
     } catch (e) { setErr(e instanceof Error ? e.message : 'Could not start the call.'); setState('idle'); }
   };
   const hang = () => { void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy); h.current?.hangup(); h.current = null; setState('idle'); };
@@ -67,7 +66,7 @@ export default function CallTab() {
         renderItem={({ item }) => (
           <View style={{ alignSelf: item.who === 'you' ? 'flex-end' : 'flex-start', maxWidth: '85%', backgroundColor: item.who === 'you' ? C.tint : '#fff', borderWidth: 1, borderColor: C.line, borderRadius: R.lg, paddingHorizontal: 12, paddingVertical: 8 }}>
             <Text style={{ fontSize: 14.5, lineHeight: 21, color: C.ink }}>{item.text}</Text></View>)} />
-      <View style={{ flexDirection: 'row', justifyContent: 'center', gap: 14, paddingBottom: 12 }}>
+      <View style={{ flexDirection: 'row', justifyContent: 'center', gap: 14, paddingBottom: PILL_SPACE - 40 }}>
         {state === 'idle' ? <Btn label={`Call ${mateName(mate)}`} icon="phone" onPress={dial} style={{ minWidth: 220 }} /> : (
           <>
             <Press onPress={() => { h.current?.mute(!muted); setMuted(!muted); }} accessibilityLabel={muted ? 'Unmute' : 'Mute'} style={{ width: 64, height: 64, borderRadius: 32, backgroundColor: muted ? C.ink : '#fff', borderWidth: 1, borderColor: C.line2, alignItems: 'center', justifyContent: 'center' }}><Icon name={muted ? 'micoff' : 'mic'} size={26} color={muted ? '#fff' : C.ink} /></Press>

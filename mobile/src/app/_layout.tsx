@@ -23,7 +23,8 @@ function Gate() {
   if (!ready) return null;
   return (
     <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: C.bg }, animation: 'slide_from_right' }}>
-      <Stack.Screen name="(tabs)" />
+      <Stack.Screen name="index" />
+      <Stack.Screen name="call" />
       <Stack.Screen name="sign-in" options={{ animation: 'fade' }} />
       <Stack.Screen name="chat/[id]" />
       <Stack.Screen name="settings" options={{ presentation: 'modal', animation: 'slide_from_bottom' }} />
