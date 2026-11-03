@@ -29,7 +29,7 @@
       "expo-router",
       "expo-font",
       ["react-native-audio-api", { "androidPermissions": ["android.permission.RECORD_AUDIO", "android.permission.MODIFY_AUDIO_SETTINGS"], "androidForegroundService": false, "disableFFmpeg": true, "iosBackgroundMode": false }],
-      ["expo-build-properties", { "android": { "minSdkVersion": 26, "compileSdkVersion": 36, "targetSdkVersion": 35, "enableProguardInReleaseBuilds": false } }]
+      ["expo-build-properties", { "android": { "minSdkVersion": 26, "compileSdkVersion": 37, "targetSdkVersion": 35, "enableProguardInReleaseBuilds": false } }]
     ],
     "experiments": { "typedRoutes": false }
   }
