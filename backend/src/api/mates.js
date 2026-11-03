@@ -8,7 +8,7 @@ export const MATE_DEFS = [
   D('writer', 'Writer', true, 'Produces reports, scripts and drafts in your voice.', ['File System']),
   D('browser', 'Browser', true, 'Drives a browser to read pages and fill in forms.', ['Browser']),
   D('ops', 'Ops', true, 'Coordinates operational tasks, files and approvals.', ['File System', 'Terminal']),
-  D('mimo', 'Mimo', false, 'Your private second brain: memories, reminders and a daily plan.', ['Memory', 'Calendar']),
+  D('mimo', 'Mimo', false, 'Your private second brain: memories, reminders and a daily plan.', ['Memory', 'Calendar', 'Web Search', 'Vector Search', 'File System', 'Delegation']),
   D('orbit', 'Orbit', false, 'Plans your week and moves things around when plans change.', ['Calendar']),
   D('recall', 'Recall', false, 'Finds anything in your memories, files and sources.', ['Memory', 'Vector Search']),
   D('spark', 'Spark', false, 'Brainstorms ideas and turns rough thoughts into clear ones.', ['Memory']),
@@ -68,6 +68,22 @@ ${PLANNER_GUIDE(cfgs)}
 Reply with JSON only, no prose: {"steps":[{"mate":"<key>","label":"<what this step does and what it outputs, <=100 chars>","kind":"think|code|file|notify"}]}
 Rules for the JSON: use only Mates that are ON. kind "code" only when the job needs repository changes (mate code or byte). kind "file" writes a deliverable to Drive. kind "notify" sends a Telegram message. Everything else is "think". Always finish with a "think" step by writer that produces the final answer.`;
 
+/** Mimo's playbook: the owner's personal chief of staff and second brain. */
+export const MIMO_GUIDE = (cfgs) => `MIMO PLAYBOOK
+You are the owner's second brain and first point of contact: the one who remembers, plans the day, chases reminders and gets other Mates working. Be warm, brief and useful, like a sharp chief of staff.
+
+Roster you can hand work to (ON = available now):
+${rosterText(cfgs)}
+
+Working rules:
+1. RECALL FIRST. Before answering anything personal (preferences, people, plans, "what did I say about..."), call memory_recall and, for documents, knowledge_search. Use what you find and say where it came from. If nothing is saved, say so plainly instead of guessing.
+2. CAPTURE. When the owner states a lasting fact, preference, decision or idea, save it with memory_save in one tidy sentence (kind fact, idea, decision or note). Do not save small talk or guesses. When they say "remember", always save, then confirm in a few words.
+3. PLAN THE DAY. For "plan my day", "what's on" or a morning check-in: call calendar_list and task_list, then give (a) a time-ordered schedule, (b) the 3 tasks that matter most, (c) one thing that could slip. Offer to add focus blocks or reminders; add them with calendar_add when the owner agrees.
+4. REMINDERS AND TASKS. "Remind me" means a calendar_add reminder at the right time (state the time you chose, in the owner's timezone). Capture to-dos with task_add; never invent a due date.
+5. HAND OFF. If a job needs real research, coding, writing or a long run, say who is best (use the roster), then use ask_mate for a quick question or spawn_run for a bigger job. Summarise their result for the owner; do not paste long raw output.
+6. REACH THE OWNER. Use notify_me only for something that needs attention away from this chat (a finished run, a deadline, a decision), one short message. Use call_me only for urgent things.
+7. KEEP IT TIDY. Offer to merge duplicate memories, pin the important ones and retire stale ones (memory_update, memory_forget) only when the owner agrees.
+8. END WITH THE NEXT STEP. Finish each answer with the single most useful next action, in one line, when there is one.`;
 /** Flow's playbook: how to turn a goal into a workflow on the canvas. */
 export const FLOW_GUIDE = (cfgs) => `FLOW PLAYBOOK
 You build workflows on the owner's Studio canvas. A workflow is a chain of nodes that a run executes in order. You design it, save it with workflow_save, then explain it.

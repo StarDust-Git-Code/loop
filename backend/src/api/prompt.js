@@ -1,5 +1,5 @@
 // Dynamic system prompt: rebuilt on every turn from the Mate, the owner's settings, memories, skills and knowledge.
-import { MATE, PLANNER_GUIDE, FLOW_GUIDE } from './mates.js';
+import { MATE, PLANNER_GUIDE, FLOW_GUIDE, MIMO_GUIDE } from './mates.js';
 import { effortOf, providerSummary } from './llm.js';
 import { userCol } from './db.js';
 import { searchKnowledge } from './knowledge.js';
@@ -58,9 +58,9 @@ export async function buildSystem({ uid, mateKey, cfg = {}, mode = 'chat', query
   if (style.length) parts.push(style.join(' '));
   parts.push(THINK_TEXT[effort ?? effortOf(cfg.thinking)]);
   if (others.length) parts.push(`This is a shared chat. Other Mates present: ${others.join(', ')}. The owner can @mention any of them; lines shown as "[Name]: ..." are their words. Answer only for yourself and do not repeat what they said.`);
-  if (mateKey === 'planner' || mateKey === 'flow') {
+  if (mateKey === 'planner' || mateKey === 'flow' || mateKey === 'mimo') {
     const cfgs = Object.fromEntries((await userCol(uid, 'mates').get().catch(() => ({ docs: [] }))).docs.map((d) => [d.id, d.data()]));
-    parts.push(mateKey === 'flow' ? FLOW_GUIDE(cfgs) : PLANNER_GUIDE(cfgs));
+    parts.push(mateKey === 'flow' ? FLOW_GUIDE(cfgs) : mateKey === 'mimo' ? MIMO_GUIDE(cfgs) : PLANNER_GUIDE(cfgs));
   }
   if (mode === 'plan') parts.push('Mode: PLAN. Do not carry out the work. Reply with a short numbered plan: steps, who/what does each, and what could go wrong.');
   if (mode === 'brainstorm') parts.push('Mode: BRAINSTORM round table. You are one voice among several Mates thinking together. Be creative but concrete, build on what others said, keep it short, and stay in your own role. Only use tools if a quick fact check really helps.');

@@ -340,10 +340,10 @@ export const TOOLKIT = {
   run_steer: T('Delegation', 'Send a new instruction to a run that is in progress.', '{"id": "run id", "text": "what to change or focus on"}', async (c, a) => {
     if (!hooks.steer) throw bad('Run control is unavailable'); try { hooks.steer(c.uid, str(a.id, 60), str(a.text, 2000)); } catch (e) { throw bad(e.message); } return `Sent to ${a.id}.`;
   }, { write: true }),
-  notify_me: T('Delegation', 'Send the owner a short Telegram message (needs Telegram linked). Use sparingly, for results or things needing a decision.', '{"text": "message, under 500 characters"}', async (c, a) => {
+  notify_me: T('Utilities', 'Send the owner a short Telegram message (needs Telegram linked). Use sparingly, for results or things needing a decision.', '{"text": "message, under 500 characters"}', async (c, a) => {
     if (!hooks.notify) throw bad('Notifications are unavailable'); const n = await hooks.notify(c.uid, `🔔 ${str(a.text, 500)}`); return n ? `Sent to ${n} chat(s).` : 'Not delivered: Telegram is not linked, so tell the owner in this chat instead.';
   }, { write: true }),
-  call_me: T('Delegation', 'Ring the owner for a voice call about something important or urgent (sends a Telegram message with a tap-to-call link). Say why in one sentence.', '{"reason": "why you are calling, one sentence"}', async (c, a) => {
+  call_me: T('Utilities', 'Ring the owner for a voice call about something important or urgent (sends a Telegram message with a tap-to-call link). Say why in one sentence.', '{"reason": "why you are calling, one sentence"}', async (c, a) => {
     if (!hooks.notify) throw bad('Notifications are unavailable'); const site = (env('DASHBOARD_URL') || env('ALLOWED_ORIGINS').split(',')[0] || '').trim().replace(/\/$/, '');
     if (!site) throw bad('The dashboard address is not configured (DASHBOARD_URL)');
     const reason = str(a.reason, 300).trim(); if (!reason) throw bad('reason is required');

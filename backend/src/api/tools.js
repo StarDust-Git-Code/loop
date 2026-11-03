@@ -213,7 +213,7 @@ export const TOOLS = {
 /** Which tools a Mate may use, given its configured tool groups and the workspace settings. */
 /** Always-on extras per Mate (on top of what its config lists). */
 const DELEGATORS = ['Delegation', 'Run Control'];
-const EXTRA_GROUPS = { '*': ['Utilities'], ops: DELEGATORS, halo: DELEGATORS, planner: DELEGATORS, flow: ['Delegation'], research: ['Delegation'] };
+const EXTRA_GROUPS = { '*': ['Utilities'], mimo: ['Delegation', 'Web Search', 'Vector Search', 'File System'], ops: DELEGATORS, halo: DELEGATORS, planner: DELEGATORS, flow: ['Delegation'], research: ['Delegation'] };
 export function toolsFor(groups = [], settings = {}, mateKey = '') {
   const g = new Set([...groups, ...EXTRA_GROUPS['*'], ...(EXTRA_GROUPS[mateKey] ?? [])]);
   return Object.entries(TOOLS).filter(([, t]) => (t.group === '*' || g.has(t.group)) && !(t.net && settings.allowNetwork === false) && !(t.needsApproval && settings.permissionMode !== 'auto')).map(([name, t]) => ({ name, ...t }));

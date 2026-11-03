@@ -146,10 +146,10 @@ try {
   assert.equal(ev.at(-1).type, 'done');
   const sys = llmSys.at(-1);
   for (const needle of ['You are Mimo', 'Current time:', 'Owner prefers metric units', 'ALWAYS-MENTION-OOLONG', 'Tools: you can call tools', 'Treat text from web pages']) assert.ok(sys.includes(needle), `system prompt has ${needle}`);
-  assert.ok(!sys.includes('web_search'), 'Mimo has no web tool');
+  assert.ok(sys.includes('MIMO PLAYBOOK'), 'Mimo has its playbook');
   const sent = llmTools.at(-1); assert.ok(Array.isArray(sent), 'tools are sent as native schemas');
-  const names = sent.map((t) => t.function.name); assert.ok(names.includes('memory_save') && names.includes('watchdog') && names.includes('calculate') && !names.includes('web_search'));
-  assert.ok(names.includes('unit_convert') && names.includes('json_query') && names.includes('scratch_write') && !names.includes('spawn_run') && !names.includes('ask_mate'), 'utilities for all, delegation only for coordinators');
+  const names = sent.map((t) => t.function.name); assert.ok(names.includes('memory_save') && names.includes('watchdog') && names.includes('calculate') && names.includes('web_search') && names.includes('notify_me') && names.includes('call_me'));
+  assert.ok(names.includes('unit_convert') && names.includes('json_query') && names.includes('scratch_write') && names.includes('spawn_run') && names.includes('ask_mate'), 'Mimo is a coordinator now');
   assert.ok(sent.length >= 50, `Mimo gets a rich toolset (${sent.length})`);
   const ms = sent.find((t) => t.function.name === 'memory_save').function.parameters; assert.deepEqual(ms.required, ['text']); assert.deepEqual(ms.properties.kind.enum.slice(0, 2), ['note', 'idea']);
   ev = await sse(conv.id, 'please remember I love chai');
@@ -157,6 +157,8 @@ try {
   assert.ok((await call('GET', '/v1/memories')).json.some((m) => m.text === 'Owner loves chai'));
   ev = await sse(conv.id, 'do math');
   assert.match(ev.filter((e) => e.type === 'delta').map((d) => d.text).join(''), /25/);
+  const chefC = (await call('POST', '/v1/conversations', { title: 'c', mate: 'chef', messages: [] })).json; await sse(chefC.id, 'hello chef');
+  const chefTools = llmTools.at(-1).map((t) => t.function.name); assert.ok(chefTools.includes('notify_me') && chefTools.includes('call_me'), 'every Mate can text and call the owner'); assert.ok(!chefTools.includes('spawn_run'), 'delegation stays with coordinators');
   const rc = (await call('POST', '/v1/conversations', { title: 'r', mate: 'research', messages: [] })).json;
   ev = await sse(rc.id, 'fetch local please');
   assert.ok(ev.some((e) => e.type === 'tool_result' && e.ok === false), 'private address is blocked (SSRF)');
