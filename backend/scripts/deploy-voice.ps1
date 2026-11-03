@@ -44,12 +44,15 @@ function Render([string]$method, [string]$path, $body = $null) {
     throw "Render API $method $path failed: $msg"
   }
 }
+function Flat($x) { foreach ($i in @($x)) { if ($i -is [System.Array]) { Flat $i } elseif ($null -ne $i) { $i } } }
 function Unwrap($x, [string]$prop) { if ($null -ne $x -and $x.PSObject.Properties.Name -contains $prop) { return $x.$prop }; return $x }
 
 Write-Host '== Finding your Render workspace'
-$owners = @(Render 'GET' '/owners?limit=20')
+$owners = @(Flat (Render 'GET' '/owners?limit=20'))
 if ($owners.Count -eq 0) { throw 'No workspace found for this key.' }
-$ownerId = [string](Unwrap $owners[0] 'owner').id
+$o = Unwrap $owners[0] 'owner'
+$ownerId = [string]$o.id
+if (-not $ownerId) { throw 'Could not read your Render workspace id from the API reply.' }
 Write-Host "  workspace $ownerId"
 
 $envs = @(
@@ -62,7 +65,7 @@ if (C 'VOICE_MODEL') { $envs += @{ key = 'VOICE_MODEL'; value = (C 'VOICE_MODEL'
 
 Write-Host '== Create or update the voice service'
 $found = $null
-foreach ($s in @(Render 'GET' "/services?name=$name&limit=20")) { $svc = Unwrap $s 'service'; if ($svc.name -eq $name) { $found = $svc; break } }
+foreach ($s in @(Flat (Render 'GET' "/services?name=$name&limit=20"))) { $svc = Unwrap $s 'service'; if ($svc.name -eq $name) { $found = $svc; break } }
 if ($null -eq $found) {
   $payload = @{
     type = 'web_service'; name = $name; ownerId = $ownerId; repo = $repo; branch = $branch; autoDeploy = 'yes'; rootDir = 'backend'
