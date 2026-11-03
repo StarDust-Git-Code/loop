@@ -6,6 +6,7 @@ export const NAV: { label: string; d: string; href?: string }[] = [
   { label: 'Home', href: '/', d: 'M3 11l9-8 9 8v10a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z' },
   { label: 'My Space', href: '/my-space', d: 'M12 21s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 11c0 5.6-7 10-7 10z' },
   { label: 'Chat', href: '/chat', d: 'M21 12a8 8 0 0 1-11.5 7.2L4 20l1.1-4.3A8 8 0 1 1 21 12z' },
+  { label: 'Call', href: '/call', d: 'M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2z' },
   { label: 'Agents', href: '/agents', d: 'M12 3l2.5 5.5 5.5.8-4 4 1 5.7-5-2.8-5 2.8 1-5.7-4-4 5.5-.8z' },
   { label: 'Workflows', href: '/workflows', d: 'M5 4h5v5H5zM14 15h5v5h-5zM10 6.5h2a3 3 0 0 1 3 3V15' },
   { label: 'Knowledge', href: '/knowledge', d: 'M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2zM4 19V5M9 8h6' },

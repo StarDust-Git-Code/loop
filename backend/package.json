@@ -8,6 +8,7 @@
   "scripts": {
     "start:api": "node src/api/index.js",
     "start:coder": "node src/coder/index.js",
+    "start:voice": "node src/voice/index.js",
     "start:artifacts": "node src/artifacts/index.js",
     "test": "node scripts/e2e.mjs"
   },
@@ -15,7 +16,8 @@
     "@fastify/cors": "^10.0.0",
     "@fastify/multipart": "^9.0.0",
     "fastify": "^5.0.0",
-    "firebase-admin": "^13.0.0"
+    "firebase-admin": "^13.0.0",
+    "ws": "^8.18.0"
   },
   "optionalDependencies": {
     "@whiskeysockets/baileys": "^6.7.0"

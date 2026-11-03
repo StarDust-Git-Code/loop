@@ -1,7 +1,7 @@
 // The smart-harness toolkit: pure utilities, web depth, files, memory upkeep, notes and delegation.
 // Utilities are granted to every Mate; Delegation to the coordinating Mates (see EXTRA_GROUPS in tools.js).
 import crypto from 'node:crypto';
-import { now } from '../lib/env.js';
+import { env, now } from '../lib/env.js';
 import { userCol } from './db.js';
 import { hooks } from './toolhooks.js';
 import { getFileStream } from './files.js';
@@ -342,5 +342,13 @@ export const TOOLKIT = {
   }, { write: true }),
   notify_me: T('Delegation', 'Send the owner a short Telegram message (needs Telegram linked). Use sparingly, for results or things needing a decision.', '{"text": "message, under 500 characters"}', async (c, a) => {
     if (!hooks.notify) throw bad('Notifications are unavailable'); const n = await hooks.notify(c.uid, `🔔 ${str(a.text, 500)}`); return n ? `Sent to ${n} chat(s).` : 'Not delivered: Telegram is not linked, so tell the owner in this chat instead.';
+  }, { write: true }),
+  call_me: T('Delegation', 'Ring the owner for a voice call about something important or urgent (sends a Telegram message with a tap-to-call link). Say why in one sentence.', '{"reason": "why you are calling, one sentence"}', async (c, a) => {
+    if (!hooks.notify) throw bad('Notifications are unavailable'); const site = (env('DASHBOARD_URL') || env('ALLOWED_ORIGINS').split(',')[0] || '').trim().replace(/\/$/, '');
+    if (!site) throw bad('The dashboard address is not configured (DASHBOARD_URL)');
+    const reason = str(a.reason, 300).trim(); if (!reason) throw bad('reason is required');
+    const link = `${site}/call?mate=${encodeURIComponent(c.mate ?? 'mimo')}&reason=${encodeURIComponent(reason)}`;
+    const n = await hooks.notify(c.uid, `📞 ${c.mate ?? 'A Mate'} wants to talk: ${reason}\nTap to answer: ${link}`);
+    return n ? 'Ringing: the owner got a Telegram message with a tap-to-call link.' : 'Could not ring: Telegram is not linked. Tell the owner in this chat instead.';
   }, { write: true }),
 };

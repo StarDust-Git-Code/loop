@@ -1,0 +1,18 @@
+# Render #4: voice calls (WebSocket relay to Gemini Live). Kept separate so audio never loads the other three services.
+services:
+  - type: web
+    name: loopmates-voice
+    runtime: node
+    plan: free
+    region: singapore
+    rootDir: backend
+    buildCommand: npm ci --omit=dev --omit=optional
+    startCommand: node src/voice/index.js
+    healthCheckPath: /healthz
+    autoDeploy: true
+    envVars:
+      - { key: NODE_ENV, value: production }
+      - { key: GEMINI_API_KEY, sync: false }
+      - { key: FIREBASE_SERVICE_ACCOUNT_B64, sync: false }
+      - { key: ALLOWED_ORIGINS, sync: false }   # your dashboard URL, same as the API
+      - { key: VOICE_MODEL, sync: false }       # optional: pin a Live model id; otherwise the newest Live model is picked

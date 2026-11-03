@@ -122,6 +122,24 @@ export function Chat() {
     );
   }
 
+  /** Text files go into the message itself (always works); anything else is stored in Files and mentioned. */
+  const attach = async (f: File) => {
+    const texty = /^text\//.test(f.type) || /\.(txt|md|csv|json|js|jsx|ts|tsx|py|html|css|yml|yaml|xml|log|sql|c|cpp|h|ino|java|go|rs|sh|toml|ini)$/i.test(f.name);
+    try {
+      if (texty && f.size <= 60_000) {
+        const body = await f.text();
+        await api.conversations.send(conv.id, `📎 ${f.name}\n\n\`\`\`\n${body}\n\`\`\``, mate);
+        return;
+      }
+      if (texty) { toast(`${f.name} is too big to paste into a chat (60 KB max). Add it to Knowledge instead.`); return; }
+      if (f.size > 15 * 1024 * 1024) { toast('That file is over 15 MB.'); return; }
+      await api.files.upload(f);
+      await api.conversations.send(conv.id, `📎 ${f.name} (saved to Files, ${Math.round(f.size / 1024)} KB)`, mate);
+    } catch (e) {
+      toast(e instanceof Error && /not configured|501/i.test(e.message) ? 'File storage (Google Drive) is not set up yet, so only text files can be attached for now.' : `Could not attach ${f.name}: ${e instanceof Error ? e.message : 'upload failed'}`);
+    }
+  };
+
   return (
     <main style={{ display: 'flex', height: '100dvh', minWidth: 0 }}>
       <section style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', padding: '0 32px 24px' }}>
@@ -208,7 +226,7 @@ export function Chat() {
             </div>)}
           <div style={{ background: '#fff', border: '1px solid rgba(31,26,23,.16)', borderRadius: 18, padding: '12px 14px', boxShadow: '0 8px 24px rgba(106,77,244,.08)' }}>
             <form onSubmit={(e) => { e.preventDefault(); if (showMention) pickMention(mentionOpts[sel % mentionOpts.length].key); else if (showMenu) pickCmd(slash[sel % slash.length].cmd); else void send(); }} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-              <input ref={fileIn} type="file" hidden onChange={async (e) => { const f = e.target.files?.[0]; if (f) { await api.files.upload(f); await api.conversations.send(conv.id, `📎 ${f.name}`, mate); } e.target.value = ''; }} />
+              <input ref={fileIn} type="file" hidden onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ''; if (f) void attach(f); }} />
               <button type="button" aria-label="Attach" onClick={() => fileIn.current?.click()} style={{ width: 44, height: 44, borderRadius: 12, background: '#F3F1F8', border: '1px solid rgba(31,26,23,.1)', fontSize: 20 }}>+</button>
               <input value={text} aria-label="Message" placeholder={mode === 'brainstorm' ? 'Give the table a topic, and @ two or more agents' : `Message ${MATES[mate].name}, @ to bring in a Mate, / for commands`} autoComplete="off"
                 onChange={(e) => { setText(e.target.value); setMenu(true); setSel(0); }}
