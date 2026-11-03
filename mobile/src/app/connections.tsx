@@ -27,7 +27,7 @@ export default function Connections() {
     <Screen title="Connections" sub="Reach your Mates from other apps">
       <ErrorNote message={err ?? c.error} onRetry={c.reload} />
       {msg ? <Text style={{ color: C.good, fontSize: 13.5 }}>{msg}</Text> : null}
-      <Animated.View entering={FadeInDown.springify().damping(16)}>
+      <Animated.View entering={FadeInDown.duration(260)}>
         <Card style={{ padding: 14, gap: 12 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}><Text style={{ fontSize: 17, fontWeight: '800', color: C.ink, flex: 1 }}>Telegram</Text><Pill label={tg ? tg.status : 'not set up'} tone={tg ? TONE[tg.status] : 'muted'} /></View>
           <Text style={{ color: C.muted, fontSize: 13.5, lineHeight: 19 }}>Chat with your Mates inside Telegram and get run updates there. Create a bot with @BotFather, then paste its token.</Text>

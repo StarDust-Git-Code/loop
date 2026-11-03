@@ -23,7 +23,7 @@ export default function Workflows() {
       {w.loading ? <Empty text="Loading…" /> : (w.data ?? []).length === 0 ? <Empty text="No workflows yet. Build one on the dashboard canvas and it shows up here." /> : (w.data ?? []).map((x, i) => {
         const mates = x.nodes.filter((n) => n.mate).map((n) => n.mate!);
         return (
-          <Animated.View key={x.id} entering={FadeInDown.delay(Math.min(i, 8) * 40).springify().damping(16)} layout={LinearTransition}>
+          <Animated.View key={x.id} entering={FadeInDown.delay(Math.min(i, 8) * 40).duration(260)} layout={LinearTransition}>
             <Row>
               <View style={{ flexDirection: 'row' }}>{(mates.length ? mates.slice(0, 3) : ['planner' as const]).map((m, k) => <View key={k} style={{ marginLeft: k ? -10 : 0 }}><Avatar k={m} size={32} /></View>)}</View>
               <View style={{ flex: 1 }}><Text numberOfLines={1} style={{ fontSize: 15, fontWeight: '800', color: C.ink }}>{x.name}</Text><Text numberOfLines={1} style={{ fontSize: 12.5, color: C.muted }}>{x.nodes.length} steps{x.description ? ` · ${x.description}` : ''}</Text></View>

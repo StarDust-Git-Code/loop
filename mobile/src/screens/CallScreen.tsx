@@ -2,7 +2,7 @@ import * as Haptics from 'expo-haptics';
 import { useKeepAwake } from 'expo-keep-awake';
 import { useEffect, useRef, useState } from 'react';
 import { FlatList, ScrollView, Text, View } from 'react-native';
-import Animated, { useAnimatedStyle, useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
+import Animated, { Easing, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { PILL_SPACE } from '../components/PillBar';
 import { Avatar, Btn, Chip, ErrorNote, Icon, Press } from '../components/ui';
@@ -15,7 +15,7 @@ const WHY: Record<string, string> = { silence: 'Call ended after a long silence.
 
 function Pulse({ level, live }: { level: number; live: boolean }) {
   const s = useSharedValue(1);
-  useEffect(() => { s.value = live ? withSpring(1 + Math.min(level * 1.6, 0.45), { damping: 14, stiffness: 160 }) : withTiming(1); }, [level, live, s]);
+  useEffect(() => { s.value = live ? withTiming(1 + Math.min(level * 1.6, 0.45), { duration: 140, easing: Easing.out(Easing.quad) }) : withTiming(1); }, [level, live, s]);
   const a = useAnimatedStyle(() => ({ transform: [{ scale: s.value }] }));
   return <Animated.View style={[{ position: 'absolute', width: 170, height: 170, borderRadius: 85, backgroundColor: 'rgba(106,77,244,0.16)' }, a]} />;
 }

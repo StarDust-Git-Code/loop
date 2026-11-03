@@ -25,7 +25,7 @@ export default function Runs() {
     <Screen title="Runs" sub="Tasks your Mates work on for you" right={<Btn icon="plus" small onPress={() => setOpen(true)} />}>
       <ErrorNote message={runs.error} onRetry={runs.reload} />
       {runs.loading ? <Empty text="Loading…" /> : list.length === 0 ? <Empty text="No runs yet. Tap + and describe a task." /> : list.map((r, i) => (
-        <Animated.View key={r.id} entering={FadeInDown.delay(Math.min(i, 8) * 40).springify().damping(16)} layout={LinearTransition}>
+        <Animated.View key={r.id} entering={FadeInDown.delay(Math.min(i, 8) * 40).duration(260)} layout={LinearTransition}>
           <Row onPress={() => router.push(`/runs/${r.id}`)}>
             <View style={{ flexDirection: 'row' }}>{(r.steps.length ? r.steps.slice(0, 3).map((s) => s.mate) : ['planner' as const]).map((m, k) => <View key={k} style={{ marginLeft: k ? -10 : 0 }}><Avatar k={m} size={32} /></View>)}</View>
             <View style={{ flex: 1 }}><Text numberOfLines={1} style={{ fontSize: 14.5, fontWeight: '800', color: C.ink }}>{r.title}</Text><Text style={{ fontSize: 12.5, color: C.muted }}>{ago(r.createdAt)} · {r.steps.length} steps</Text></View>

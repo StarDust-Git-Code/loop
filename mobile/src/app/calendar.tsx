@@ -36,7 +36,7 @@ export default function Calendar() {
       </View>
       <ErrorNote message={ev.error} onRetry={ev.reload} />
       {ev.loading ? <Empty text="Loading…" /> : rows.length === 0 ? <Empty text="Nothing on this day." /> : rows.map((e, i) => (
-        <Animated.View key={e.id} entering={FadeInDown.delay(i * 40).springify().damping(16)} layout={LinearTransition}>
+        <Animated.View key={e.id} entering={FadeInDown.delay(i * 40).duration(260)} layout={LinearTransition}>
           <Row onPress={() => open(e)}>
             <Text style={{ width: 52, fontWeight: '800', color: C.brandDeep, fontSize: 13 }}>{new Date(e.start).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', hour12: false })}</Text>
             <View style={{ flex: 1 }}><Text style={{ fontSize: 15, fontWeight: '700', color: C.ink }}>{e.title}</Text>{e.notes ? <Text numberOfLines={1} style={{ fontSize: 12.5, color: C.muted }}>{e.notes}</Text> : null}</View>

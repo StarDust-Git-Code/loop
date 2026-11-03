@@ -27,7 +27,7 @@ export default function Chats() {
       <TextInput value={q} onChangeText={setQ} placeholder="Search all chats" placeholderTextColor={C.muted} style={{ minHeight: 46, borderRadius: R.md, borderWidth: 1, borderColor: C.line2, backgroundColor: C.card, paddingHorizontal: 14, fontSize: 15, color: C.ink }} />
       <ErrorNote message={c.error} onRetry={c.reload} />
       {c.loading ? <Empty text="Loading…" /> : rows.length === 0 ? <Empty text={q ? 'No chat matches that.' : 'No chats yet.'} /> : rows.map((x, i) => (
-        <Animated.View key={x.id} entering={FadeInDown.delay(Math.min(i, 8) * 30).springify().damping(16)} layout={LinearTransition}>
+        <Animated.View key={x.id} entering={FadeInDown.delay(Math.min(i, 8) * 30).duration(260)} layout={LinearTransition}>
           <Row onPress={() => router.push(`/chat/${x.id}`)} onLongPress={() => { void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); setSel(x); setName(x.title); }}>
             <Avatar k={x.mate ?? 'planner'} size={40} />
             <View style={{ flex: 1 }}><Text numberOfLines={1} style={{ fontSize: 14.5, fontWeight: '800', color: C.ink }}>{x.pinned ? '📌 ' : ''}{x.title}</Text><Text numberOfLines={1} style={{ fontSize: 12.5, color: C.muted }}>{hit(x).replace(/\s+/g, ' ')}</Text></View>

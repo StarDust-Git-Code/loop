@@ -46,7 +46,7 @@ export default function Home() {
       </View>
       <ErrorNote message={all.error} onRetry={all.reload} />
 
-      <Animated.View entering={FadeInDown.delay(60).springify().damping(16)} style={{ borderRadius: 22, padding: 18, backgroundColor: C.brand, overflow: 'hidden' }}>
+      <Animated.View entering={FadeInDown.delay(60).duration(260)} style={{ borderRadius: 22, padding: 18, backgroundColor: C.brand, overflow: 'hidden' }}>
         <Caption style={{ color: 'rgba(255,255,255,0.9)', letterSpacing: 1.2 }}>WHAT SHOULD LOOP DO TODAY</Caption>
         <Text style={{ color: '#fff', fontSize: 19, fontWeight: '800', marginTop: 8, maxWidth: 230, lineHeight: 25 }}>Hand a goal to your Mates</Text>
         <View style={{ flexDirection: 'row', gap: 8, marginTop: 14 }}>
@@ -56,18 +56,18 @@ export default function Home() {
         <View style={{ position: 'absolute', right: -6, bottom: -8 }}><Avatar k="planner" size={104} /></View>
       </Animated.View>
 
-      <Animated.View entering={FadeInDown.delay(140).springify().damping(16)} style={{ flexDirection: 'row', gap: 10 }}>
+      <Animated.View entering={FadeInDown.delay(140).duration(260)} style={{ flexDirection: 'row', gap: 10 }}>
         {[[due, 'Open tasks'], [running, 'Runs in progress'], [waiting, 'Needs approval']].map(([n, l]) => (
           <Card key={l as string} style={{ flex: 1, paddingVertical: 12, paddingHorizontal: 14 }}><Text style={{ fontSize: 24, fontWeight: '800', color: C.ink }}>{n}</Text><Text style={{ fontSize: 12.5, color: C.muted }}>{l}</Text></Card>))}
       </Animated.View>
 
-      <Animated.View entering={FadeInDown.delay(220).springify().damping(16)}><Caption style={{ marginBottom: 8 }}>TODAY</Caption>
+      <Animated.View entering={FadeInDown.delay(220).duration(260)}><Caption style={{ marginBottom: 8 }}>TODAY</Caption>
         <Card>{todays.length === 0 ? <Empty text="Nothing scheduled today." /> : todays.map((e, i) => (
           <View key={e.id} style={{ flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14, borderTopWidth: i ? 1 : 0, borderTopColor: C.line }}>
             <Text style={{ width: 52, fontWeight: '800', color: C.brandDeep, fontSize: 13 }}>{new Date(e.start).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', hour12: false })}</Text>
             <Text style={{ flex: 1, fontSize: 14.5, color: C.ink }}>{e.title}</Text></View>))}</Card></Animated.View>
 
-      <Animated.View entering={FadeInDown.delay(260).springify().damping(16)}>
+      <Animated.View entering={FadeInDown.delay(260).duration(260)}>
         <Caption style={{ marginBottom: 8 }}>EXPLORE</Caption>
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
           {EXPLORE.map(([label, icon, path]) => (
@@ -83,7 +83,7 @@ export default function Home() {
           {all.loading ? <Empty text="Loading…" /> : recent.length === 0 ? <Empty text="No chats yet. Pick an agent to start." /> : recent.map((c, i) => {
             const last = c.messages[c.messages.length - 1];
             return (
-              <Animated.View key={c.id} entering={FadeInDown.delay(300 + i * 50).springify().damping(16)} layout={LinearTransition}><Press onPress={() => router.push(`/chat/${c.id}`)} style={{ flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: C.card, borderWidth: 1, borderColor: C.line, borderRadius: R.lg, padding: 10, paddingHorizontal: 12, minHeight: 60 }}>
+              <Animated.View key={c.id} entering={FadeInDown.delay(300 + i * 50).duration(260)} layout={LinearTransition}><Press onPress={() => router.push(`/chat/${c.id}`)} style={{ flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: C.card, borderWidth: 1, borderColor: C.line, borderRadius: R.lg, padding: 10, paddingHorizontal: 12, minHeight: 60 }}>
                 <Avatar k={c.mate ?? 'planner'} size={40} />
                 <View style={{ flex: 1 }}><Text numberOfLines={1} style={{ fontSize: 14.5, fontWeight: '800', color: C.ink }}>{c.title}</Text>
                   <Text numberOfLines={1} style={{ fontSize: 12.5, color: C.muted }}>{last?.text.replace(/\s+/g, ' ') ?? 'No messages yet'}</Text></View>

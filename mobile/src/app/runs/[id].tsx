@@ -30,7 +30,7 @@ export default function RunView() {
         <>
           <Card style={{ padding: 14 }}><Text style={{ fontSize: 11, fontWeight: '800', letterSpacing: 1, color: C.muted }}>TASK</Text><Text selectable style={{ fontSize: 14.5, lineHeight: 21, color: C.ink, marginTop: 4 }}>{run.prompt}</Text></Card>
           {pending ? (
-            <Animated.View entering={FadeInDown.springify()} style={{ backgroundColor: C.tint2, borderWidth: 1, borderColor: 'rgba(106,77,244,0.4)', borderRadius: R.lg, padding: 14, gap: 10 }}>
+            <Animated.View entering={FadeInDown.duration(260)} style={{ backgroundColor: C.tint2, borderWidth: 1, borderColor: 'rgba(106,77,244,0.4)', borderRadius: R.lg, padding: 14, gap: 10 }}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}><Avatar k={pending.mate} size={36} /><View style={{ flex: 1 }}><Text style={{ fontWeight: '800', color: C.ink }}>Approval needed</Text><Text style={{ color: C.ink2, fontSize: 13.5 }}>{pending.text}</Text></View></View>
               {pending.paths.length ? <Text style={{ fontFamily: 'monospace', fontSize: 12, color: C.muted }}>{pending.paths.join('\n')}</Text> : null}
               <View style={{ flexDirection: 'row', gap: 10 }}><Btn label="Deny" kind="ghost" style={{ flex: 1 }} onPress={() => act(() => api.runs.decide(run.id, pending.id, 'denied'))} /><Btn label="Approve" style={{ flex: 1 }} onPress={() => act(() => api.runs.decide(run.id, pending.id, 'approved'))} /></View>

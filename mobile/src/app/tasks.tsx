@@ -32,7 +32,7 @@ export default function Tasks() {
       <View style={{ flexDirection: 'row', gap: 8 }}>{(['open', 'all', 'done'] as const).map((f) => <Chip key={f} label={f[0].toUpperCase() + f.slice(1)} on={filter === f} onPress={() => setFilter(f)} />)}</View>
       <ErrorNote message={t.error} onRetry={t.reload} />
       {t.loading ? <Empty text="Loading…" /> : rows.length === 0 ? <Empty text="Nothing here. Tap + to add a task." /> : rows.map((x, i) => (
-        <Animated.View key={x.id} entering={FadeInDown.delay(Math.min(i, 8) * 35).springify().damping(16)} layout={LinearTransition}>
+        <Animated.View key={x.id} entering={FadeInDown.delay(Math.min(i, 8) * 35).duration(260)} layout={LinearTransition}>
           <Row onPress={() => setEdit(x)}>
             <Press onPress={() => cycle(x)} accessibilityLabel={`Mark ${NEXT[x.status]}`} haptic={false} style={{ width: 36, height: 36, alignItems: 'center', justifyContent: 'center' }}><Text style={{ fontSize: 24, color: x.status === 'done' ? C.good : C.brandDeep }}>{MARK[x.status]}</Text></Press>
             <View style={{ flex: 1 }}><Text style={{ fontSize: 15, fontWeight: '700', color: C.ink, textDecorationLine: x.status === 'done' ? 'line-through' : 'none' }}>{x.title}</Text>

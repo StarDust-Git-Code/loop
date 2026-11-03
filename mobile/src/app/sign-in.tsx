@@ -30,12 +30,12 @@ export default function SignIn() {
   return (
     <KeyboardAvoidingView style={{ flex: 1, backgroundColor: C.bg }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <ScrollView contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', padding: 24, paddingTop: insets.top + 24, paddingBottom: insets.bottom + 24, gap: 14 }} keyboardShouldPersistTaps="handled">
-        <Animated.View entering={ZoomIn.springify().damping(12)} style={{ alignItems: 'center', gap: 6, marginBottom: 12 }}>
+        <Animated.View entering={ZoomIn.duration(260)} style={{ alignItems: 'center', gap: 6, marginBottom: 12 }}>
           <Avatar k="planner" size={96} />
           <Text style={{ fontSize: 30, fontWeight: '800', color: C.ink, letterSpacing: -0.5 }}>Loopmates</Text>
           <Text style={{ color: C.muted, fontSize: 14.5 }}>Your agents, in your pocket</Text>
         </Animated.View>
-        <Animated.View entering={FadeInDown.delay(120).springify()}>
+        <Animated.View entering={FadeInDown.delay(120).duration(260)}>
         <Press onPress={google} accessibilityLabel="Continue with Google" style={{ minHeight: 52, borderRadius: R.md, backgroundColor: C.card, borderWidth: 1, borderColor: C.line2, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, opacity: gBusy ? 0.6 : 1 }}>
           {gBusy ? <ActivityIndicator color={C.brand} /> : <GoogleG />}
           <Text style={{ fontSize: 15.5, fontWeight: '700', color: C.ink }}>Continue with Google</Text>
@@ -44,7 +44,7 @@ export default function SignIn() {
         <Animated.View entering={FadeIn.delay(220)} style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
           <View style={{ flex: 1, height: 1, backgroundColor: C.line }} /><Text style={{ color: C.muted, fontSize: 12.5 }}>or with email</Text><View style={{ flex: 1, height: 1, backgroundColor: C.line }} />
         </Animated.View>
-        <Animated.View entering={FadeInDown.delay(280).springify()} style={{ gap: 14 }}>
+        <Animated.View entering={FadeInDown.delay(280).duration(260)} style={{ gap: 14 }}>
         <TextInput value={email} onChangeText={setEmail} placeholder="Email" placeholderTextColor={C.muted} autoCapitalize="none" autoComplete="email" keyboardType="email-address" style={input} accessibilityLabel="Email" />
         <TextInput value={pw} onChangeText={setPw} placeholder="Password" placeholderTextColor={C.muted} secureTextEntry autoComplete="password" style={input} accessibilityLabel="Password" onSubmitEditing={submit} />
         <ErrorNote message={err} />

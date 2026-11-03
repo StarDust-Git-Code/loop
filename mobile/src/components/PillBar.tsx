@@ -12,7 +12,7 @@ const H = 64, GAP = 14, SIDE = 20;
 function Item({ i, name, icon, progress, onPress, w }: { i: number; name: string; icon: string; progress: SharedValue<number>; onPress: () => void; w: number }) {
   const a = useAnimatedStyle(() => {
     const d = Math.abs(progress.value - i);
-    return { transform: [{ scale: interpolate(d, [0, 1], [1.08, 1], 'clamp') }, { translateY: interpolate(d, [0, 1], [-1, 0], 'clamp') }], opacity: interpolate(d, [0, 1], [1, 0.62], 'clamp') };
+    return { transform: [], opacity: interpolate(d, [0, 1], [1, 0.62], 'clamp') };
   });
   return (
     <Press onPress={onPress} haptic={false} scale={0.9} accessibilityRole="tab" accessibilityLabel={name} style={{ width: w, height: H, alignItems: 'center', justifyContent: 'center' }}>

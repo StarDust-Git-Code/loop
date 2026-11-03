@@ -26,7 +26,7 @@ export default function Skills() {
     <Screen title="Skills" sub="Reusable instructions your Mates can follow" right={<Btn icon="plus" small onPress={() => setEdit({ name: '' })} />}>
       <ErrorNote message={s.error} onRetry={s.reload} />
       {s.loading ? <Empty text="Loading…" /> : (s.data ?? []).length === 0 ? <Empty text="No skills yet. Tap + to teach your Mates something." /> : (s.data ?? []).map((x, i) => (
-        <Animated.View key={x.id} entering={FadeInDown.delay(Math.min(i, 8) * 40).springify().damping(16)} layout={LinearTransition}>
+        <Animated.View key={x.id} entering={FadeInDown.delay(Math.min(i, 8) * 40).duration(260)} layout={LinearTransition}>
           <Row onPress={() => setEdit(x)}>
             <View style={{ flex: 1 }}><Text style={{ fontSize: 15, fontWeight: '800', color: C.ink }}>{x.name}</Text><Text numberOfLines={2} style={{ fontSize: 12.5, color: C.muted }}>{x.description || x.instructions}</Text></View>
             <Switch value={x.enabled} onValueChange={(v) => toggle(x, v)} trackColor={{ true: C.brand, false: '#D5D1DE' }} thumbColor="#fff" accessibilityLabel={`${x.name} on or off`} />

@@ -2,7 +2,7 @@ import * as Haptics from 'expo-haptics';
 import { Image } from 'expo-image';
 import type { ReactNode } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View, type PressableProps, type StyleProp, type TextStyle, type ViewStyle } from 'react-native';
-import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
+import Animated, { Easing, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import Svg, { Path } from 'react-native-svg';
 import { mateImg } from '../lib/mates';
 import { C, R, SHADOW } from '../lib/theme';
@@ -56,8 +56,8 @@ export function Press({ children, style, haptic = true, scale = 0.96, onPress, .
   return (
     <AnimatedPressable
       {...rest}
-      onPressIn={() => { s.value = withSpring(scale, { damping: 18, stiffness: 420 }); }}
-      onPressOut={() => { s.value = withSpring(1, { damping: 14, stiffness: 300 }); }}
+      onPressIn={() => { s.value = withTiming(scale, { duration: 90, easing: Easing.out(Easing.quad) }); }}
+      onPressOut={() => { s.value = withTiming(1, { duration: 160, easing: Easing.out(Easing.cubic) }); }}
       onPress={(e) => { if (haptic) void Haptics.selectionAsync(); onPress?.(e); }}
       style={[style, a]}
     >{children}</AnimatedPressable>

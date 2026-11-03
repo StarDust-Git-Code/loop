@@ -46,7 +46,7 @@ export default function MySpace() {
         renderItem={({ item: m, index }) => {
           const [fg, bg] = badge(m.kind);
           return (
-            <Animated.View entering={FadeInDown.delay(Math.min(index, 8) * 45).springify().damping(16)} layout={LinearTransition} style={{ backgroundColor: C.card, borderRadius: R.lg, borderWidth: 1, borderColor: m.pinned ? 'rgba(106,77,244,0.35)' : C.line, padding: 14 }}>
+            <Animated.View entering={FadeInDown.delay(Math.min(index, 8) * 45).duration(260)} layout={LinearTransition} style={{ backgroundColor: C.card, borderRadius: R.lg, borderWidth: 1, borderColor: m.pinned ? 'rgba(106,77,244,0.35)' : C.line, padding: 14 }}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
                 <Text style={{ fontSize: 11, fontWeight: '800', letterSpacing: 0.7, color: fg, backgroundColor: bg, borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3, overflow: 'hidden' }}>{m.kind.toUpperCase()}</Text>
                 <Text style={{ flex: 1, fontSize: 11.5, color: C.muted }}>{m.pinned ? 'Pinned · ' : ''}{m.by ?? 'You'} · {ago(m.createdAt)}</Text>

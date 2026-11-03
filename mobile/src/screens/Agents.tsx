@@ -45,7 +45,7 @@ export default function Agents() {
         renderItem={({ item: m, index }) => {
           const on = !!byKey.get(m.key)?.enabled;
           return (
-            <Animated.View entering={FadeInDown.delay(Math.min(index, 8) * 45).springify().damping(16)} layout={LinearTransition}><Press onPress={() => chat(m.key)} style={{ flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: scheme === 'dark' ? C.card : m.tint, borderRadius: R.lg, borderWidth: 1, borderColor: C.line, padding: 12, opacity: on ? 1 : 0.72 }}>
+            <Animated.View entering={FadeInDown.delay(Math.min(index, 8) * 45).duration(260)} layout={LinearTransition}><Press onPress={() => chat(m.key)} style={{ flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: scheme === 'dark' ? C.card : m.tint, borderRadius: R.lg, borderWidth: 1, borderColor: C.line, padding: 12, opacity: on ? 1 : 0.72 }}>
               <Avatar k={m.key} size={52} />
               <View style={{ flex: 1 }}><Text style={{ fontSize: 15.5, fontWeight: '800', color: C.ink }}>{mateName(m.key)}</Text><Text numberOfLines={2} style={{ fontSize: 12.5, color: C.ink2 }}>{m.blurb}</Text></View>
               <Press onPress={() => router.push({ pathname: '/agent/[key]', params: { key: m.key } })} accessibilityLabel={`${mateName(m.key)} settings`} style={{ width: 40, height: 44, alignItems: 'center', justifyContent: 'center' }}><Icon name="settings" size={19} color={C.muted} /></Press>
