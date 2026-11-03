@@ -1,4 +1,6 @@
 import * as DocumentPicker from 'expo-document-picker';
+import * as ImagePicker from 'expo-image-picker';
+import { ExpoSpeechRecognitionModule, useSpeechRecognitionEvent } from 'expo-speech-recognition';
 import * as Haptics from 'expo-haptics';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -6,8 +8,10 @@ import { FlatList, KeyboardAvoidingView, Platform, Text, TextInput, View } from 
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Markdown } from '../../components/Markdown';
-import { Avatar, Chip, ErrorNote, Icon, Press } from '../../components/ui';
-import { api, sendStream } from '../../lib/api';
+import { Avatar, Btn, Chip, ErrorNote, Icon, Press } from '../../components/ui';
+import { api, sendStream, uploadFile } from '../../lib/api';
+import { cacheGet, cacheSet } from '../../lib/cache';
+import { Sheet } from '../../components/kit';
 import { MATE_DEFS, mateName, type MateKey } from '../../lib/mates';
 import { C, R } from '../../lib/theme';
 import type { ChatEvent, Conversation, Message } from '../../lib/types';
@@ -41,7 +45,7 @@ const MateBubble = memo(function MateBubble({ mate, text, thought, tools, live, 
         {tools?.length ? <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 6 }}>{tools.map((t, i) => <Text key={i} style={{ fontFamily: 'monospace', fontSize: 11.5, backgroundColor: C.tint, color: C.brandDeep, borderRadius: 7, paddingHorizontal: 8, paddingVertical: 3, overflow: 'hidden' }}>{TOOL_LABEL(t)}</Text>)}</View> : null}
         <View style={summary ? { marginTop: 6, backgroundColor: C.tint2, borderWidth: 1, borderColor: 'rgba(106,77,244,0.3)', borderRadius: R.lg, padding: 12 } : { marginTop: 6 }}>
           {text ? <Markdown text={text} /> : live ? <Text style={{ color: C.muted }}>…</Text> : null}
-          {summary && onSave ? <Press onPress={onSave} style={{ marginTop: 10, alignSelf: 'flex-start', minHeight: 44, borderRadius: 10, borderWidth: 1, borderColor: 'rgba(106,77,244,0.4)', backgroundColor: '#fff', paddingHorizontal: 14, justifyContent: 'center' }}><Text style={{ color: C.brandDeep, fontWeight: '800', fontSize: 13 }}>Save to memory</Text></Press> : null}
+          {summary && onSave ? <Press onPress={onSave} style={{ marginTop: 10, alignSelf: 'flex-start', minHeight: 44, borderRadius: 10, borderWidth: 1, borderColor: 'rgba(106,77,244,0.4)', backgroundColor: C.card, paddingHorizontal: 14, justifyContent: 'center' }}><Text style={{ color: C.brandDeep, fontWeight: '800', fontSize: 13 }}>Save to memory</Text></Press> : null}
         </View>
       </View>
     </View>);
@@ -67,7 +71,12 @@ export default function Chat() {
   const abort = useRef<(() => void) | null>(null); const round = useRef<number | undefined>(undefined);
   const flash = (m: string) => { setToast(m); setTimeout(() => setToast(null), 2200); };
 
-  const load = useCallback(async () => { try { setConv(await api.conversations.get(id)); setErr(null); } catch (e) { setErr(e instanceof Error ? e.message : 'Could not load this chat'); } }, [id]);
+  const load = useCallback(async () => {
+    try { const c = await api.conversations.get(id); setConv(c); setErr(null); cacheSet(`conv:${id}`, c); }
+    catch (e) { setErr(e instanceof Error ? `${e.message}${conv ? ' Showing the saved copy.' : ''}` : 'Could not load this chat'); }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id]);
+  useEffect(() => { void cacheGet<Conversation>(`conv:${id}`).then((c) => { if (c) setConv((p) => p ?? c); }); }, [id]);
   useEffect(() => { void load(); return () => abort.current?.(); }, [load]);
 
   const patch = async (b: Partial<Conversation>) => { setConv((c) => c && { ...c, ...b }); try { await api.conversations.patch(id, b); } catch { flash('Could not save that'); } };
@@ -100,16 +109,39 @@ export default function Chat() {
   };
   const stop = () => { abort.current?.(); abort.current = null; setSegs(null); void load(); };
 
-  const attach = async () => {
+  const [picker, setPicker] = useState(false); const [listening, setListening] = useState(false); const base = useRef('');
+  const TEXTY = /\.(txt|md|csv|json|js|jsx|ts|tsx|py|html|css|yml|yaml|xml|log|sql|c|cpp|h|ino|java|go|rs|sh|toml|ini)$/i;
+  const attachText = async () => {
+    setPicker(false);
     try {
       const r = await DocumentPicker.getDocumentAsync({ type: '*/*', copyToCacheDirectory: true, multiple: false });
       if (r.canceled || !r.assets[0]) return; const f = r.assets[0];
-      const texty = /^text\//.test(f.mimeType ?? '') || /\.(txt|md|csv|json|js|jsx|ts|tsx|py|html|css|yml|yaml|xml|log|sql|c|cpp|h|ino|java|go|rs|sh|toml|ini)$/i.test(f.name);
-      if (!texty) return flash('Only text and code files can be attached for now.');
+      const texty = /^text\//.test(f.mimeType ?? '') || TEXTY.test(f.name);
+      if (!texty) { setToast('Uploading…'); const up = await uploadFile({ uri: f.uri, name: f.name, type: f.mimeType ?? 'application/octet-stream' }); setText((t) => `${t}${t ? '\n' : ''}[Attached file: ${up.name}]`); return flash('Uploaded to Files'); }
       if ((f.size ?? 0) > 60_000) return flash('That file is over 60 KB. Attach a smaller one.');
       const body = await (await fetch(f.uri)).text();
       setText((t) => `${t}${t ? '\n\n' : ''}File: ${f.name}\n\`\`\`\n${body}\n\`\`\`\n`);
-    } catch { flash('Could not read that file.'); }
+    } catch (e) { flash(e instanceof Error ? e.message : 'Could not attach that file.'); }
+  };
+  const attachImage = async (camera: boolean) => {
+    setPicker(false);
+    try {
+      const perm = camera ? await ImagePicker.requestCameraPermissionsAsync() : await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!perm.granted) return flash('Allow access in Android settings to attach photos.');
+      const r = camera ? await ImagePicker.launchCameraAsync({ quality: 0.7 }) : await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 0.7 });
+      if (r.canceled || !r.assets[0]) return; const a = r.assets[0]; setToast('Uploading…');
+      const up = await uploadFile({ uri: a.uri, name: a.fileName ?? `photo-${Date.now()}.jpg`, type: a.mimeType ?? 'image/jpeg' });
+      setText((t) => `${t}${t ? '\n' : ''}[Attached photo: ${up.name}]`); flash('Photo uploaded to Files');
+    } catch (e) { flash(e instanceof Error ? e.message : 'Could not upload the photo.'); }
+  };
+  useSpeechRecognitionEvent('result', (e) => { const t = e.results[0]?.transcript ?? ''; setText(`${base.current}${base.current && t ? ' ' : ''}${t}`); });
+  useSpeechRecognitionEvent('end', () => setListening(false));
+  useSpeechRecognitionEvent('error', (e) => { setListening(false); if (e.error !== 'no-speech' && e.error !== 'aborted') flash(e.error === 'not-allowed' ? 'Allow the microphone to dictate.' : 'Voice input is not available on this phone.'); });
+  const dictate = async () => {
+    if (listening) { ExpoSpeechRecognitionModule.stop(); return; }
+    const p = await ExpoSpeechRecognitionModule.requestPermissionsAsync(); if (!p.granted) return flash('Allow the microphone to dictate.');
+    base.current = text.trim(); void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setListening(true);
+    ExpoSpeechRecognitionModule.start({ lang: 'en-US', interimResults: true, continuous: false });
   };
   const saveMemory = async (m: string) => { try { await api.memories.create({ kind: 'decision', text: m.slice(0, 1500), scope: 'private' }); void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success); flash('Saved to memory'); } catch { flash('Could not save'); } };
 
@@ -128,7 +160,7 @@ export default function Chat() {
 
   return (
     <KeyboardAvoidingView style={{ flex: 1, backgroundColor: C.bg }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-      <View style={{ paddingTop: insets.top + 6, paddingBottom: 10, paddingHorizontal: 8, backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: C.line, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+      <View style={{ paddingTop: insets.top + 6, paddingBottom: 10, paddingHorizontal: 8, backgroundColor: C.card, borderBottomWidth: 1, borderBottomColor: C.line, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
         <Press onPress={() => router.back()} accessibilityLabel="Back" style={{ width: 44, height: 44, alignItems: 'center', justifyContent: 'center' }}><Icon name="back" size={22} /></Press>
         <Avatar k={mate} size={38} />
         <View style={{ flex: 1, minWidth: 0 }}><Text numberOfLines={1} style={{ fontSize: 16, fontWeight: '800', color: C.ink }}>{conv?.title ?? 'Chat'}</Text><Text numberOfLines={1} style={{ fontSize: 12.5, color: C.muted }}>{subtitle}</Text></View>
@@ -149,19 +181,26 @@ export default function Chat() {
 
       {toast ? <Animated.View entering={FadeInDown} style={{ position: 'absolute', alignSelf: 'center', bottom: 150, backgroundColor: C.ink, paddingHorizontal: 16, paddingVertical: 10, borderRadius: 999 }}><Text style={{ color: '#fff', fontSize: 13.5 }}>{toast}</Text></Animated.View> : null}
 
-      <View style={{ backgroundColor: '#fff', borderTopWidth: 1, borderTopColor: C.line, paddingHorizontal: 12, paddingTop: 10, paddingBottom: Math.max(insets.bottom, 12) }}>
+      <View style={{ backgroundColor: C.card, borderTopWidth: 1, borderTopColor: C.line, paddingHorizontal: 12, paddingTop: 10, paddingBottom: Math.max(insets.bottom, 12) }}>
         {suggestions.length > 0 ? <FlatList horizontal keyboardShouldPersistTaps="handled" data={suggestions} keyExtractor={(m) => m.key} showsHorizontalScrollIndicator={false} style={{ marginBottom: 8, flexGrow: 0 }} contentContainerStyle={{ gap: 6 }}
           renderItem={({ item }) => <Chip label={`@${item.key}`} onPress={() => setText((t) => t.replace(/@\w*$/, `@${item.key} `))} />} /> : null}
         <FlatList horizontal data={[...MODES]} keyExtractor={(m) => m} showsHorizontalScrollIndicator={false} style={{ marginBottom: 8, flexGrow: 0 }} contentContainerStyle={{ gap: 6 }} keyboardShouldPersistTaps="handled"
           renderItem={({ item }) => <Chip label={item[0].toUpperCase() + item.slice(1)} on={mode === item} onPress={() => patch({ mode: item })} />}
           ListFooterComponent={<View style={{ marginLeft: 6 }}><Chip label={`Thinking: ${conv?.thinking ?? 'default'}`} onPress={() => patch({ thinking: THINK[(THINK.indexOf(conv?.thinking ?? 'default') + 1) % THINK.length] })} /></View>} />
         <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: 8, borderWidth: 1, borderColor: C.line2, borderRadius: 18, padding: 6 }}>
-          <Press onPress={attach} accessibilityLabel="Attach a file" style={{ width: 44, height: 44, borderRadius: 12, backgroundColor: '#F3F1F8', borderWidth: 1, borderColor: C.line, alignItems: 'center', justifyContent: 'center' }}><Icon name="plus" size={20} /></Press>
+          <Press onPress={() => setPicker(true)} accessibilityLabel="Attach" style={{ width: 44, height: 44, borderRadius: 12, backgroundColor: C.field, borderWidth: 1, borderColor: C.line, alignItems: 'center', justifyContent: 'center' }}><Icon name="plus" size={20} /></Press>
           <TextInput value={text} onChangeText={setText} multiline placeholder={mode === 'brainstorm' ? 'Give the table a topic, and @ two or more agents' : `Message ${mateName(mate)}`} placeholderTextColor={C.muted} style={{ flex: 1, minHeight: 44, maxHeight: 140, fontSize: 15, paddingTop: 10, paddingBottom: 10, color: C.ink }} accessibilityLabel="Message" />
-          {segs ? <Press onPress={stop} accessibilityLabel="Stop" style={{ width: 44, height: 44, borderRadius: 12, backgroundColor: C.ink, alignItems: 'center', justifyContent: 'center' }}><View style={{ width: 14, height: 14, backgroundColor: '#fff', borderRadius: 3 }} /></Press>
+          <Press onPress={dictate} accessibilityLabel={listening ? 'Stop dictation' : 'Dictate'} style={{ width: 44, height: 44, borderRadius: 12, backgroundColor: listening ? C.bad : C.field, alignItems: 'center', justifyContent: 'center' }}><Icon name="mic" size={20} color={listening ? '#fff' : C.ink} /></Press>
+          {segs ? <Press onPress={stop} accessibilityLabel="Stop" style={{ width: 44, height: 44, borderRadius: 12, backgroundColor: C.ink, alignItems: 'center', justifyContent: 'center' }}><View style={{ width: 14, height: 14, backgroundColor: C.card, borderRadius: 3 }} /></Press>
             : <Press onPress={send} disabled={!text.trim()} accessibilityLabel="Send" style={{ width: 44, height: 44, borderRadius: 12, backgroundColor: C.brand, alignItems: 'center', justifyContent: 'center', opacity: text.trim() ? 1 : 0.45 }}><Icon name="send" size={20} color="#fff" /></Press>}
         </View>
       </View>
+      <Sheet visible={picker} onClose={() => setPicker(false)} title="Attach">
+        <Btn label="Text or code file (pasted into the message)" kind="soft" onPress={attachText} />
+        <Btn label="Photo from gallery" kind="soft" icon="clip" onPress={() => attachImage(false)} />
+        <Btn label="Take a photo" kind="soft" onPress={() => attachImage(true)} />
+        <Btn label="Any other file (uploads to Files)" kind="ghost" onPress={attachText} />
+      </Sheet>
     </KeyboardAvoidingView>
   );
 }

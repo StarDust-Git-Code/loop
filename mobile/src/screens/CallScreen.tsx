@@ -69,7 +69,7 @@ export default function CallScreen({ mate: mateParam, reason, conv }: { mate?: s
       <View style={{ flexDirection: 'row', justifyContent: 'center', gap: 14, paddingBottom: PILL_SPACE - 40 }}>
         {state === 'idle' ? <Btn label={`Call ${mateName(mate)}`} icon="phone" onPress={dial} style={{ minWidth: 220 }} /> : (
           <>
-            <Press onPress={() => { h.current?.mute(!muted); setMuted(!muted); }} accessibilityLabel={muted ? 'Unmute' : 'Mute'} style={{ width: 64, height: 64, borderRadius: 32, backgroundColor: muted ? C.ink : '#fff', borderWidth: 1, borderColor: C.line2, alignItems: 'center', justifyContent: 'center' }}><Icon name={muted ? 'micoff' : 'mic'} size={26} color={muted ? '#fff' : C.ink} /></Press>
+            <Press onPress={() => { h.current?.mute(!muted); setMuted(!muted); }} accessibilityLabel={muted ? 'Unmute' : 'Mute'} style={{ width: 64, height: 64, borderRadius: 32, backgroundColor: muted ? C.ink : C.card, borderWidth: 1, borderColor: C.line2, alignItems: 'center', justifyContent: 'center' }}><Icon name={muted ? 'micoff' : 'mic'} size={26} color={muted ? '#fff' : C.ink} /></Press>
             <Press onPress={hang} accessibilityLabel="Hang up" style={{ width: 64, height: 64, borderRadius: 32, backgroundColor: C.bad, alignItems: 'center', justifyContent: 'center' }}><Icon name="hangup" size={28} color="#fff" /></Press>
           </>)}
       </View>

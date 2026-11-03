@@ -1,7 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { idToken } from './auth';
 import { API_URL, DEFAULT_VOICE_URL } from './theme';
-import type { ChatEvent, Conversation, Memory, MateConfig, Run, Settings, Task, CalEvent } from './types';
+import type { ChatEvent, Conversation, Memory, MateConfig, Run, Settings, Task, CalEvent, Skill, Workflow, Connection, FileItem } from './types';
 
 export class ApiError extends Error { constructor(m: string, public status = 0) { super(m); } }
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -45,8 +45,29 @@ export const api = {
   tasks: repo<Task>('/tasks'),
   events: repo<CalEvent>('/events'),
   mates: repo<MateConfig>('/mates'),
-  runs: { list: () => call<Run[]>('GET', '/runs'), start: (prompt: string) => call<Run>('POST', '/runs', { prompt }) },
+  runs: {
+    list: () => call<Run[]>('GET', '/runs'), get: (id: string) => call<Run>('GET', `/runs/${id}`), remove: (id: string) => call<void>('DELETE', `/runs/${id}`),
+    start: (prompt: string, askFirst = true) => call<Run>('POST', '/runs', { prompt, askFirst }),
+    control: (id: string, a: 'stop' | 'pause' | 'resume') => call<unknown>('POST', `/runs/${id}/${a}`),
+    steer: (id: string, text: string) => call<unknown>('POST', `/runs/${id}/steer`, { text }),
+    decide: (id: string, aid: string, decision: 'approved' | 'denied') => call<unknown>('POST', `/runs/${id}/approvals/${aid}`, { decision }),
+    update: (id: string, b: Partial<Run>) => call<Run>('PATCH', `/runs/${id}`, b),
+  },
+  skills: repo<Skill>('/skills'),
+  workflows: repo<Workflow>('/workflows'),
+  connections: { ...repo<Connection>('/connections'), test: (id: string) => call<{ status: string; message?: string }>('POST', `/connections/${id}/test`) },
+  telegramCode: (connectionId?: string) => call<{ code: string; link?: string; botName?: string }>('POST', '/telegram/link-code', { connectionId }),
+  files: { list: () => call<FileItem[]>('GET', '/files'), remove: (id: string) => call<void>('DELETE', `/files/${id}`) },
 };
+
+/** Uploads one file (multipart). The server answers 501 until Google Drive storage is set up. */
+export async function uploadFile(f: { uri: string; name: string; type: string }): Promise<FileItem> {
+  const tok = await idToken(); const fd = new FormData();
+  fd.append('file', { uri: f.uri, name: f.name, type: f.type } as unknown as Blob);
+  const res = await fetch(`${API_URL}/v1/files`, { method: 'POST', headers: tok ? { authorization: `Bearer ${tok}` } : {}, body: fd });
+  if (!res.ok) { let m = res.status === 501 ? 'File storage is not set up on the server yet (Google Drive).' : `Upload failed (${res.status})`; try { const j = await res.json(); if (j?.error) m = j.error; } catch { /* default */ } throw new ApiError(m, res.status); }
+  return (await res.json()) as FileItem;
+}
 
 /** Streams a chat turn over Server-Sent Events. React Native's fetch cannot stream, so this reads XHR progress. Returns an abort function. */
 export function sendStream(convId: string, text: string, mate: string, on: (e: ChatEvent) => void, onEnd: (err?: string) => void): () => void {

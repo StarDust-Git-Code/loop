@@ -69,7 +69,7 @@ export function Avatar({ k, size = 40, dim }: { k: string; size?: number; dim?: 
 }
 
 export function Btn({ label, onPress, kind = 'primary', icon, disabled, busy, style, small }: { label?: string; onPress?: () => void; kind?: 'primary' | 'soft' | 'ghost' | 'danger'; icon?: string; disabled?: boolean; busy?: boolean; style?: StyleProp<ViewStyle>; small?: boolean }) {
-  const bg = kind === 'primary' ? C.brand : kind === 'soft' ? C.tint : kind === 'danger' ? C.bad : '#fff';
+  const bg = kind === 'primary' ? C.brand : kind === 'soft' ? C.tint : kind === 'danger' ? C.bad : C.card;
   const fg = kind === 'primary' || kind === 'danger' ? '#fff' : C.brandDeep;
   return (
     <Press onPress={disabled || busy ? undefined : onPress} accessibilityRole="button" accessibilityLabel={label} style={[{ minHeight: small ? 40 : 48, paddingHorizontal: label ? 18 : 0, width: label ? undefined : small ? 40 : 48, borderRadius: R.md, backgroundColor: bg, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 8, opacity: disabled ? 0.5 : 1, borderWidth: kind === 'ghost' ? 1 : 0, borderColor: C.line2 }, style]}>
@@ -81,7 +81,7 @@ export function Btn({ label, onPress, kind = 'primary', icon, disabled, busy, st
 
 export const Card = ({ children, style }: { children: ReactNode; style?: StyleProp<ViewStyle> }) => <View style={[{ backgroundColor: C.card, borderRadius: R.lg, borderWidth: 1, borderColor: C.line, ...SHADOW }, style]}>{children}</View>;
 export const Chip = ({ label, on, onPress }: { label: string; on?: boolean; onPress?: () => void }) => (
-  <Press onPress={onPress} style={{ paddingHorizontal: 14, minHeight: 36, borderRadius: 999, justifyContent: 'center', backgroundColor: on ? C.tint : '#fff', borderWidth: on ? 0 : 1, borderColor: C.line2 }}>
+  <Press onPress={onPress} style={{ paddingHorizontal: 14, minHeight: 36, borderRadius: 999, justifyContent: 'center', backgroundColor: on ? C.tint : C.card, borderWidth: on ? 0 : 1, borderColor: C.line2 }}>
     <Text style={{ fontSize: 13, fontWeight: on ? '700' : '500', color: on ? C.brandDeep : C.ink2 }}>{label}</Text>
   </Press>
 );

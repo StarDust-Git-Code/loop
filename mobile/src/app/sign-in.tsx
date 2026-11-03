@@ -26,7 +26,7 @@ export default function SignIn() {
     if (!email.trim()) return setErr('Type your email first, then tap Forgot password.');
     try { await resetPassword(email); setErr(null); setInfo('Reset link sent. Check your inbox.'); } catch (e) { setErr(e instanceof Error ? e.message : 'Could not send the link'); }
   };
-  const input = { minHeight: 52, borderRadius: R.md, borderWidth: 1, borderColor: C.line2, backgroundColor: '#fff', paddingHorizontal: 16, fontSize: 16, color: C.ink } as const;
+  const input = { minHeight: 52, borderRadius: R.md, borderWidth: 1, borderColor: C.line2, backgroundColor: C.card, paddingHorizontal: 16, fontSize: 16, color: C.ink } as const;
   return (
     <KeyboardAvoidingView style={{ flex: 1, backgroundColor: C.bg }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <ScrollView contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', padding: 24, paddingTop: insets.top + 24, paddingBottom: insets.bottom + 24, gap: 14 }} keyboardShouldPersistTaps="handled">
@@ -36,7 +36,7 @@ export default function SignIn() {
           <Text style={{ color: C.muted, fontSize: 14.5 }}>Your agents, in your pocket</Text>
         </Animated.View>
         <Animated.View entering={FadeInDown.delay(120).springify()}>
-        <Press onPress={google} accessibilityLabel="Continue with Google" style={{ minHeight: 52, borderRadius: R.md, backgroundColor: '#fff', borderWidth: 1, borderColor: C.line2, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, opacity: gBusy ? 0.6 : 1 }}>
+        <Press onPress={google} accessibilityLabel="Continue with Google" style={{ minHeight: 52, borderRadius: R.md, backgroundColor: C.card, borderWidth: 1, borderColor: C.line2, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, opacity: gBusy ? 0.6 : 1 }}>
           {gBusy ? <ActivityIndicator color={C.brand} /> : <GoogleG />}
           <Text style={{ fontSize: 15.5, fontWeight: '700', color: C.ink }}>Continue with Google</Text>
         </Press>

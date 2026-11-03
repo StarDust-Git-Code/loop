@@ -8,12 +8,13 @@ import { Avatar, Chip, ErrorNote, Icon, Press, Title } from '../components/ui';
 import { api } from '../lib/api';
 import { useList } from '../lib/hooks';
 import { MATE_DEFS, mateName } from '../lib/mates';
+import { useTheme } from '../lib/themeContext';
 import { C, R } from '../lib/theme';
 import type { MateConfig } from '../lib/types';
 
 const LEVELS = ['low', 'default', 'high'];
 export default function Agents() {
-  const insets = useSafeAreaInsets(); const router = useRouter();
+  const insets = useSafeAreaInsets(); const router = useRouter(); const { scheme } = useTheme();
   const cfg = useList(async () => ({ mates: await api.mates.list(), settings: await api.settings.get().catch(() => ({} as { defaultThinking?: string })) }));
   const [starting, setStarting] = useState<string | null>(null); const [err, setErr] = useState<string | null>(null);
   const byKey = new Map((cfg.data?.mates ?? []).map((m) => [m.mate, m] as const));
@@ -44,10 +45,11 @@ export default function Agents() {
         renderItem={({ item: m, index }) => {
           const on = !!byKey.get(m.key)?.enabled;
           return (
-            <Animated.View entering={FadeInDown.delay(Math.min(index, 8) * 45).springify().damping(16)} layout={LinearTransition}><Press onPress={() => chat(m.key)} style={{ flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: m.tint, borderRadius: R.lg, borderWidth: 1, borderColor: C.line, padding: 12, opacity: on ? 1 : 0.72 }}>
+            <Animated.View entering={FadeInDown.delay(Math.min(index, 8) * 45).springify().damping(16)} layout={LinearTransition}><Press onPress={() => chat(m.key)} style={{ flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: scheme === 'dark' ? C.card : m.tint, borderRadius: R.lg, borderWidth: 1, borderColor: C.line, padding: 12, opacity: on ? 1 : 0.72 }}>
               <Avatar k={m.key} size={52} />
               <View style={{ flex: 1 }}><Text style={{ fontSize: 15.5, fontWeight: '800', color: C.ink }}>{mateName(m.key)}</Text><Text numberOfLines={2} style={{ fontSize: 12.5, color: C.ink2 }}>{m.blurb}</Text></View>
-              <Press onPress={() => router.navigate({ pathname: '/', params: { tab: 'call', mate: m.key } })} accessibilityLabel={`Call ${mateName(m.key)}`} style={{ width: 44, height: 44, borderRadius: 14, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center' }}><Icon name="phone" size={20} color={C.brandDeep} /></Press>
+              <Press onPress={() => router.push({ pathname: '/agent/[key]', params: { key: m.key } })} accessibilityLabel={`${mateName(m.key)} settings`} style={{ width: 40, height: 44, alignItems: 'center', justifyContent: 'center' }}><Icon name="settings" size={19} color={C.muted} /></Press>
+              <Press onPress={() => router.navigate({ pathname: '/', params: { tab: 'call', mate: m.key } })} accessibilityLabel={`Call ${mateName(m.key)}`} style={{ width: 44, height: 44, borderRadius: 14, backgroundColor: C.card, alignItems: 'center', justifyContent: 'center' }}><Icon name="phone" size={20} color={C.brandDeep} /></Press>
               <Switch value={on} onValueChange={(v) => toggle(m.key, v)} trackColor={{ true: C.brand, false: '#D5D1DE' }} thumbColor="#fff" accessibilityLabel={`${mateName(m.key)} on or off`} />
             </Press></Animated.View>);
         }} />

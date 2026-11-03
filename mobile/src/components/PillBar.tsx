@@ -31,7 +31,7 @@ export function PillBar({ progress, width, go }: { progress: SharedValue<number>
   const blob = useAnimatedStyle(() => ({ transform: [{ translateX: progress.value * w }] }));
   return (
     <View pointerEvents="box-none" style={{ position: 'absolute', left: SIDE, right: SIDE, bottom: Math.max(insets.bottom, 10) + 8 }}>
-      <View style={{ height: H, borderRadius: H / 2, backgroundColor: 'rgba(255,255,255,0.97)', paddingHorizontal: GAP / 2, flexDirection: 'row', borderWidth: 1, borderColor: C.line, shadowColor: '#2B1B7A', shadowOpacity: 0.22, shadowRadius: 18, shadowOffset: { width: 0, height: 8 }, elevation: 12 }}>
+      <View style={{ height: H, borderRadius: H / 2, backgroundColor: C.pill, paddingHorizontal: GAP / 2, flexDirection: 'row', borderWidth: 1, borderColor: C.line, shadowColor: '#2B1B7A', shadowOpacity: 0.22, shadowRadius: 18, shadowOffset: { width: 0, height: 8 }, elevation: 12 }}>
         <Animated.View style={[{ position: 'absolute', left: GAP / 2, top: 7, width: w, height: H - 14, borderRadius: (H - 14) / 2, backgroundColor: C.tint }, blob]} />
         {TABS.map(([name, icon], i) => <Item key={name} i={i} name={name} icon={icon} progress={progress} w={w} onPress={() => { void Haptics.selectionAsync(); go(i); }} />)}
       </View>
