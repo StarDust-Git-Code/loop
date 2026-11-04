@@ -391,6 +391,8 @@ foreach ($r in $selected) {
   } else {
     $svcId = [string]$existing.id
     Info "$($r.id): updating '$($r.name)' ($svcId)"
+    $susp = ''; try { $susp = [string]$existing.suspended } catch { }
+    if ($susp -eq 'suspended') { Info "$($r.id): service is suspended, resuming it"; try { Invoke-Render $key 'POST' "/services/$svcId/resume" | Out-Null; Start-Sleep -Seconds 5 } catch { Fail "$($r.id): '$($r.name)' is suspended and could not be resumed ($($_.Exception.Message)). Resume it in the Render dashboard (Settings -> Resume) or delete it and run again." } }
     Invoke-Render $key 'PUT' "/services/$svcId/env-vars" $envList | Out-Null
     try {
       Invoke-Render $key 'PATCH' "/services/$svcId" @{ branch = $branch; rootDir = 'backend'; autoDeploy = 'yes'; serviceDetails = @{ healthCheckPath = '/healthz'; envSpecificDetails = @{ buildCommand = $r.build; startCommand = $r.start } } } | Out-Null
