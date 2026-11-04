@@ -12,6 +12,7 @@ import { putFile, storageReady as artifactsReady } from './files.js';
 import { hooks, setToolHooks } from './toolhooks.js';
 import { MONITOR_TOOLS } from './monitor.js';
 import { TOOLKIT, bindWeb } from './toolkit.js';
+import { BROWSER_TOOLS } from './browsertools.js';
 export { setToolHooks };
 
 const cap = (s, n = 4000) => (s.length > n ? `${s.slice(0, n)}\n…[truncated]` : s);
@@ -140,6 +141,7 @@ bindWeb({ safeFetch });
 export const TOOLS = {
   ...MONITOR_TOOLS,
   ...TOOLKIT,
+  ...BROWSER_TOOLS,
   ...WF_TOOLS,
   web_search: { group: 'Web Search', net: true, desc: 'Search the web (Google-grounded). Fast: use this for specs, prices, facts and news instead of opening a browser. Returns an answer with source links.', args: '{"query": "text"}', run: async (_c, a) => cap(await search(String(a.query ?? '').slice(0, 200))) },
   fetch_url: { group: 'Web Search', net: true, desc: 'Open a public web page and read its text.', args: '{"url": "https://..."}', run: async (_c, a) => {
@@ -211,7 +213,7 @@ export const TOOLS = {
 /** Which tools a Mate may use, given its configured tool groups and the workspace settings. */
 /** Always-on extras per Mate (on top of what its config lists). */
 const DELEGATORS = ['Delegation', 'Run Control'];
-const EXTRA_GROUPS = { '*': ['Utilities'], mimo: ['Delegation', 'Web Search', 'Vector Search', 'File System'], ops: DELEGATORS, halo: DELEGATORS, planner: DELEGATORS, flow: ['Delegation'], research: ['Delegation'] };
+const EXTRA_GROUPS = { '*': ['Utilities'], mimo: ['Delegation', 'Web Search', 'Vector Search', 'File System', 'Browser'], ops: DELEGATORS, halo: DELEGATORS, planner: DELEGATORS, flow: ['Delegation'], research: ['Delegation'] };
 export function toolsFor(groups = [], settings = {}, mateKey = '') {
   const g = new Set([...groups, ...EXTRA_GROUPS['*'], ...(EXTRA_GROUPS[mateKey] ?? [])]);
   return Object.entries(TOOLS).filter(([, t]) => (t.group === '*' || g.has(t.group)) && !(t.net && settings.allowNetwork === false) && !(t.needsApproval && settings.permissionMode !== 'auto')).map(([name, t]) => ({ name, ...t }));

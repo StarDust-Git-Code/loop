@@ -151,3 +151,6 @@ Keep the web look: purple accent `#6A4DF4`, tint `#ECE7FF`, deep text `#1B1822`,
 - **Discord**: `discord.js`, HTTP interactions at `/discord/interactions` (slash commands /link /ask /run /status). Env: DISCORD_BOT_TOKEN, DISCORD_APP_ID, DISCORD_PUBLIC_KEY.
 - **Telegram and Discord chat** now run the real Mate (tools + memory) via `bridge.js`.
 - **Files**: work without Drive (small files stored inline, <= 700 KB); connect Drive for larger files.
+
+## Browser (added)
+`backend/src/browser/index.js` is a Playwright service for the owner's Linux VM (2 pooled Chromium instances, isolated sessions, SSRF guard, password-field refusal). `backend/src/api/browsertools.js` exposes it to Mates as `browser_*` tools via `BROWSER_URL`. Setup: `docs/browser-vm.md`.

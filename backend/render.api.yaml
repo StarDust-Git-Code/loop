@@ -25,6 +25,7 @@ services:
       - { key: GEMINI_API_KEY, sync: false }
       - { key: TELEGRAM_BOT_TOKEN, sync: false }
       - { key: TELEGRAM_WEBHOOK_SECRET, sync: false }
+      - { key: BROWSER_URL, sync: false }   # public address of the browser service on your Linux VM
       - { key: DISCORD_BOT_TOKEN, sync: false }
       - { key: DISCORD_APP_ID, sync: false }
       - { key: DISCORD_PUBLIC_KEY, sync: false }

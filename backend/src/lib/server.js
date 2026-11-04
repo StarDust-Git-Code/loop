@@ -32,7 +32,7 @@ export function svcOnly(req, reply, done) {
 
 export async function listen(app) {
   const port = num('PORT', 10000);
-  await app.listen({ port, host: '0.0.0.0' });
+  await app.listen({ port, host: env('HOST') || '0.0.0.0' });
   const shutdown = async (sig) => { app.log.info(`${sig}: shutting down`); try { await app.close(); } finally { process.exit(0); } };
   process.on('SIGTERM', () => shutdown('SIGTERM'));
   process.on('SIGINT', () => shutdown('SIGINT'));

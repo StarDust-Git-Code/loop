@@ -11,6 +11,7 @@
     "start:api": "node src/api/index.js",
     "start:coder": "node src/coder/index.js",
     "start:voice": "node src/voice/index.js",
+    "start:browser": "node src/browser/index.js",
     "start:artifacts": "node src/artifacts/index.js",
     "test": "node scripts/e2e.mjs"
   },
@@ -23,6 +24,7 @@
     "ws": "^8.18.0"
   },
   "optionalDependencies": {
-    "@whiskeysockets/baileys": "^6.7.0"
+    "@whiskeysockets/baileys": "^6.7.0",
+    "playwright-core": "^1.49.1"
   }
 }
