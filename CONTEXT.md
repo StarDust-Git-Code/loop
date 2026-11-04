@@ -153,4 +153,4 @@ Keep the web look: purple accent `#6A4DF4`, tint `#ECE7FF`, deep text `#1B1822`,
 - **Files**: work without Drive (small files stored inline, <= 700 KB); connect Drive for larger files.
 
 ## Browser (added)
-`backend/src/browser/index.js` is a Playwright service for the owner's Linux VM (2 pooled Chromium instances, isolated sessions, SSRF guard, password-field refusal). `backend/src/api/browsertools.js` exposes it to Mates as `browser_*` tools via `BROWSER_URL`. Setup: `docs/browser-vm.md`.
+`backend/src/browser/` is a browser service (engines: `engine-playwright.js` Chromium for x86_64/arm64, `engine-webdriver.js` Firefox for s390x/IBM LinuxONE; shared `guard.js`, `snap.js`). It is a Playwright-or-WebDriver service for the owner's Linux VM (2 pooled Chromium instances, isolated sessions, SSRF guard, password-field refusal). `backend/src/api/browsertools.js` exposes it to Mates as `browser_*` tools via `BROWSER_URL`. Setup: `docs/browser-vm.md`.
