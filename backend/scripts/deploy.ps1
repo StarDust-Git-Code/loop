@@ -1,23 +1,25 @@
 <#
 .SYNOPSIS
-  Deploys the three Loopmates services to three Render accounts and wires them together.
+  Deploys the five Loopmates services to Render and wires them together.
 
 .DESCRIPTION
   api        -> Render account 3 : API, run engine, scheduler, Telegram, WhatsApp
   coder      -> Render account 1 : coding agent
   artifacts  -> Render account 2 : files into your Google Drive
+  voice      -> RENDER_KEY_VOICE : voice calls (Gemini Live relay)
+  browser    -> RENDER_KEY_BROWSER (or the coder account) : agent web browsing through browserless.io
 
   Safe to re-run: existing services are updated, not duplicated. Secrets come from scripts\deploy.env (git-ignored).
 
 .EXAMPLE
   .\scripts\deploy.ps1 -DryRun      # validate everything, change nothing
-  .\scripts\deploy.ps1              # deploy all three
+  .\scripts\deploy.ps1              # deploy everything
   .\scripts\deploy.ps1 -Only api    # redeploy just the API
 #>
 [CmdletBinding()]
 param(
   [string]$EnvFile = '',
-  [ValidateSet('all', 'api', 'coder', 'artifacts')][string]$Only = 'all',
+  [ValidateSet('all', 'api', 'coder', 'artifacts', 'voice', 'browser')][string]$Only = 'all',
   [switch]$DryRun,
   [switch]$SkipGit,
   [switch]$SkipHealth,
@@ -119,6 +121,11 @@ if ((Cfg 'MASTER_KEY') -ne '') {
   try { if ([Convert]::FromBase64String((Cfg 'MASTER_KEY')).Length -ne 32) { Fail 'MASTER_KEY must be 32 bytes (base64). Delete the line to regenerate (this makes stored API keys unreadable).' } } catch { Fail 'MASTER_KEY is not valid base64.' }
 }
 
+# The browser service sleeps when idle, so it can share an account: fall back to the coder (then API) key.
+if ((Cfg 'RENDER_KEY_BROWSER') -eq '') {
+  foreach ($fb in 'RENDER_KEY_CODER', 'RENDER_KEY_API') { if ((Cfg $fb) -ne '') { $cfg['RENDER_KEY_BROWSER'] = Cfg $fb; if ((Cfg ($fb.Replace('KEY', 'OWNER'))) -ne '' -and (Cfg 'RENDER_OWNER_BROWSER') -eq '') { $cfg['RENDER_OWNER_BROWSER'] = Cfg ($fb.Replace('KEY', 'OWNER')) }; break } }
+}
+if ((Cfg 'RENDER_KEY_VOICE') -eq '') { foreach ($fb in 'RENDER_KEY_CODER', 'RENDER_KEY_ARTIFACTS') { if ((Cfg $fb) -ne '') { $cfg['RENDER_KEY_VOICE'] = Cfg $fb; if ((Cfg ($fb.Replace('KEY', 'OWNER'))) -ne '' -and (Cfg 'RENDER_OWNER_VOICE') -eq '') { $cfg['RENDER_OWNER_VOICE'] = Cfg ($fb.Replace('KEY', 'OWNER')) }; break } } }
 $suffix = Cfg 'NAME_SUFFIX'
 $region = Cfg 'REGION' 'singapore'
 $repo   = Cfg 'GITHUB_REPO' 'https://github.com/StarDust-Git-Code/loop'
@@ -128,16 +135,19 @@ $branch = Cfg 'GITHUB_BRANCH' 'main'
 $roles = @(
   @{ id = 'coder';     title = 'Coder     (Render 1)'; key = 'RENDER_KEY_CODER';     owner = 'RENDER_OWNER_CODER';     name = "loopmates-coder-$suffix";     start = 'node src/coder/index.js';     build = 'npm ci --omit=dev --omit=optional' },
   @{ id = 'artifacts'; title = 'Artifacts (Render 2)'; key = 'RENDER_KEY_ARTIFACTS'; owner = 'RENDER_OWNER_ARTIFACTS'; name = "loopmates-artifacts-$suffix"; start = 'node src/artifacts/index.js'; build = 'npm ci --omit=dev --omit=optional' },
+  @{ id = 'voice';     title = 'Voice';              key = 'RENDER_KEY_VOICE';     owner = 'RENDER_OWNER_VOICE';     name = "loopmates-voice-$suffix";     start = 'node src/voice/index.js';     build = 'npm ci --omit=dev --omit=optional' },
+  @{ id = 'browser';   title = 'Browser';            key = 'RENDER_KEY_BROWSER';   owner = 'RENDER_OWNER_BROWSER';   name = "loopmates-browser-$suffix";   start = 'node src/browser/index.js';   build = 'npm ci --omit=dev --omit=optional' },
   @{ id = 'api';       title = 'API       (Render 3)'; key = 'RENDER_KEY_API';       owner = 'RENDER_OWNER_API';       name = "loopmates-api-$suffix";       start = 'node src/api/index.js';       build = 'npm ci --omit=dev' }
 )
 if ($Only -ne 'all') { $selected = @($roles | Where-Object { $_.id -eq $Only }) } else { $selected = $roles }
 
 # Validation: collect every problem, then report them together.
 $problems = New-Object System.Collections.Generic.List[string]
-foreach ($r in $selected) { if ((Cfg $r.key) -eq '') { $problems.Add("$($r.key) is empty (Render API key for the $($r.id) account).") } }
+$skipVoice = $false; $skipBrowser = $false
+foreach ($r in $selected) { if ((Cfg $r.key) -eq '') { if ($r.id -in @('voice', 'browser') -and $Only -eq 'all') { if ($r.id -eq 'voice') { $skipVoice = $true } else { $skipBrowser = $true }; Warn "$($r.key) is empty, so the $($r.id) service is skipped." } else { $problems.Add("$($r.key) is empty (Render API key for the $($r.id) account).") } } }
 $saPath = Cfg 'FIREBASE_SERVICE_ACCOUNT_FILE'
 $saB64 = ''
-if ($selected | Where-Object { $_.id -eq 'api' }) {
+if ($selected | Where-Object { $_.id -in @('api', 'voice') }) {
   if ($saPath -eq '' -or -not (Test-Path -LiteralPath $saPath)) { $problems.Add("FIREBASE_SERVICE_ACCOUNT_FILE not found: '$saPath'") }
   else {
     try {
@@ -151,10 +161,14 @@ if ($selected | Where-Object { $_.id -eq 'api' }) {
       }
     } catch { $problems.Add("FIREBASE_SERVICE_ACCOUNT_FILE is not valid JSON: $($_.Exception.Message)") }
   }
+}
+if ($selected | Where-Object { $_.id -eq 'api' }) {
   if ((Cfg 'DASHBOARD_ORIGIN') -notmatch '^https?://[^/]+$') { $problems.Add('DASHBOARD_ORIGIN must look like https://your-dashboard.vercel.app (no trailing slash).') }
   if ((Cfg 'ALLOWED_EMAILS') -eq '') { $problems.Add('ALLOWED_EMAILS is empty: anyone with a Google account could sign in and spend your LLM quota.') }
   if (((Cfg 'NVIDIA_API_KEY') + (Cfg 'GEMINI_API_KEY') + (Cfg 'GROQ_API_KEY') + (Cfg 'CEREBRAS_API_KEY') + (Cfg 'OPENROUTER_API_KEY')) -eq '') { Warn 'No LLM key set. Mates cannot think until you add a provider in Settings.' }
 }
+if ($selected | Where-Object { $_.id -eq 'voice' }) { if ((Cfg 'GEMINI_API_KEY') -eq '') { if ($Only -eq 'voice') { $problems.Add('GEMINI_API_KEY is empty (voice needs it).') } else { $skipVoice = $true; Warn 'GEMINI_API_KEY is empty, so the voice service is skipped.' } } }
+if ($selected | Where-Object { $_.id -eq 'browser' }) { if ((Cfg 'BROWSERLESS_TOKEN') -eq '') { if ($Only -eq 'browser') { $problems.Add('BROWSERLESS_TOKEN is empty (browserless.io account page).') } else { $skipBrowser = $true; Warn 'BROWSERLESS_TOKEN is empty, so the browser service is skipped.' } } }
 $skipArtifacts = $false
 if ($selected | Where-Object { $_.id -eq 'artifacts' }) {
   $missing = @('GOOGLE_CLIENT_ID', 'GOOGLE_CLIENT_SECRET', 'GOOGLE_REFRESH_TOKEN' | Where-Object { (Cfg $_) -eq '' })
@@ -170,6 +184,8 @@ if ($problems.Count -gt 0) {
   exit 1
 }
 if ($skipArtifacts) { $selected = @($selected | Where-Object { $_.id -ne 'artifacts' }) }
+if ($skipVoice) { $selected = @($selected | Where-Object { $_.id -ne 'voice' }) }
+if ($skipBrowser) { $selected = @($selected | Where-Object { $_.id -ne 'browser' }) }
 Good 'configuration is complete'
 
 # ------------------------------------------------------------------ git
@@ -269,6 +285,7 @@ foreach ($r in $roles) {
 }
 
 if ($skipArtifacts -and -not $existingArtifacts) { $urls['artifacts'] = '' }
+if (($skipBrowser -or (Cfg 'RENDER_KEY_BROWSER') -eq '') -and (Cfg 'BROWSER_URL') -ne '') { $urls['browser'] = Cfg 'BROWSER_URL' }
 $envUrls = @{}
 foreach ($k in $urls.Keys) { $envUrls[$k] = $urls[$k] }   # URLs baked into the env vars we send
 
@@ -281,11 +298,19 @@ function Build-Env($r) {
       $e['FIREBASE_SERVICE_ACCOUNT_B64'] = $saB64
       $e['ALLOWED_ORIGINS'] = "$origin,http://localhost:3000"; $e['ALLOWED_EMAILS'] = Cfg 'ALLOWED_EMAILS'
       $e['PUBLIC_URL'] = $urls['api']; $e['CODER_URL'] = $urls['coder']; $e['ARTIFACTS_URL'] = $urls['artifacts']
-      foreach ($k in 'NVIDIA_API_KEY', 'NVIDIA_MODEL', 'GEMINI_API_KEY', 'GEMINI_MODEL', 'GROQ_API_KEY', 'GROQ_MODEL', 'CEREBRAS_API_KEY', 'CEREBRAS_MODEL', 'OPENROUTER_API_KEY', 'OPENROUTER_MODEL', 'TELEGRAM_BOT_TOKEN', 'TELEGRAM_WEBHOOK_SECRET', 'BROWSER_URL', 'DISCORD_BOT_TOKEN', 'DISCORD_APP_ID', 'DISCORD_PUBLIC_KEY', 'WHATSAPP_ENABLED', 'DEFAULT_REPO') { $e[$k] = Cfg $k }
+      foreach ($k in 'NVIDIA_API_KEY', 'NVIDIA_MODEL', 'GEMINI_API_KEY', 'GEMINI_MODEL', 'GROQ_API_KEY', 'GROQ_MODEL', 'CEREBRAS_API_KEY', 'CEREBRAS_MODEL', 'OPENROUTER_API_KEY', 'OPENROUTER_MODEL', 'TELEGRAM_BOT_TOKEN', 'TELEGRAM_WEBHOOK_SECRET', 'DISCORD_BOT_TOKEN', 'DISCORD_APP_ID', 'DISCORD_PUBLIC_KEY', 'WHATSAPP_ENABLED', 'DEFAULT_REPO') { $e[$k] = Cfg $k }
       if ((Cfg 'DEFAULT_REPO') -eq '') { $e['DEFAULT_REPO'] = $repo }
+      if ($urls['browser']) { $e['BROWSER_URL'] = $urls['browser'] }
     }
     'coder' {
       $e['API_URL'] = $urls['api']; $e['GITHUB_TOKEN'] = Cfg 'GITHUB_TOKEN'; $e['DEFAULT_REPO'] = $repo
+    }
+    'voice' {
+      $e['GEMINI_API_KEY'] = Cfg 'GEMINI_API_KEY'; $e['FIREBASE_SERVICE_ACCOUNT_B64'] = $saB64; $e['ALLOWED_ORIGINS'] = "$(Cfg 'DASHBOARD_ORIGIN'),http://localhost:3000"
+      foreach ($k in 'VOICE_MODEL', 'TELEGRAM_BOT_TOKEN', 'DISCORD_BOT_TOKEN') { $e[$k] = Cfg $k }
+    }
+    'browser' {
+      $e['BROWSER_ENGINE'] = 'playwright'; $e['BROWSERLESS_TOKEN'] = Cfg 'BROWSERLESS_TOKEN'
     }
     'artifacts' {
       foreach ($k in 'GOOGLE_CLIENT_ID', 'GOOGLE_CLIENT_SECRET', 'GOOGLE_REFRESH_TOKEN') { $e[$k] = Cfg $k }
@@ -425,6 +450,7 @@ Write-Host ""
 Write-Host '  Next steps' -ForegroundColor Cyan
 Write-Host "   1. Vercel (dashboard project) -> Settings -> Environment Variables, then redeploy:"
 Write-Host "        NEXT_PUBLIC_API_URL = $($urls['api'])"
+if ($urls['voice']) { Write-Host "        NEXT_PUBLIC_VOICE_URL = $($urls['voice'])" }
 Write-Host '        NEXT_PUBLIC_FIREBASE_API_KEY, _AUTH_DOMAIN, _PROJECT_ID, _APP_ID, _MESSAGING_SENDER_ID  (same values as dashboard/.env.local)'
 Write-Host '   2. Firebase console -> Authentication -> Settings -> Authorized domains: add your Vercel domain.'
 Write-Host '   3. Keep the API awake and run schedules: create a free cron-job.org (or UptimeRobot) job every 5 minutes:'
