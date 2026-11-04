@@ -21,7 +21,10 @@ if command -v apt-get >/dev/null; then PM=apt; apt-get update -y; apt-get instal
 elif command -v dnf >/dev/null; then PM=dnf; dnf install -y curl git ca-certificates openssh-clients
 else echo "Need apt or dnf (Debian/Ubuntu/RHEL family)."; exit 2; fi
 if ! command -v node >/dev/null || [ "$(node -p 'process.versions.node.split(".")[0]')" -lt 20 ]; then
-  if [ "$PM" = apt ]; then curl -fsSL https://deb.nodesource.com/setup_20.x | bash - && apt-get install -y nodejs
+  if [ "$ARCH" = s390x ]; then # NodeSource has no s390x packages: use the official nodejs.org tarball
+    apt-get install -y xz-utils 2>/dev/null || dnf install -y xz
+    NV=v20.18.1; curl -fsSL "https://nodejs.org/dist/$NV/node-$NV-linux-s390x.tar.xz" | tar -xJ -C /usr/local --strip-components=1
+  elif [ "$PM" = apt ]; then curl -fsSL https://deb.nodesource.com/setup_20.x | bash - && apt-get install -y nodejs
   else curl -fsSL https://rpm.nodesource.com/setup_20.x | bash - && dnf install -y nodejs; fi
 fi
 
