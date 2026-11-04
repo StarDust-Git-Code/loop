@@ -8,7 +8,7 @@
 // Note: while the consent screen is in "Testing", Google expires refresh tokens after 7 days. Publish the app (To production)
 // for a long-lived token (drive.file is a narrow, non-sensitive scope, so this should not need Google verification; check the consent screen).
 import http from 'node:http';
-import { exec } from 'node:child_process';
+import { exec, spawn } from 'node:child_process';
 
 const [id, secret] = process.argv.slice(2);
 if (!id || !secret) { console.error('usage: node scripts/drive-token.mjs <CLIENT_ID> <CLIENT_SECRET>'); process.exit(1); }
@@ -29,6 +29,7 @@ const server = http.createServer(async (req, res) => {
 });
 server.listen(PORT, '127.0.0.1', () => {
   console.log('Opening Google sign-in. If nothing opens, visit:\n' + url + '\n');
-  const open = process.platform === 'win32' ? `start "" "${url}"` : process.platform === 'darwin' ? `open "${url}"` : `xdg-open "${url}"`;
-  exec(open, () => {});
+  // No shell: on Windows cmd.exe cuts a URL at every '&', which silently drops redirect_uri and makes Google answer 400 invalid_request.
+  if (process.platform === 'win32') spawn('rundll32', ['url.dll,FileProtocolHandler', url], { stdio: 'ignore' }).on('error', () => {});
+  else exec(`${process.platform === 'darwin' ? 'open' : 'xdg-open'} "${url}"`, () => {});
 });
