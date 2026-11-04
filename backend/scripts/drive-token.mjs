@@ -3,6 +3,8 @@
 // 2) OAuth consent screen: External, add yourself as a Test user (keep it in Testing; fine for personal use)
 // 3) Credentials -> Create OAuth client ID -> "Desktop app". Copy the client id and secret.
 // 4) node scripts/drive-token.mjs <CLIENT_ID> <CLIENT_SECRET>   -> prints GOOGLE_REFRESH_TOKEN
+// This uses the full Drive scope so the agents can work in a folder YOU created; the artifacts service refuses anything outside DRIVE_ROOT_FOLDER_ID.
+// Google shows an "unverified app" warning for it: click Advanced -> continue (it is your own app).
 // Note: while the consent screen is in "Testing", Google expires refresh tokens after 7 days. Publish the app (To production)
 // for a long-lived token (drive.file is a narrow, non-sensitive scope, so this should not need Google verification; check the consent screen).
 import http from 'node:http';
@@ -11,7 +13,7 @@ import { exec } from 'node:child_process';
 const [id, secret] = process.argv.slice(2);
 if (!id || !secret) { console.error('usage: node scripts/drive-token.mjs <CLIENT_ID> <CLIENT_SECRET>'); process.exit(1); }
 const PORT = 53682; const redirect = `http://127.0.0.1:${PORT}/cb`;
-const url = `https://accounts.google.com/o/oauth2/v2/auth?${new URLSearchParams({ client_id: id, redirect_uri: redirect, response_type: 'code', scope: 'https://www.googleapis.com/auth/drive.file', access_type: 'offline', prompt: 'consent' })}`;
+const url = `https://accounts.google.com/o/oauth2/v2/auth?${new URLSearchParams({ client_id: id, redirect_uri: redirect, response_type: 'code', scope: 'https://www.googleapis.com/auth/drive', access_type: 'offline', prompt: 'consent' })}`;
 
 const server = http.createServer(async (req, res) => {
   const u = new URL(req.url, redirect);

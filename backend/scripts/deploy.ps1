@@ -313,7 +313,7 @@ function Build-Env($r) {
       $e['BROWSER_ENGINE'] = 'playwright'; $e['BROWSERLESS_TOKEN'] = Cfg 'BROWSERLESS_TOKEN'
     }
     'artifacts' {
-      foreach ($k in 'GOOGLE_CLIENT_ID', 'GOOGLE_CLIENT_SECRET', 'GOOGLE_REFRESH_TOKEN') { $e[$k] = Cfg $k }
+      foreach ($k in 'GOOGLE_CLIENT_ID', 'GOOGLE_CLIENT_SECRET', 'GOOGLE_REFRESH_TOKEN', 'DRIVE_ROOT_FOLDER_ID') { $e[$k] = Cfg $k }
     }
   }
   $list = @()
