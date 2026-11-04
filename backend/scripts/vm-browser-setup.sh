@@ -47,7 +47,10 @@ else
   FF="$(command -v firefox-esr || command -v firefox)"; [ -n "$FF" ] || { echo "Firefox could not be installed on this OS. Tell me the OS (cat /etc/os-release) and we will adapt."; exit 3; }
   if ! command -v geckodriver >/dev/null && [ ! -x /usr/local/bin/geckodriver ]; then
     echo "Building geckodriver (5-15 minutes, needs about 2 GB RAM)..."
-    CARGO_HOME=/opt/cargo cargo install geckodriver --root /usr/local
+    # Ubuntu's Rust is too old for current geckodriver (needs edition 2024): use rustup's current toolchain
+    export RUSTUP_HOME=/opt/rustup CARGO_HOME=/opt/cargo
+    curl -fsSL https://sh.rustup.rs | sh -s -- -y --profile minimal --no-modify-path
+    /opt/cargo/bin/cargo install geckodriver --locked --root /usr/local
   fi
   GD="$(command -v geckodriver || echo /usr/local/bin/geckodriver)"
   echo "Firefox: $($FF --version)  geckodriver: $($GD --version | head -1)"
