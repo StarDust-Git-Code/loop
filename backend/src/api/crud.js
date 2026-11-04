@@ -21,7 +21,7 @@ export const COLLECTIONS = {
 function clean(body) {
   const o = {};
   for (const [k, v] of Object.entries(body ?? {})) {
-    if (['id', 'createdAt', 'updatedAt', 'keyEnc', 'keyHint', 'secretsEnc', 'uid'].includes(k)) continue;
+    if (['id', 'createdAt', 'updatedAt', 'keyEnc', 'keyHint', 'secretsEnc', 'uid', 'inline', 'vec', 'vm', 'chunks'].includes(k)) continue;
     o[k] = typeof v === 'string' ? str(v) : v;
   }
   return o;
@@ -52,7 +52,7 @@ function sealIn(def, uid, id, input, existing) {
 
 export function sealOut(def, d) {
   if (!d) return d;
-  const { keyEnc, keyHint, secretsEnc, ...rest } = d;
+  const { keyEnc, keyHint, secretsEnc, inline, vec, vm, chunks, ...rest } = d; // internal blobs never leave the server
   if (def.secrets === 'apiKey') return { ...rest, apiKey: keyHint || '' };
   if (def.secrets === 'config') {
     const masks = Object.fromEntries(Object.entries(secretsEnc ?? {}).map(([k, v]) => [k, v.hint || '••••']));

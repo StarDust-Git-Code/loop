@@ -1,5 +1,5 @@
 import type {
-  Approval, Automation, AutomationIn, CalEvent, CalEventIn, Connection, ConnectionIn, Conversation, ConversationIn,
+  Approval, Automation, CallReport, AutomationIn, CalEvent, CalEventIn, Connection, ConnectionIn, Conversation, ConversationIn,
   FileIn, FileItem, ID, Knowledge, KnowledgeIn, McpIn, McpServer, MateConfig, MateConfigIn, Memory, MemoryIn,
   ChatEvent, Message, ProviderCfg, ProviderIn, Run, RunEvent, RunIn, Session, SettingsData, Skill, SkillIn, Task, TaskIn, Workflow, WorkflowIn,
 } from '../types';
@@ -33,7 +33,9 @@ export interface Api {
   memories: Repo<Memory, MemoryIn>;
   skills: Repo<Skill, SkillIn>;
   mcp: Repo<McpServer, McpIn> & { verify(id: ID): Promise<McpServer> };
-  connections: Repo<Connection, ConnectionIn> & { /** One-time code to send to the Telegram bot as /start CODE. */ telegramLinkCode(): Promise<{ code: string; bot: string | null; expiresInMinutes: number }>; test(id: ID): Promise<Connection>; /** Chats the bridge can see (WhatsApp). Empty until the backend lists them. */ chats(id: ID): Promise<{ id: string; name: string; meta: string }[]> };
+  /** Voice call missions: the report a voice sub-agent filed after calling you. */
+  calls: { get(id: ID): Promise<CallReport | undefined> };
+  connections: Repo<Connection, ConnectionIn> & { /** One-time code to send to the Telegram bot as /start CODE. */ telegramLinkCode(): Promise<{ code: string; bot: string | null; expiresInMinutes: number }>; /** One-time code to use with the /link command of the Discord bot. */ discordLinkCode(): Promise<{ code: string; command: string; invite: string | null; expiresInMinutes: number }>; test(id: ID): Promise<Connection>; /** Chats the bridge can see (WhatsApp). Empty until the backend lists them. */ chats(id: ID): Promise<{ id: string; name: string; meta: string }[]> };
   conversations: Repo<Conversation, ConversationIn> & { send(id: ID, text: string, mate?: string): Promise<Message>; /** Same as send, but the reply arrives live through onEvent. Resolves when the answer is complete. */ sendStream(id: ID, text: string, mate: string | undefined, onEvent: (e: ChatEvent) => void): Promise<void> };
   events: Repo<CalEvent, CalEventIn>;
   files: Repo<FileItem, FileIn> & { upload(file: File): Promise<FileItem>; downloadUrl(id: ID): string; /** Authenticated download: fetches with the sign-in token and saves the file. */ download(id: ID, name: string): Promise<void> };
@@ -45,6 +47,8 @@ export interface Api {
     control(id: ID, action: RunControl): Promise<Run>;
     /** Send a steering message to a live run. */
     steer(id: ID, text: string): Promise<Run>;
+    /** Resume a failed or stopped run from its first unfinished step. */
+    retry(id: ID): Promise<Run>;
     decide(runId: ID, approvalId: ID, decision: Approval['status']): Promise<Run>;
     /** Live events for one run (SSE / WebSocket on the http adapter). */
     stream(id: ID, onEvent: (e: RunEvent) => void): () => void;

@@ -5,7 +5,7 @@ import { validTz } from '../lib/cron.js';
 export const DEFAULT_SETTINGS = {
   displayName: '', email: '', workspaceName: 'My workspace', timezone: 'Asia/Kolkata', model: '',
   askBeforeRisky: true, maxSteps: 12, allowNetwork: true, stopAfterMinutes: 30, notifyTelegram: true, notifyEmail: false,
-  permissionMode: 'ask', retriesOnFailure: 1, hookBeforeTool: '', hookAfterStep: '', hookOnFinish: '', hookOnFailure: '',
+  permissionMode: 'ask', retriesOnFailure: 2, verifySteps: true, autoMemory: true, fastModel: '', hookBeforeTool: '', hookAfterStep: '', hookOnFinish: '', hookOnFailure: '',
   guardContainer: true, guardPurchases: true, guardLog: true,
   chunkSize: 800, overlap: 100, topK: 5, hybrid: true, rerank: false, citeAlways: true, memoryScope: 'private',
   prefersShort: false, shareSchedule: false,

@@ -41,7 +41,7 @@ function repo<T extends { id: ID; createdAt: string; updatedAt: string }, In>(na
 const DEFAULT_SETTINGS: SettingsData = {
   displayName: '', email: '', workspaceName: 'Personal workspace', timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
   model: '', askBeforeRisky: true, maxSteps: 40, allowNetwork: true, stopAfterMinutes: 20, notifyTelegram: false, notifyEmail: false,
-  permissionMode: 'ask', retriesOnFailure: 2,
+  permissionMode: 'ask', retriesOnFailure: 2, verifySteps: true, autoMemory: true,
   hookBeforeTool: 'Ask me before writing files outside /workspace or sending any message.', hookAfterStep: 'Save new findings to Knowledge with their source.', hookOnFinish: 'Send me a Telegram summary with links to the files.', hookOnFailure: 'Retry twice, then ping me and wait.',
   guardContainer: true, guardPurchases: true, guardLog: true,
   chunkSize: 800, overlap: 100, topK: 6, hybrid: true, rerank: true, citeAlways: true, memoryScope: 'shared',
@@ -66,6 +66,7 @@ export function createLocalApi(): Api {
     } as never);
   };
   runs.control = async (id, action) => runs.update(id, { status: action === 'stop' ? 'stopped' : action === 'pause' ? 'queued' : 'queued' } as never);
+  runs.retry = async (id) => runs.update(id, { status: 'queued', error: '', failure: null } as never);
   runs.steer = async (id, text) => { const r = (await runs.get(id))!; return runs.update(id, { log: [...r.log, { at: now(), source: 'you', text }] } as never); };
   runs.decide = async (runId, approvalId, decision) => {
     const r = (await runs.get(runId))!;
@@ -82,6 +83,7 @@ export function createLocalApi(): Api {
   conversations.sendStream = async (id, text, mate) => { await conversations.send(id, text, mate); };
   mcp.verify = async (id) => mcp.update(id, { status: 'unverified' } as never);
   connections.chats = async () => [];
+  connections.discordLinkCode = async () => { throw new Error('Linking Discord needs the backend.'); };
   connections.telegramLinkCode = async () => { throw new Error('Linking Telegram needs the backend.'); };
   connections.test = async (id) => connections.update(id, { status: 'pending' } as never);
   files.upload = async (file) => files.create({ name: file.name, size: file.size, mime: file.type || 'application/octet-stream', source: 'upload' } as never);
@@ -105,7 +107,7 @@ export function createLocalApi(): Api {
     capabilities: { backend: false },
     auth: { session: async () => ({ signedIn: false }), signOut: async () => {} },
     tasks: repo('tasks'), workflows: repo('workflows'), automations: repo('automations'), knowledge: repo('knowledge'),
-    memories: repo('memories'), skills: repo('skills'), mcp, connections, conversations, events: repo('events'), files,
+    memories: repo('memories'), skills: repo('skills'), mcp, connections, calls: { get: async () => undefined }, conversations, events: repo('events'), files,
     mateConfigs: repo('mateConfigs', defaultsFor as never) as never, runs, providers,
     search: { knowledge: async () => [] },
     settings: {

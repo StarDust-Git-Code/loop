@@ -18,13 +18,13 @@ registerProcessor('cap', Cap);`;
 
 export type CallHandle = { hangup(): void; mute(on: boolean): void; level(): number };
 
-export async function startCall(mate: string, reason: string, on: (e: CallEvent) => void, conv = ''): Promise<CallHandle> {
+export async function startCall(mate: string, reason: string, on: (e: CallEvent) => void, conv = '', callId = ''): Promise<CallHandle> {
   if (!VOICE_URL) throw new Error('Voice is not set up yet (NEXT_PUBLIC_VOICE_URL is missing).');
   const token = await idToken();
   const media = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } });
   const ac = new AudioContext(); await ac.resume();
   const url = new URL('/live', VOICE_URL.replace(/^http/, 'ws'));
-  url.searchParams.set('mate', mate); if (token) url.searchParams.set('token', token); if (conv) url.searchParams.set('conv', conv);
+  url.searchParams.set('mate', mate); if (token) url.searchParams.set('token', token); if (conv) url.searchParams.set('conv', conv); if (callId) url.searchParams.set('call', callId);
   if (reason) url.searchParams.set('reason', reason); else url.searchParams.set('greet', '1');
   const ws = new WebSocket(url); ws.binaryType = 'arraybuffer';
   let muted = false, playAt = 0, peak = 0; const playing = new Set<AudioBufferSourceNode>();

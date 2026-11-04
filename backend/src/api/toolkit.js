@@ -6,6 +6,7 @@ import { userCol } from './db.js';
 import { hooks } from './toolhooks.js';
 import { getFileStream } from './files.js';
 import { indexKnowledge } from './knowledge.js';
+import { createCall, getCall, listCalls } from './calls.js';
 
 const bad = (m) => Object.assign(new Error(m), { tool: true });
 const str = (v, n = 20_000) => String(v ?? '').slice(0, n);
@@ -343,12 +344,18 @@ export const TOOLKIT = {
   notify_me: T('Utilities', 'Send the owner a short Telegram message (needs Telegram linked). Use sparingly, for results or things needing a decision.', '{"text": "message, under 500 characters"}', async (c, a) => {
     if (!hooks.notify) throw bad('Notifications are unavailable'); const n = await hooks.notify(c.uid, str(a.text, 500)); return n ? `Sent to ${n} chat(s).` : 'Not delivered: Telegram is not linked, so tell the owner in this chat instead.';
   }, { write: true }),
-  call_me: T('Utilities', 'Ring the owner for a voice call about something important or urgent (sends a Telegram message with a tap-to-call link). Say why in one sentence.', '{"reason": "why you are calling, one sentence"}', async (c, a) => {
+  call_me: T('Utilities', 'Ring the owner for a VOICE CALL. A voice sub-agent (Gemini Live) carries the call: it asks your questions, then writes you a report you can read with call_report. Use for urgent matters or when a quick spoken answer beats typing. Give a clear goal and the exact questions.', '{"reason": "why, one sentence", "goal?": "what the call must achieve", "questions?": ["question 1", "question 2"]}', async (c, a) => {
     if (!hooks.notify) throw bad('Notifications are unavailable'); const site = (env('DASHBOARD_URL') || env('ALLOWED_ORIGINS').split(',')[0] || '').trim().replace(/\/$/, '');
     if (!site) throw bad('The dashboard address is not configured (DASHBOARD_URL)');
     const reason = str(a.reason, 300).trim(); if (!reason) throw bad('reason is required');
-    const link = `${site}/call?mate=${encodeURIComponent(c.mate ?? 'mimo')}&reason=${encodeURIComponent(reason)}`;
-    const n = await hooks.notify(c.uid, `${c.mate ?? 'A Mate'} wants to talk: ${reason}\nTap to answer: ${link}`);
-    return n ? 'Ringing: the owner got a Telegram message with a tap-to-call link.' : 'Could not ring: Telegram is not linked. Tell the owner in this chat instead.';
+    const questions = list(a.questions).map((q) => str(q, 240)).filter(Boolean).slice(0, 8);
+    const call = await createCall(c.uid, { mate: c.mate ?? 'mimo', goal: str(a.goal, 600), reason, questions, convId: c.convId, runId: c.runId });
+    const link = `${site}/call?mate=${encodeURIComponent(c.mate ?? 'mimo')}&call=${call.id}&reason=${encodeURIComponent(reason)}`;
+    const n = await hooks.notify(c.uid, `${c.mate ?? 'A Mate'} is calling: ${reason}${questions.length ? `\n${questions.length} quick question(s)` : ''}\nTap to answer: ${link}`);
+    return n ? `Ringing (call ${call.id}): the owner got a message with a tap-to-call link. When they answer and finish, read the outcome with call_report.` : `Could not ring: no chat app is linked. Call ${call.id} is waiting; tell the owner in this chat to open ${link}`;
   }, { write: true }),
+  call_report: T('Utilities', 'Read the outcome of a call you started with call_me (summary, the owner\'s answers, follow-ups). Without an id, lists recent calls.', '{"id?": "call id"}', async (c, a) => {
+    if (a.id) { const x = await getCall(c.uid, str(a.id, 60)); if (!x) throw bad('No such call'); return x.report ? `Call ${x.id} (${x.status}):\n${x.report.summary}\n${(x.report.answers ?? []).map((t) => `- ${t}`).join('\n')}\n${(x.report.followups ?? []).length ? `Follow-ups:\n${x.report.followups.map((t) => `- ${t}`).join('\n')}` : ''}` : `Call ${x.id} is ${x.status}: no report yet (the owner has not finished the call).`; }
+    const rows = await listCalls(c.uid, 8); return rows.length ? rows.map((x) => `${x.id} | ${x.status} | ${x.mate} | ${x.report?.summary?.slice(0, 120) ?? x.reason}`).join('\n') : 'No calls yet.';
+  }),
 };

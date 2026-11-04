@@ -9,7 +9,7 @@ export type CallEvent =
   | { type: 'error'; message: string } | { type: 'end'; why?: string };
 export type CallHandle = { hangup(): void; mute(on: boolean): void; level(): number };
 
-export async function startCall(mate: string, reason: string, on: (e: CallEvent) => void, conv = ''): Promise<CallHandle> {
+export async function startCall(mate: string, reason: string, on: (e: CallEvent) => void, conv = '', callId = ''): Promise<CallHandle> {
   const base = await getVoiceUrl();
   if (!base) throw new Error('Set the voice server address in Settings first.');
   let perm = await AudioManager.checkRecordingPermissions();
@@ -19,7 +19,7 @@ export async function startCall(mate: string, reason: string, on: (e: CallEvent)
 
   AudioManager.setAudioSessionOptions({ iosCategory: 'playAndRecord', iosMode: 'voiceChat', iosOptions: ['defaultToSpeaker', 'allowBluetoothHFP'] });
   const q = new URLSearchParams({ mate });
-  if (token) q.set('token', token); if (conv) q.set('conv', conv);
+  if (token) q.set('token', token); if (conv) q.set('conv', conv); if (callId) q.set('call', callId);
   if (reason) q.set('reason', reason); else q.set('greet', '1');
   const ws = new WebSocket(`${base.replace(/^http/, 'ws')}/live?${q.toString()}`);
   ws.binaryType = 'arraybuffer';

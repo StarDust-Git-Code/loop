@@ -1,12 +1,13 @@
 // Tool registry. Each Mate gets only the tools its "tools" setting grants (Web Search, Memory, Calendar...).
 // Tools are called through a JSON protocol (works with any model, no native function-calling needed).
+import { addMemory, recall } from './memory.js';
 import dns from 'node:dns/promises';
 import net from 'node:net';
 import { env, now, uid as rid } from '../lib/env.js';
 import { MATE } from './mates.js';
 import { userCol } from './db.js';
 import { searchKnowledge } from './knowledge.js';
-import { putFile, artifactsReady } from './files.js';
+import { putFile, storageReady as artifactsReady } from './files.js';
 
 import { hooks, setToolHooks } from './toolhooks.js';
 import { MONITOR_TOOLS } from './monitor.js';
@@ -155,15 +156,12 @@ export const TOOLS = {
   } },
   memory_save: { group: 'Memory', write: true, desc: 'Save something worth remembering about the owner or their work.', args: '{"text": "fact", "kind?": "note|idea|decision|fact|journal|link"}', run: async (c, a) => {
     const text = String(a.text ?? '').trim().slice(0, 2000); if (!text) throw bad('text is required');
-    const kind = ['note', 'idea', 'decision', 'fact', 'journal', 'link'].includes(a.kind) ? a.kind : 'note';
-    const ref = userCol(c.uid, 'memories').doc(); const ts = now();
-    await ref.set({ kind, text, scope: c.settings?.memoryScope === 'shared' ? 'shared' : 'private', pinned: false, createdAt: ts, updatedAt: ts, by: c.mate ?? 'mimo' });
-    return `Saved memory ${ref.id}.`;
+    const r = await addMemory(c.uid, { text, kind: a.kind, by: c.mate ?? 'mimo', scope: c.settings?.memoryScope === 'shared' ? 'shared' : 'private' });
+    return r.dup ? `Already remembered (memory ${r.id}).` : `Saved memory ${r.id}.`;
   } },
-  memory_recall: { group: 'Memory', desc: 'Look up saved memories by keywords.', args: '{"query": "keywords"}', run: async (c, a) => {
-    const terms = termsOf(a.query); const snap = await userCol(c.uid, 'memories').limit(300).get();
-    const hits = snap.docs.map((d) => ({ ...d.data() })).map((m) => ({ m, s: terms.length ? score(m.text, terms) : 1 })).filter((x) => x.s).sort((x, y) => y.s - x.s).slice(0, 8);
-    return hits.length ? hits.map((h) => `- (${h.m.kind}) ${h.m.text}`).join('\n') : 'No matching memories.';
+  memory_recall: { group: 'Memory', desc: 'Look up saved memories by meaning (not just exact words).', args: '{"query": "what to look up"}', run: async (c, a) => {
+    const hits = await recall(c.uid, String(a.query ?? ''), { k: 8, pinned: 0 });
+    return hits.length ? hits.map((h) => `- (${h.kind}) ${h.text}`).join('\n') : 'No matching memories.';
   } },
   calendar_add: { group: 'Calendar', write: true, desc: 'Add an event or a reminder to the calendar. Reminders ping the owner on Telegram at that time.', args: '{"title": "text", "start": "ISO date-time with offset", "end": "optional ISO", "kind?": "event|reminder", "notes": "optional"}', run: async (c, a) => {
     const start = iso(a.start, 'start'); const end = a.end ? iso(a.end, 'end') : new Date(Date.parse(start) + 30 * 60_000).toISOString();

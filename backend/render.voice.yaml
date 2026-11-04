@@ -16,3 +16,5 @@ services:
       - { key: FIREBASE_SERVICE_ACCOUNT_B64, sync: false }
       - { key: ALLOWED_ORIGINS, sync: false }   # your dashboard URL, same as the API
       - { key: VOICE_MODEL, sync: false }       # optional: pin a Live model id; otherwise the newest Live model is picked
+      - { key: TELEGRAM_BOT_TOKEN, sync: false }   # optional: lets call reports reach Telegram
+      - { key: DISCORD_BOT_TOKEN, sync: false }    # optional: same for Discord

@@ -15,7 +15,7 @@ import { RUN_LABEL, RUN_TONE } from './index';
 export default function RunView() {
   const { id } = useLocalSearchParams<{ id: string }>(); const router = useRouter();
   const [run, setRun] = useState<Run | null>(null); const [err, setErr] = useState<string | null>(null);
-  const [tab, setTab] = useState<'steps' | 'report' | 'sources'>('steps'); const [steer, setSteer] = useState('');
+  const [tab, setTab] = useState<'steps' | 'report' | 'log' | 'sources'>('steps'); const [steer, setSteer] = useState('');
   const live = useRef(true);
   const load = async () => { try { setRun(await api.runs.get(id)); setErr(null); } catch (e) { setErr(e instanceof Error ? e.message : 'Could not load the run'); } };
   useEffect(() => { live.current = true; void load(); const t = setInterval(() => { if (live.current) void load(); }, 3000); return () => { live.current = false; clearInterval(t); }; // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -29,6 +29,12 @@ export default function RunView() {
       {run ? (
         <>
           <Card style={{ padding: 14 }}><Text style={{ fontSize: 11, fontWeight: '800', letterSpacing: 1, color: C.muted }}>TASK</Text><Text selectable style={{ fontSize: 14.5, lineHeight: 21, color: C.ink, marginTop: 4 }}>{run.prompt}</Text></Card>
+          {run.status === 'failed' ? (
+            <View accessibilityRole="alert" style={{ backgroundColor: C.badBg, borderWidth: 1, borderColor: C.bad, borderRadius: R.lg, padding: 14, gap: 6 }}>
+              <Text style={{ fontWeight: '800', color: C.bad }}>Stopped{run.failure?.step ? ` at "${run.failure.step}"` : ''}</Text>
+              <Text style={{ color: C.ink2, fontSize: 13.5, lineHeight: 19 }}>{run.failure?.error || run.error || 'Something went wrong.'}{run.failure?.attempts ? ` (${run.failure.attempts} attempt${run.failure.attempts > 1 ? 's' : ''})` : ''}</Text>
+              <Text style={{ color: C.muted, fontSize: 12.5 }}>Finished steps are kept. Retry continues from here. The full write-up is in Report.</Text>
+            </View>) : null}
           {pending ? (
             <Animated.View entering={FadeInDown.duration(260)} style={{ backgroundColor: C.tint2, borderWidth: 1, borderColor: 'rgba(106,77,244,0.4)', borderRadius: R.lg, padding: 14, gap: 10 }}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}><Avatar k={pending.mate} size={36} /><View style={{ flex: 1 }}><Text style={{ fontWeight: '800', color: C.ink }}>Approval needed</Text><Text style={{ color: C.ink2, fontSize: 13.5 }}>{pending.text}</Text></View></View>
@@ -37,11 +43,12 @@ export default function RunView() {
             </Animated.View>) : null}
           <View style={{ flexDirection: 'row', gap: 8 }}>
             {active ? <Btn label="Pause" kind="soft" small onPress={() => act(() => api.runs.control(run.id, 'pause'))} /> : null}
+            {run.status === 'failed' || run.status === 'stopped' ? <Btn label="Retry" small icon="check" onPress={() => act(() => api.runs.retry(run.id))} /> : null}
             {run.status === 'queued' ? <Btn label="Resume" kind="soft" small onPress={() => act(() => api.runs.control(run.id, 'resume'))} /> : null}
             {active || run.status === 'queued' ? <Btn label="Stop" kind="danger" small onPress={() => act(() => api.runs.control(run.id, 'stop'))} /> : null}
             {!active ? <Btn label="Delete" kind="ghost" small onPress={async () => { await act(() => api.runs.remove(run.id)); router.back(); }} /> : null}
           </View>
-          <View style={{ flexDirection: 'row', gap: 8 }}>{(['steps', 'report', 'sources'] as const).map((t) => <Chip key={t} label={t[0].toUpperCase() + t.slice(1)} on={tab === t} onPress={() => setTab(t)} />)}</View>
+          <View style={{ flexDirection: 'row', gap: 8 }}>{(['steps', 'report', 'log', 'sources'] as const).map((t) => <Chip key={t} label={t[0].toUpperCase() + t.slice(1)} on={tab === t} onPress={() => setTab(t)} />)}</View>
           {tab === 'steps' ? (
             run.steps.length === 0 ? <Text style={{ color: C.muted }}>The Planner is breaking this down…</Text> : run.steps.map((s) => {
               const lines = run.log.filter((l) => l.source === s.mate).slice(-4);
@@ -49,12 +56,15 @@ export default function RunView() {
                 <Card key={s.id} style={{ padding: 14, borderColor: s.status === 'running' ? C.brand : C.line }}>
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}><Avatar k={s.mate} size={38} /><View style={{ flex: 1 }}><Text style={{ fontWeight: '800', color: C.ink, fontSize: 14.5 }}>{s.label}</Text><Text style={{ color: C.muted, fontSize: 12.5 }}>{mateName(s.mate)}</Text></View>
                     <Pill label={s.status === 'done' ? 'Done' : s.status === 'running' ? 'Working' : s.status === 'failed' ? 'Failed' : 'Waiting'} tone={s.status === 'done' ? 'ok' : s.status === 'running' ? 'live' : s.status === 'failed' ? 'bad' : 'muted'} /></View>
+                  {s.status === 'failed' && s.error ? <Text style={{ marginTop: 10, color: C.bad, fontSize: 13, lineHeight: 18 }}>{s.error}{(s.attempt ?? 1) > 1 ? ` (after ${s.attempt} attempts)` : ''}</Text> : null}
+                  {s.status === 'running' && (s.attempt ?? 1) > 1 ? <Text style={{ marginTop: 8, color: C.muted, fontSize: 12.5 }}>Attempt {s.attempt}</Text> : null}
                   {s.status === 'running' && lines.length ? <View style={{ backgroundColor: '#15121A', borderRadius: 12, padding: 12, marginTop: 10 }}>{lines.map((l, i) => <Text key={i} style={{ fontFamily: 'monospace', fontSize: 12, color: '#E9E4F5', lineHeight: 18 }}>{l.text}</Text>)}</View> : null}
                 </Card>);
             })) : null}
           {tab === 'report' ? (run.report ? <Card style={{ padding: 14 }}><Markdown text={run.report} /></Card> : <Text style={{ color: C.muted }}>The report appears here as the run writes it.</Text>) : null}
+          {tab === 'log' ? (run.log.length ? <Card style={{ padding: 12, gap: 6 }}>{run.log.map((l, i) => <Text key={i} selectable style={{ fontFamily: 'monospace', fontSize: 12, lineHeight: 18, color: C.ink2 }}><Text style={{ color: C.muted }}>{new Date(l.at).toLocaleTimeString()} {l.source}  </Text>{l.text}</Text>)}</Card> : <Text style={{ color: C.muted }}>Nothing logged yet.</Text>) : null}
           {tab === 'sources' ? (run.sources.length ? run.sources.map((s) => <Text key={s} selectable style={{ color: C.brandDeep, fontSize: 13.5 }}>{s}</Text>) : <Text style={{ color: C.muted }}>No sources saved yet.</Text>) : null}
-          {run.error ? <ErrorNote message={run.error} /> : null}
+          {run.error && run.status !== 'failed' ? <ErrorNote message={run.error} /> : null}
           {active ? (
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, borderWidth: 1, borderColor: C.line2, borderRadius: 18, padding: 6, backgroundColor: C.card }}>
               <TextInput value={steer} onChangeText={setSteer} placeholder="Steer this run…" placeholderTextColor={C.muted} style={{ flex: 1, minHeight: 44, paddingHorizontal: 10, fontSize: 15, color: C.ink }} />

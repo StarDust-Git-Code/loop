@@ -9,6 +9,9 @@ import { buildSystem } from '../api/prompt.js';
 import { getSettings } from '../api/settings.js';
 import { MATE, defaultConfig } from '../api/mates.js';
 import { toolsFor, runTool } from '../api/tools.js';
+import { getCall, missionPrompt, FINISH_DECL, wrapUp } from '../api/calls.js';
+import { setToolHooks } from '../api/toolhooks.js';
+import { notify as anyNotify } from '../api/notify.js';
 import { toSchema } from '../api/toolcalls.js';
 
 const MAX_CALLS = num('VOICE_MAX_CALLS', 3);
@@ -20,6 +23,7 @@ const VOICES = { planner: 'Kore', research: 'Charon', code: 'Fenrir', flow: 'Aoe
 // Calls get every tool the Mate has in chat. Tools that need approval stay off unless the owner runs in auto mode (nobody can tap Approve mid-call). Everything passes through the normal tool runner.
 const gType = (n) => { if (Array.isArray(n)) return n.map(gType); if (n && typeof n === 'object') return Object.fromEntries(Object.entries(n).filter(([k]) => !['additionalProperties', '$schema', 'default', 'examples', 'title'].includes(k)).map(([k, v]) => [k, k === 'type' && typeof v === 'string' ? v.toUpperCase() : gType(v)])); return n; };
 let active = 0;
+setToolHooks({ notify: anyNotify });
 
 /** Newest Live-capable model this key can use, unless VOICE_MODEL pins one. */
 let picked = { at: 0, id: '' };
@@ -55,7 +59,9 @@ async function handle(ws, q) {
   if (active >= MAX_CALLS) return fail('The line is busy. Try again in a minute.');
   let user; try { user = await auth.verifyIdToken(q.get('token') ?? ''); } catch { return fail('Sign in again to call.'); }
   active++; let up, ended = false; const started = Date.now(); let last = Date.now();
-  const end = (why) => { if (ended) return; ended = true; active--; clearInterval(tick); try { up?.close(); } catch { /* ignore */ } say({ type: 'end', why }); try { ws.close(); } catch { /* ignore */ } };
+  const callId = String(q.get('call') ?? '').slice(0, 60); const transcript = []; let finish = null, hangAfterTurn = false, whyEnded = '';
+  const note = (who, text) => { const t = transcript.at(-1); if (t && t.who === who) t.text += text; else transcript.push({ who, text }); };
+  const end = (why) => { if (ended) return; ended = true; active--; whyEnded = why; if (callId) void wrapUp(user.uid, callId, { transcript, finish, why }).catch(() => {}); clearInterval(tick); try { up?.close(); } catch { /* ignore */ } say({ type: 'end', why }); try { ws.close(); } catch { /* ignore */ } };
   const tick = setInterval(() => { if (Date.now() - started > MAX_SECONDS * 1000) end('time limit'); else if (Date.now() - last > IDLE_SECONDS * 1000) end('silence'); }, 5000);
   ws.on('close', () => end('hangup')); ws.on('error', () => end('error'));
   try {
@@ -64,6 +70,8 @@ async function handle(ws, q) {
     const cfg = cfgDoc.exists ? cfgDoc.data() : defaultConfig(MATE[mateKey], now());
     const base = await buildSystem({ uid: user.uid, mateKey, cfg, mode: 'chat', query: '', settings, tools: [], others: [] });
     const reason = String(q.get('reason') ?? '').slice(0, 300);
+    const call = callId ? await getCall(user.uid, callId) : null;
+    if (call) await userCol(user.uid, 'calls').doc(callId).set({ status: 'answered', answeredAt: now(), updatedAt: now() }, { merge: true }).catch(() => {});
     // Context: the most recent chat (the one the call was started from, else the newest with this Mate) so the call continues it.
     let recap = '';
     try {
@@ -74,9 +82,9 @@ async function handle(ws, q) {
     } catch { /* context is best effort */ }
     const allowed = toolsFor(cfg.tools, { ...settings, permissionMode: settings.permissionMode }, mateKey).filter((t) => !(t.needsApproval && settings.permissionMode !== 'auto'));
     const declarations = allowed.map((t) => { const f = toSchema(t).function; return { name: f.name, description: f.description, ...(Object.keys(f.parameters.properties).length ? { parameters: gType(f.parameters) } : {}) }; });
-    const system = `${base}\n\nThis is a live VOICE CALL with the owner. Speak naturally in short sentences, one or two at a time. No markdown, lists, URLs or code read aloud. Ask one question at a time. If you cannot do something by voice, say you will put it in chat.${reason ? `\nYou called the owner because: ${reason}. Start by saying why.` : ''}${declarations.length ? '\nYou have tools. Use them quietly when they help (look something up, check the schedule, save a note) and say the answer, not the tool name. Only change things (save, add, update, send) when the owner asked.' : ''}${recap}`;
+    const system = `${base}\n\nThis is a live VOICE CALL with the owner. Speak naturally in short sentences, one or two at a time. No markdown, lists, URLs or code read aloud. Ask one question at a time. If you cannot do something by voice, say you will put it in chat.${call ? `\n\n${missionPrompt(call)}` : reason ? `\nYou called the owner because: ${reason}. Start by saying why.` : ''}${declarations.length ? '\nYou have tools. Use them quietly when they help (look something up, check the schedule, save a note) and say the answer, not the tool name. Only change things (save, add, update, send) when the owner asked.' : ''}${recap}`;
     up = new WebSocket(`${GEMINI_WS}?key=${encodeURIComponent(env('GEMINI_API_KEY'))}`);
-    up.on('open', () => up.send(JSON.stringify({ setup: { model: `models/${model}`, generationConfig: { responseModalities: ['AUDIO'], speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: VOICES[mateKey] ?? 'Puck' } } } }, systemInstruction: { parts: [{ text: system }] }, ...(declarations.length ? { tools: [{ functionDeclarations: declarations }] } : {}), inputAudioTranscription: {}, outputAudioTranscription: {} } })));
+    up.on('open', () => up.send(JSON.stringify({ setup: { model: `models/${model}`, generationConfig: { responseModalities: ['AUDIO'], speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: VOICES[mateKey] ?? 'Puck' } } } }, systemInstruction: { parts: [{ text: system }] }, ...((declarations.length || call) ? { tools: [{ functionDeclarations: call ? [...declarations, FINISH_DECL] : declarations }] } : {}), inputAudioTranscription: {}, outputAudioTranscription: {} } })));
     up.on('message', (raw) => {
       let m; try { m = JSON.parse(raw.toString()); } catch { return; }
       if (m.setupComplete) { say({ type: 'ready', mate: mateKey, name: MATE[mateKey].name, model }); if (reason || q.get('greet')) up.send(JSON.stringify({ realtimeInput: { text: reason ? 'Start the call now.' : 'Greet the owner briefly.' } })); return; }
@@ -84,6 +92,7 @@ async function handle(ws, q) {
         last = Date.now();
         void Promise.all(m.toolCall.functionCalls.map(async (fc) => {
           say({ type: 'tool', name: fc.name });
+          if (fc.name === 'finish_call') { finish = { summary: String(fc.args?.summary ?? ''), answers: [].concat(fc.args?.answers ?? []).map(String), followups: [].concat(fc.args?.followups ?? []).map(String) }; hangAfterTurn = true; return { id: fc.id, name: fc.name, response: { output: 'Recorded. Say a brief goodbye now.' } }; }
           const r = await runTool(fc.name, fc.args ?? {}, { uid: user.uid, settings, mate: mateKey, convId: q.get('conv') || undefined }, allowed);
           return { id: fc.id, name: fc.name, response: r.ok ? { output: r.text.slice(0, 3000) } : { error: r.text.slice(0, 500) } };
         })).then((functionResponses) => { if (up?.readyState === WebSocket.OPEN) up.send(JSON.stringify({ toolResponse: { functionResponses } })); }).catch(() => {});
@@ -94,9 +103,9 @@ async function handle(ws, q) {
       last = Date.now();
       if (sc.interrupted) say({ type: 'interrupted' });
       for (const p of sc.modelTurn?.parts ?? []) if (p.inlineData?.data && ws.readyState === WebSocket.OPEN) ws.send(Buffer.from(p.inlineData.data, 'base64'));
-      if (sc.inputTranscription?.text) say({ type: 'transcript', who: 'you', text: sc.inputTranscription.text });
-      if (sc.outputTranscription?.text) say({ type: 'transcript', who: 'mate', text: sc.outputTranscription.text });
-      if (sc.turnComplete) say({ type: 'turn' });
+      if (sc.inputTranscription?.text) { say({ type: 'transcript', who: 'you', text: sc.inputTranscription.text }); note('you', sc.inputTranscription.text); }
+      if (sc.outputTranscription?.text) { say({ type: 'transcript', who: 'mate', text: sc.outputTranscription.text }); note('mate', sc.outputTranscription.text); }
+      if (sc.turnComplete) { say({ type: 'turn' }); if (hangAfterTurn) setTimeout(() => end('done'), 2500); }
     });
     up.on('close', (code, reason2) => end(code === 1000 ? 'done' : `model closed (${code}) ${reason2?.toString().slice(0, 80) ?? ''}`));
     up.on('error', () => end('model error'));

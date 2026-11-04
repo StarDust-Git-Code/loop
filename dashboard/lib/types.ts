@@ -16,12 +16,13 @@ export type Workflow = Entity<WorkflowIn>;
 /* ---------- runs ---------- */
 export type RunStatus = 'queued' | 'running' | 'waiting_approval' | 'done' | 'failed' | 'stopped';
 export type StepStatus = 'waiting' | 'running' | 'done' | 'failed';
-export type RunStep = { id: ID; mate: MateKey; label: string; status: StepStatus; startedAt?: string; finishedAt?: string };
+export type RunStep = { id: ID; mate: MateKey; label: string; status: StepStatus; startedAt?: string; finishedAt?: string; attempt?: number; error?: string };
 export type LogLine = { at: string; source: string; text: string };
+export type CallReport = { id: ID; mate: MateKey; status: 'ringing' | 'answered' | 'done' | 'missed'; goal?: string; questions: string[]; report: { summary: string; answers: string[]; followups: string[]; outcome: string } | null };
 export type Approval = { id: ID; mate: MateKey; text: string; paths: string[]; status: 'pending' | 'approved' | 'denied' };
 export type RunIn = {
   title: string; prompt: string; workflowId?: ID; askFirst: boolean; status: RunStatus;
-  steps: RunStep[]; log: LogLine[]; approvals: Approval[]; fileIds: ID[]; sources: string[]; report: string; notes: string; error?: string;
+  steps: RunStep[]; log: LogLine[]; approvals: Approval[]; fileIds: ID[]; sources: string[]; report: string; notes: string; error?: string; failure?: { step: string | null; stepId: string | null; error: string; attempts: number; at: string } | null;
 };
 export type Run = Entity<RunIn>;
 export type RunEvent =
@@ -51,7 +52,7 @@ export type Skill = Entity<SkillIn>;
 export type McpIn = { name: string; transport: 'http' | 'stdio'; url: string; command: string; description: string; catalogId?: string; enabled: boolean; status: 'unverified' | 'connected' | 'error'; tools: string[] };
 export type McpServer = Entity<McpIn>;
 
-export type Provider = 'telegram' | 'whatsapp' | 'gdrive' | 'github' | 'email';
+export type Provider = 'telegram' | 'discord' | 'whatsapp' | 'gdrive' | 'github' | 'email';
 export type ConnectionIn = { provider: Provider; label: string; status: 'disconnected' | 'pending' | 'connected' | 'error'; config: Record<string, string> };
 export type Connection = Entity<ConnectionIn>;
 
@@ -75,7 +76,7 @@ export type SettingsData = {
   displayName: string; email: string; workspaceName: string; timezone: string; model: string;
   askBeforeRisky: boolean; maxSteps: number; allowNetwork: boolean; stopAfterMinutes: number;
   notifyTelegram: boolean; notifyEmail: boolean;
-  permissionMode: 'ask' | 'auto' | 'plan'; retriesOnFailure: number;
+  permissionMode: 'ask' | 'auto' | 'plan'; retriesOnFailure: number; verifySteps: boolean; autoMemory: boolean;
   hookBeforeTool: string; hookAfterStep: string; hookOnFinish: string; hookOnFailure: string;
   guardContainer: boolean; guardPurchases: boolean; guardLog: boolean;
   chunkSize: number; overlap: number; topK: number; hybrid: boolean; rerank: boolean; citeAlways: boolean; memoryScope: 'private' | 'shared' | 'project';

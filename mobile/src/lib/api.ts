@@ -1,7 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { idToken } from './auth';
 import { API_URL, DEFAULT_VOICE_URL } from './theme';
-import type { ChatEvent, Conversation, Memory, MateConfig, Run, Settings, Task, CalEvent, Skill, Workflow, Connection, FileItem } from './types';
+import type { CallReport, ChatEvent, Conversation, Memory, MateConfig, Run, Settings, Task, CalEvent, Skill, Workflow, Connection, FileItem } from './types';
 
 export class ApiError extends Error { constructor(m: string, public status = 0) { super(m); } }
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -49,6 +49,7 @@ export const api = {
     list: () => call<Run[]>('GET', '/runs'), get: (id: string) => call<Run>('GET', `/runs/${id}`), remove: (id: string) => call<void>('DELETE', `/runs/${id}`),
     start: (prompt: string, askFirst = true) => call<Run>('POST', '/runs', { prompt, askFirst }),
     control: (id: string, a: 'stop' | 'pause' | 'resume') => call<unknown>('POST', `/runs/${id}/${a}`),
+    retry: (id: string) => call<unknown>('POST', `/runs/${id}/retry`),
     steer: (id: string, text: string) => call<unknown>('POST', `/runs/${id}/steer`, { text }),
     decide: (id: string, aid: string, decision: 'approved' | 'denied') => call<unknown>('POST', `/runs/${id}/approvals/${aid}`, { decision }),
     update: (id: string, b: Partial<Run>) => call<Run>('PATCH', `/runs/${id}`, b),
@@ -57,6 +58,8 @@ export const api = {
   workflows: repo<Workflow>('/workflows'),
   connections: { ...repo<Connection>('/connections'), test: (id: string) => call<{ status: string; message?: string }>('POST', `/connections/${id}/test`) },
   telegramCode: (connectionId?: string) => call<{ code: string; bot?: string | null }>('POST', '/telegram/link-code', { connectionId }).then((r) => ({ code: r.code, link: r.bot ? `https://t.me/${r.bot.replace(/^@/, '')}` : undefined })),
+  discordCode: (connectionId?: string) => call<{ code: string; command: string; invite?: string | null }>('POST', '/discord/link-code', { connectionId }),
+  calls: { get: (id: string) => call<CallReport>('GET', `/calls/${id}`) },
   files: { list: () => call<FileItem[]>('GET', '/files'), remove: (id: string) => call<void>('DELETE', `/files/${id}`) },
 };
 

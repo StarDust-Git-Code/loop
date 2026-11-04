@@ -5,7 +5,7 @@ import { nextRun } from '../lib/cron.js';
 import { db, userCol } from './db.js';
 import { getSettings } from './settings.js';
 import { startRun } from './engine.js';
-import { notify } from './telegram.js';
+import { notify } from './notify.js';
 
 const jobs = db.collection('jobs');
 const jid = (uid, kind, id) => `${uid}_${kind}_${id}`;

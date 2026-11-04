@@ -73,6 +73,8 @@ function Safety({ st, set }: P) {
         <h2 style={{ margin: '0 0 12px', fontSize: 18 }}>How much freedom Mates get</h2>
         <Tabs value={st.permissionMode} onChange={(v) => void set({ permissionMode: v })} options={[{ id: 'ask', label: 'Ask first' }, { id: 'auto', label: 'Auto-edit' }, { id: 'plan', label: 'Plan only' }]} />
         <p style={{ color: 'var(--muted)', fontSize: 13.5, lineHeight: 1.55, margin: '12px 0 0' }}>{{ ask: 'Mates stop and ask before they write files outside the workspace, send messages or spend anything.', auto: 'Mates edit files inside the workspace on their own. Sending and spending still ask.', plan: 'Mates only plan. Nothing runs until you approve each step.' }[st.permissionMode]}</p>
+        <Row label="Check each step's result" sub="A quick second look at every step. A weak result is redone with feedback before moving on."><Toggle label="Check each step's result" checked={st.verifySteps} onChange={(v) => void set({ verifySteps: v })} /></Row>
+        <Row label="Remember things automatically" sub="Mates save lasting facts from your chats (like what you enjoy) into Memory. You can edit or delete them any time."><Toggle label="Remember things automatically" checked={st.autoMemory} onChange={(v) => void set({ autoMemory: v })} /></Row>
         <Row label="Ask before risky actions" sub="File writes, purchases and anything outside the sandbox wait for your OK."><Toggle label="Ask before risky actions" checked={st.askBeforeRisky} onChange={(v) => void set({ askBeforeRisky: v })} /></Row>
         <Row label="Allow web access" sub="Lets Mates search and open pages."><Toggle label="Allow web access" checked={st.allowNetwork} onChange={(v) => void set({ allowNetwork: v })} /></Row>
       </div>

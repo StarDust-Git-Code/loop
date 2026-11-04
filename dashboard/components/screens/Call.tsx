@@ -3,7 +3,8 @@ import { useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { MATES, MATE_DEFS, mateImg, mateName } from '../../lib/mates';
 import { startCall, VOICE_URL, type CallHandle } from '../../lib/voice';
-import type { MateKey } from '../../lib/types';
+import type { CallReport, MateKey } from '../../lib/types';
+import { api } from '../../lib/api';
 import { Btn, ErrorNote, Page } from '../ui/ui';
 import { Icon } from '../ui/Icon';
 
@@ -19,7 +20,8 @@ export function Call() {
   const [err, setErr] = useState(''); const [lines, setLines] = useState<Line[]>([]); const [muted, setMuted] = useState(false);
   const [secs, setSecs] = useState(0); const [lvl, setLvl] = useState(0);
   const h = useRef<CallHandle | null>(null); const end = useRef<HTMLDivElement>(null);
-  const conv = qp.get('conv') ?? '';
+  const conv = qp.get('conv') ?? ''; const callId = qp.get('call') ?? '';
+  const [report, setReport] = useState<CallReport | null>(null);
   const [tool, setTool] = useState('');
 
   useEffect(() => { if (state !== 'live') return; const t0 = Date.now(); const t = setInterval(() => { setSecs(Math.floor((Date.now() - t0) / 1000)); setLvl(h.current?.level() ?? 0); }, 250); return () => clearInterval(t); }, [state]);
@@ -35,8 +37,8 @@ export function Call() {
         else if (e.type === 'tool') { setTool(e.name); setTimeout(() => setTool(''), 2500); }
         else if (e.type === 'transcript') add(e.who, e.text);
         else if (e.type === 'error') { setErr(e.message); setState('idle'); }
-        else if (e.type === 'end') { setState('idle'); if (e.why && !['closed', 'hangup'].includes(e.why)) setErr(e.why === 'silence' ? 'Call ended after a long silence.' : e.why === 'time limit' ? 'Call reached the time limit.' : e.why); }
-      }, conv);
+        else if (e.type === 'end') { setState('idle'); if (callId) { let n = 0; const poll = async () => { const r = await api.calls.get(callId); if (r?.report) setReport(r); else if (n++ < 8) setTimeout(() => void poll(), 2000); }; setTimeout(() => void poll(), 2000); } if (e.why && !['closed', 'hangup'].includes(e.why)) setErr(e.why === 'silence' ? 'Call ended after a long silence.' : e.why === 'time limit' ? 'Call reached the time limit.' : e.why); }
+      }, conv, callId);
     } catch (e) { setErr(e instanceof Error ? (e.name === 'NotAllowedError' ? 'Microphone permission is needed to call.' : e.message) : 'Could not start the call.'); setState('idle'); }
   }
   const mm = String(Math.floor(secs / 60)).padStart(2, '0'), ss = String(secs % 60).padStart(2, '0');
@@ -68,6 +70,12 @@ export function Call() {
             <button type="button" onClick={() => h.current?.hangup()} style={{ ...row, border: 0, borderRadius: 12, background: '#B3261E', color: '#fff', fontWeight: 700, padding: '0 20px', minHeight: 44 }}><Icon name="hangup" />Hang up</button></>}
         </div>
         {tool && <span className="mono" style={{ fontSize: 12, background: '#ECE7FF', color: '#4F34D6', borderRadius: 8, padding: '4px 10px' }}>Using {tool.replace(/_/g, ' ')}…</span>}
+        {report?.report && (
+          <div role="status" style={{ width: '100%', background: '#F4F0FF', border: '1px solid rgba(106,77,244,.3)', borderRadius: 16, padding: '14px 16px' }}>
+            <b style={{ fontSize: 14 }}>Call report sent to {mateName(report.mate)}</b>
+            <p style={{ margin: '6px 0 0', fontSize: 14, lineHeight: 1.55 }}>{report.report.summary}</p>
+            {report.report.answers.length > 0 && <ul style={{ margin: '8px 0 0', paddingLeft: 18, fontSize: 13.5, lineHeight: 1.6 }}>{report.report.answers.map((a, i) => <li key={i}>{a}</li>)}</ul>}
+          </div>)}
         {lines.length > 0 && (
           <div aria-live="polite" style={{ width: '100%', maxHeight: 320, overflow: 'auto', display: 'flex', flexDirection: 'column', gap: 8, background: '#fff', border: '1px solid rgba(31,26,23,.12)', borderRadius: 16, padding: 14 }}>
             {lines.map((l, i) => <div key={i} style={{ alignSelf: l.who === 'you' ? 'flex-end' : 'flex-start', maxWidth: '85%', background: l.who === 'you' ? '#ECE7FF' : '#F4F2FA', borderRadius: 14, padding: '8px 12px', fontSize: 14, lineHeight: 1.5 }}>{l.text}</div>)}

@@ -1,5 +1,5 @@
 import type { Api, Repo } from './contract';
-import type { ChatEvent, ID, RunEvent } from '../types';
+import type { CallReport, ChatEvent, ID, RunEvent } from '../types';
 import { idToken } from '../auth';
 
 /** REST + SSE adapter. Set NEXT_PUBLIC_API_URL to switch the dashboard to it. Endpoints: see BACKEND.md. */
@@ -54,6 +54,7 @@ export function createHttpApi(base: string): Api {
     return act('/runs', { ...rest, fileIds: ids });
   };
   runs.control = (id, action) => act(`/runs/${id}/${action}`);
+  runs.retry = (id) => act(`/runs/${id}/retry`);
   runs.steer = (id, text) => act(`/runs/${id}/steer`, { text });
   runs.decide = (runId, approvalId, decision) => act(`/runs/${runId}/approvals/${approvalId}`, { decision });
   runs.stream = (id, onEvent) => {
@@ -105,6 +106,8 @@ export function createHttpApi(base: string): Api {
   const connections = repo('/connections') as Api['connections'];
   connections.chats = (id) => call("GET", `/connections/${id}/chats`);
   connections.test = (id) => act(`/connections/${id}/test`);
+  const callsApi = { get: (id: ID) => call<CallReport>('GET', `/calls/${id}`).catch(() => undefined) };
+  connections.discordLinkCode = () => call('POST', '/discord/link-code', {});
   connections.telegramLinkCode = () => call('POST', '/telegram/link-code', {});
   const files = repo('/files') as Api['files'];
   files.upload = async (file) => { const fd = new FormData(); fd.append('file', file); return act('/files', fd); };
@@ -124,7 +127,7 @@ export function createHttpApi(base: string): Api {
     capabilities: { backend: true },
     auth: { session: async () => ({ signedIn: true }), signOut: async () => {} },
     tasks: repo('/tasks'), workflows: repo('/workflows'), automations: repo('/automations'), knowledge: repo('/knowledge'),
-    memories: repo('/memories'), skills: repo('/skills'), mcp, connections, conversations, events: repo('/events'), files,
+    memories: repo('/memories'), skills: repo('/skills'), mcp, connections, calls: callsApi, conversations, events: repo('/events'), files,
     mateConfigs: repo('/mates'), runs, providers,
     search: { knowledge: (q) => call('GET', `/knowledge/search?q=${encodeURIComponent(q)}`) },
     settings: {

@@ -7,7 +7,9 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { PILL_SPACE } from '../components/PillBar';
 import { Avatar, Btn, Chip, ErrorNote, Icon, Press } from '../components/ui';
 import { MATE_DEFS, mateName, type MateKey } from '../lib/mates';
+import { api } from '../lib/api';
 import { C, R } from '../lib/theme';
+import type { CallReport } from '../lib/types';
 import { startCall, type CallHandle } from '../lib/voice';
 
 type Line = { id: number; who: 'you' | 'mate'; text: string };
@@ -20,11 +22,12 @@ function Pulse({ level, live }: { level: number; live: boolean }) {
   return <Animated.View style={[{ position: 'absolute', width: 170, height: 170, borderRadius: 85, backgroundColor: 'rgba(106,77,244,0.16)' }, a]} />;
 }
 
-export default function CallScreen({ mate: mateParam, reason, conv }: { mate?: string; reason?: string; conv?: string }) {
+export default function CallScreen({ mate: mateParam, reason, conv, call }: { mate?: string; reason?: string; conv?: string; call?: string }) {
   useKeepAwake();
   const insets = useSafeAreaInsets();
   const [mate, setMate] = useState<MateKey>((mateParam as MateKey) || 'mimo');
   const [state, setState] = useState<'idle' | 'connecting' | 'live'>('idle');
+  const [report, setReport] = useState<CallReport | null>(null);
   const [err, setErr] = useState(''); const [lines, setLines] = useState<Line[]>([]); const [muted, setMuted] = useState(false);
   const [secs, setSecs] = useState(0); const [lvl, setLvl] = useState(0); const [tool, setTool] = useState('');
   const h = useRef<CallHandle | null>(null); const id = useRef(0);
@@ -42,8 +45,8 @@ export default function CallScreen({ mate: mateParam, reason, conv }: { mate?: s
         else if (e.type === 'tool') { setTool(e.name); setTimeout(() => setTool(''), 2500); }
         else if (e.type === 'transcript') add(e.who, e.text);
         else if (e.type === 'error') { setErr(e.message); setState('idle'); }
-        else if (e.type === 'end') { setState('idle'); h.current = null; if (e.why && WHY[e.why]) setErr(WHY[e.why]); }
-      }, conv ?? '');
+        else if (e.type === 'end') { setState('idle'); h.current = null; if (call) { let n = 0; const poll = () => api.calls.get(call).then((r) => { if (r.report) setReport(r); else if (n++ < 8) setTimeout(poll, 2000); }).catch(() => {}); setTimeout(poll, 2000); } if (e.why && WHY[e.why]) setErr(WHY[e.why]); }
+      }, conv ?? '', call ?? '');
     } catch (e) { setErr(e instanceof Error ? e.message : 'Could not start the call.'); setState('idle'); }
   };
   const hang = () => { void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy); h.current?.hangup(); h.current = null; setState('idle'); };
@@ -62,6 +65,12 @@ export default function CallScreen({ mate: mateParam, reason, conv }: { mate?: s
           {MATE_DEFS.map((d) => <Chip key={d.key} label={d.name} on={mate === d.key} onPress={() => setMate(d.key)} />)}
         </ScrollView>
       ) : null}
+      {report?.report ? (
+        <View style={{ backgroundColor: C.tint2, borderWidth: 1, borderColor: 'rgba(106,77,244,0.3)', borderRadius: R.lg, padding: 14, gap: 4 }}>
+          <Text style={{ fontWeight: '800', color: C.ink }}>Call report sent to {mateName(report.mate)}</Text>
+          <Text style={{ color: C.ink2, fontSize: 14, lineHeight: 20 }}>{report.report.summary}</Text>
+          {report.report.answers.map((a, i) => <Text key={i} style={{ color: C.ink2, fontSize: 13.5, lineHeight: 19 }}>- {a}</Text>)}
+        </View>) : null}
       <FlatList data={lines} keyExtractor={(l) => String(l.id)} style={{ flex: 1 }} contentContainerStyle={{ gap: 8, paddingVertical: 6 }}
         renderItem={({ item }) => (
           <View style={{ alignSelf: item.who === 'you' ? 'flex-end' : 'flex-start', maxWidth: '85%', backgroundColor: item.who === 'you' ? C.tint : '#fff', borderWidth: 1, borderColor: C.line, borderRadius: R.lg, paddingHorizontal: 12, paddingVertical: 8 }}>

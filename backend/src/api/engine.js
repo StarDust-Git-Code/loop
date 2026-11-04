@@ -7,8 +7,9 @@ import { chat, extractJson, effortOf } from './llm.js';
 import { MATE_DEFS, persona, PLAN_JSON_PROMPT } from './mates.js';
 import { converse } from './agent.js';
 import { getSettings } from './settings.js';
-import { putFile, artifactsReady } from './files.js';
-import { notify } from './telegram.js';
+import { putFile, storageReady as artifactsReady } from './files.js';
+import { notify } from './notify.js';
+import { learnFromTurn } from './memory.js';
 
 const live = new Map();      // runId -> state
 const jobWaiters = new Map(); // jobId -> resolve(result)
@@ -87,16 +88,39 @@ function ask(st, step, text) {
 const needsApproval = (st, kind) => kind !== 'think' && (st.run.askFirst || (st.settings.askBeforeRisky && st.settings.permissionMode !== 'auto'));
 
 /* ------------------------------------------------------------------ steps */
-async function stepThink(st, step) {
+async function stepThink(st, step, feedback = '') {
   const cfg = st.mates[step.mate];
   const steer = st.steer.splice(0).join('\n');
   const r = await converse({
     uid: st.uid, mateKey: step.mate, cfg: cfg ?? {}, settings: st.settings, ctx: { runId: st.run.id },
-    history: [{ role: 'user', content: `Overall job:\n${st.run.prompt}\n\nNotes so far:\n${st.run.notes || '(none)'}\n\n${steer ? `Owner steering: ${steer}\n\n` : ''}Your step: ${step.label}\nAnswer with the result of this step only.` }],
+    history: [{ role: 'user', content: `Overall job:\n${st.run.prompt}\n\nNotes so far:\n${st.run.notes || '(none)'}\n\n${steer ? `Owner steering: ${steer}\n\n` : ''}${feedback ? `Your previous attempt was rejected: ${feedback}\nFix that this time.\n\n` : ''}Your step: ${step.label}\nAnswer with the result of this step only.` }],
     emit: (ev) => { if (ev.type === 'tool') log(st, step.mate, `Using tool: ${ev.name}`); },
   });
-  log(st, step.mate, r.text.slice(0, 600));
-  st.run.notes = (st.run.notes + `\n\n## ${step.label}\n${r.text}`).slice(-NOTES_CAP);
+  return r.text;
+}
+
+/** Cheap second opinion on a step's output. Lenient: only rejects empty, off-topic, refused or clearly broken output. */
+async function verifyStep(st, step, output) {
+  if (st.settings.verifySteps === false) return { ok: true };
+  if (!String(output).trim()) return { ok: false, issue: 'The step produced no output.' };
+  try {
+    const r = await chat(st.uid, { model: st.settings.fastModel || st.settings.model, json: true, temperature: 0, maxTokens: 200, effort: 'low', messages: [
+      { role: 'system', content: 'You check whether a work step\'s output accomplishes the step. Reply JSON only: {"ok":true|false,"issue":"one sentence on what is missing or wrong"}. Be lenient: answer ok=false only if the output is empty, off-topic, a refusal, shows an unhandled error, or is clearly incomplete.' },
+      { role: 'user', content: `Job: ${st.run.prompt.slice(0, 600)}\nStep: ${step.label}\n\nOutput:\n${String(output).slice(0, 3000)}` }] });
+    const j = extractJson(r.text); return { ok: j?.ok !== false, issue: String(j?.issue ?? '').slice(0, 300) };
+  } catch { return { ok: true }; }
+}
+
+/** What happened, why it stopped, and what to do next: written when a run fails so it never ends as a bare "failed". */
+async function failureReport(st, failedStep, err, attempts) {
+  const done = st.run.steps.filter((x) => x.status === 'done').map((x) => `- ${x.label}`).join('\n') || '(none)';
+  const base = `## What went wrong\n\nStep **${failedStep?.label ?? 'unknown'}** failed after ${attempts} attempt(s).\n\n> ${String(err).slice(0, 400)}\n\n## Finished before it stopped\n\n${done}\n`;
+  try {
+    const r = await chat(st.uid, { model: st.settings.fastModel || st.settings.model, maxTokens: 450, temperature: 0.2, effort: 'low', messages: [
+      { role: 'system', content: `${persona('ops')} Write a short plain-language failure report in Markdown with two sections: "Likely cause" and "What to try next" (2-4 concrete bullets). No preface.` },
+      { role: 'user', content: `Job: ${st.run.prompt.slice(0, 500)}\nFailed step: ${failedStep?.label}\nError: ${String(err).slice(0, 500)}\nRecent log:\n${st.run.log.slice(-8).map((l) => `${l.source}: ${l.text}`).join('\n').slice(0, 1500)}` }] });
+    return `${base}\n${r.text}`;
+  } catch { return `${base}\n## What to try next\n\n- Press Retry to resume from the failed step.\n- Check the log for details.`; }
 }
 
 async function stepCode(st, step, idx) {
@@ -120,7 +144,7 @@ async function stepCode(st, step, idx) {
 }
 
 async function stepFile(st, step) {
-  if (!artifactsReady()) throw new Error('Artifacts service is not configured (ARTIFACTS_URL).');
+  if (!artifactsReady()) throw new Error('Storage is unavailable.');
   const r = await chat(st.uid, { model: st.settings.model, maxTokens: 3000, messages: [{ role: 'system', content: persona(step.mate) }, { role: 'user', content: `Write the deliverable for this step as Markdown. No preface.\n\nJob:\n${st.run.prompt}\n\nNotes:\n${st.run.notes}\n\nStep: ${step.label}` }] });
   const name = `${step.label.replace(/[^\w\- ]+/g, '').trim().replace(/\s+/g, '-').slice(0, 50) || 'output'}.md`;
   const f = await putFile(st.uid, { name, mime: 'text/markdown', buf: Buffer.from(r.text, 'utf8'), source: 'run', runId: st.run.id });
@@ -135,37 +159,54 @@ async function stepNotify(st, step) {
 
 /* ------------------------------------------------------------------ main loop */
 async function execute(st) {
+  let failed = null, attempts = 0;
   try {
+    st.run.error = ''; st.run.failure = null;
     emit(st, { type: 'status', status: 'running' });
-    log(st, 'planner', 'Planning…');
-    let wf; if (st.run.workflowId) wf = (await userCol(st.uid, 'workflows').doc(st.run.workflowId).get()).data();
-    const plan = await makePlan(st, wf);
-    const steps = plan.map((p, i) => ({ id: `s${i + 1}`, mate: p.mate, label: p.label, status: 'waiting', _p: p }));
-    for (const s of steps) emit(st, { type: 'step', step: { id: s.id, mate: s.mate, label: s.label, status: 'waiting' } });
+    if (!st.run.plan?.length) {
+      log(st, 'planner', 'Planning…');
+      let wf; if (st.run.workflowId) wf = (await userCol(st.uid, 'workflows').doc(st.run.workflowId).get()).data();
+      st.run.plan = (await makePlan(st, wf)).map((p, i) => ({ ...p, id: `s${i + 1}` }));
+    } else log(st, 'planner', 'Resuming from where it stopped.');
+    const steps = st.run.plan.map((p) => ({ id: p.id, mate: p.mate, label: p.label, status: st.run.steps.find((x) => x.id === p.id)?.status === 'done' ? 'done' : 'waiting', _p: p }));
+    for (const s of steps) if (s.status !== 'done') emit(st, { type: 'step', step: { id: s.id, mate: s.mate, label: s.label, status: 'waiting' } });
     await save(st);
 
     for (let i = 0; i < steps.length; i++) {
       await gate(st);
       const s = steps[i], p = s._p;
+      if (s.status === 'done') continue;
       const view = (status, extra = {}) => ({ id: s.id, mate: s.mate, label: s.label, status, ...extra });
       const started = now();
       if (needsApproval(st, p.kind)) {
         const ok = await ask(st, s, `${s.label} (${p.kind === 'code' ? 'runs the coding agent' : p.kind === 'file' ? 'writes a file to Drive' : 'sends a message'})`);
         if (st.stopped) throw new Stopped();
         emit(st, { type: 'status', status: 'running' });
-        if (!ok) { emit(st, { type: 'step', step: view('failed', { startedAt: started, finishedAt: now() }) }); log(st, 'halo', `Skipped (denied): ${s.label}`); continue; }
+        if (!ok) { emit(st, { type: 'step', step: view('failed', { startedAt: started, finishedAt: now(), error: 'Denied by you.' }) }); log(st, 'halo', `Skipped (denied): ${s.label}`); continue; }
       }
-      emit(st, { type: 'step', step: view('running', { startedAt: started }) });
-      let tries = 0;
+      const maxTries = Math.max(0, Number(st.settings.retriesOnFailure) || 0);
+      let tries = 0, feedback = '';
+      emit(st, { type: 'step', step: view('running', { startedAt: started, attempt: 1 }) });
       for (;;) {
         try {
-          if (p.kind === 'code') await stepCode(st, p, i); else if (p.kind === 'file') await stepFile(st, p); else if (p.kind === 'notify') await stepNotify(st, p); else await stepThink(st, p);
-          emit(st, { type: 'step', step: view('done', { startedAt: started, finishedAt: now() }) });
+          if (p.kind === 'code') await stepCode(st, p, i);
+          else if (p.kind === 'file') await stepFile(st, p);
+          else if (p.kind === 'notify') await stepNotify(st, p);
+          else {
+            const out = await stepThink(st, p, feedback);
+            const v = await verifyStep(st, p, out);
+            if (!v.ok && tries < maxTries) { feedback = v.issue || 'The output did not accomplish the step.'; tries++; log(st, 'ops', `Checked "${s.label}": ${feedback} Trying again (${tries}/${maxTries}).`); emit(st, { type: 'step', step: view('running', { startedAt: started, attempt: tries + 1 }) }); continue; }
+            log(st, s.mate, out.slice(0, 600));
+            st.run.notes = (st.run.notes + `\n\n## ${s.label}\n${out}`).slice(-NOTES_CAP);
+          }
+          emit(st, { type: 'step', step: view('done', { startedAt: started, finishedAt: now(), attempt: tries + 1 }) });
           break;
         } catch (e) {
           if (e instanceof Stopped || st.stopped) throw new Stopped();
-          if (tries++ < st.settings.retriesOnFailure) { log(st, 'ops', `Retrying "${s.label}": ${e.message.slice(0, 200)}`); await sleep(2000); continue; }
-          emit(st, { type: 'step', step: view('failed', { startedAt: started, finishedAt: now() }) });
+          attempts = tries + 1;
+          if (tries++ < maxTries) { feedback = `It crashed with: ${String(e.message).slice(0, 200)}`; log(st, 'ops', `"${s.label}" failed (${String(e.message).slice(0, 160)}). Retrying ${tries}/${maxTries}…`); emit(st, { type: 'step', step: view('running', { startedAt: started, attempt: tries + 1 }) }); await sleep(1500 * tries); continue; }
+          emit(st, { type: 'step', step: view('failed', { startedAt: started, finishedAt: now(), attempt: attempts, error: String(e.message).slice(0, 400) }) });
+          failed = s;
           throw e;
         }
       }
@@ -176,9 +217,16 @@ async function execute(st) {
     st.run.report = fin?.text ?? st.run.notes;
     emit(st, { type: 'status', status: 'done' });
     if (st.settings.notifyTelegram) void notify(st.uid, `Done: ${st.run.title}\n\n${st.run.report.slice(0, 700)}`);
+    void learnFromTurn(st.uid, { user: st.run.prompt, assistant: st.run.report.slice(0, 600), mate: 'planner', settings: st.settings });
   } catch (e) {
     if (e instanceof Stopped) { emit(st, { type: 'status', status: 'stopped' }); log(st, 'ops', 'Stopped.'); }
-    else { st.run.error = String(e.message).slice(0, 500); log(st, 'ops', `Failed: ${st.run.error}`); emit(st, { type: 'status', status: 'failed' }); if (st.settings.notifyTelegram) void notify(st.uid, `Failed: ${st.run.title}\n${st.run.error}`); }
+    else {
+      st.run.error = String(e.message).slice(0, 500); log(st, 'ops', `Failed: ${st.run.error}`);
+      st.run.failure = { step: failed?.label ?? null, stepId: failed?.id ?? null, error: st.run.error, attempts: attempts || 1, at: now() };
+      st.run.report = await failureReport(st, failed, e.message, attempts || 1);
+      emit(st, { type: 'status', status: 'failed' });
+      if (st.settings.notifyTelegram) void notify(st.uid, `Run failed: ${st.run.title}\nStep: ${failed?.label ?? 'planning'}\n${st.run.error}\nOpen the run to see the report and press Retry.`);
+    }
   } finally {
     await save(st);
     await activeRef(st.run.id).delete().catch(() => {});
@@ -195,15 +243,32 @@ export async function startRun(uid, { prompt, workflowId, askFirst = false, file
   const ref = userCol(uid, 'runs').doc();
   const ts = now();
   const run = { id: ref.id, createdAt: ts, updatedAt: ts, title: (title || prompt.trim().split('\n')[0]).slice(0, 80), prompt: prompt.trim().slice(0, 8000), workflowId, askFirst: !!askFirst, status: 'queued', steps: [], log: [], approvals: [], fileIds, sources: [], report: '', notes: '' };
+  return launch(uid, run, settings, mates, unattended, true);
+}
+
+async function launch(uid, run, settings, mates, unattended, fresh) {
   let stop; const stopSignal = new Promise((r) => { stop = r; });
   const st = { uid, run, settings, mates, unattended, subs: new Set(), steer: [], approvals: new Map(), paused: false, stopped: false, stopSignal, stop: () => stop({ ok: false, summary: 'Stopped.' }) };
   live.set(run.id, st);
-  await ref.set(withoutId(run));
-  await activeRef(run.id).set({ uid, at: ts });
+  await runRef(uid, run.id).set(withoutId(run));
+  await activeRef(run.id).set({ uid, at: now() });
   const snapshot = structuredClone(run);
   void execute(st);
   keepAlive();
   return snapshot;
+}
+
+/** Resume a failed or stopped run from its first unfinished step (keeps notes, log and finished steps). */
+export async function retryRun(uid, id) {
+  if (live.has(id)) throw Object.assign(new Error('This run is still active'), { statusCode: 409 });
+  const d = await runRef(uid, id).get(); if (!d.exists) throw Object.assign(new Error('Not found'), { statusCode: 404 });
+  const run = { id, ...d.data() };
+  if (!['failed', 'stopped'].includes(run.status)) throw Object.assign(new Error('Only failed or stopped runs can be retried'), { statusCode: 409 });
+  const settings = await getSettings(uid);
+  const mates = Object.fromEntries((await userCol(uid, 'mates').get()).docs.map((x) => [x.id, x.data()]));
+  run.status = 'queued'; run.error = ''; run.failure = null; run.report = ''; run.steps = (run.steps ?? []).map((x) => (x.status === 'done' ? x : { ...x, status: 'waiting', error: undefined }));
+  run.log = [...(run.log ?? []), { at: now(), source: 'you', text: 'Retry requested.' }].slice(-LOG_CAP);
+  return launch(uid, run, settings, mates, false, false);
 }
 
 const own = (uid, id) => { const st = live.get(id); if (!st || st.uid !== uid) throw Object.assign(new Error('Run is not active'), { statusCode: 409 }); return st; };

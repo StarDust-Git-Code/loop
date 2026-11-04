@@ -1,4 +1,5 @@
 // Dynamic system prompt: rebuilt on every turn from the Mate, the owner's settings, memories, skills and knowledge.
+import { recall } from './memory.js';
 import { MATE, PLANNER_GUIDE, FLOW_GUIDE, MIMO_GUIDE } from './mates.js';
 import { effortOf, providerSummary } from './llm.js';
 import { userCol } from './db.js';
@@ -13,13 +14,9 @@ function clock(tz) {
   catch { return d.toISOString(); }
 }
 
-async function memoriesFor(uid, query, scope, mateKey) {
-  const snap = await userCol(uid, 'memories').limit(300).get();
-  const t = terms(query);
-  const all = snap.docs.map((d) => d.data()).filter((m) => m.scope !== 'private' || scope !== 'shared' || true);
-  const pinned = all.filter((m) => m.pinned).slice(0, 6);
-  const rel = all.filter((m) => !m.pinned).map((m) => ({ m, s: t.reduce((a, x) => a + (m.text.toLowerCase().includes(x) ? 1 : 0), 0) })).filter((x) => x.s).sort((a, b) => b.s - a.s).slice(0, 5).map((x) => x.m);
-  return [...pinned, ...rel].map((m) => `- (${m.kind}) ${clip(m.text, 300)}`);
+async function memoriesFor(uid, query) {
+  const hits = await recall(uid, query, { k: 6, pinned: 6 });
+  return hits.map((m) => `- (${m.kind}) ${clip(m.text, 300)}`);
 }
 
 async function skillsFor(uid, mateKey) {

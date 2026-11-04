@@ -3,8 +3,7 @@
 import { randomBytes } from 'node:crypto';
 import { env, now } from '../lib/env.js';
 import { db, userCol } from './db.js';
-import { chat } from './llm.js';
-import { persona } from './mates.js';
+import { askMate } from './bridge.js';
 
 const tg = (method, body) => fetch(`https://api.telegram.org/bot${env('TELEGRAM_BOT_TOKEN')}/${method}`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body), signal: AbortSignal.timeout(20_000) }).then((r) => r.json());
 export const telegramReady = () => !!env('TELEGRAM_BOT_TOKEN');
@@ -60,7 +59,8 @@ export async function handleUpdate(update) {
   // Only linked chats may talk to the LLM (otherwise anyone who finds the bot spends your quota).
   const uid = (await db.collection('telegramChats').doc(chatId).get()).data()?.uid;
   if (!uid) return send(chatId, 'This chat is not linked yet. Open Loopmates > Connections → Telegram and send me the /start code.');
-  const r = await chat(uid, { messages: [{ role: 'system', content: `${persona('mimo')} You are replying inside Telegram: keep it short.` }, { role: 'user', content: text }], maxTokens: 700 });
+  tg('sendChatAction', { chat_id: chatId, action: 'typing' }).catch(() => {});
+  const r = await askMate(uid, { key: `telegram-${chatId}`, text });
   return send(chatId, r.text);
 }
 

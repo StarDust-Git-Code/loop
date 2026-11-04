@@ -143,3 +143,11 @@ Keep the web look: purple accent `#6A4DF4`, tint `#ECE7FF`, deep text `#1B1822`,
 ## 8. Where to read more
 
 `HANDOFF.md` (setup state), `dashboard/BACKEND.md` (API shapes), `backend/README.md` (services, env vars, tests), `dashboard/lib/types.ts` (all TypeScript types, the best schema reference), `dashboard/lib/api/http.ts` (a working REST and SSE client), `backend/scripts/e2e.mjs` (executable examples of every endpoint, run with `npm test` in `backend/`).
+
+## Intelligence layer (added)
+- **Memory**: `backend/src/api/memory.js` + `vec.js`. Chats are mined in the background for durable facts ("User likes Genshin Impact"); recall is semantic (Gemini/NVIDIA embeddings, int8 vectors stored on the doc, keyword fallback). Knowledge chunks are embedded at index time. Toggle: Settings > autoMemory.
+- **Runs**: each step is verified (cheap second opinion) and retried with feedback; a failed run gets a written failure report, per-step errors, a Log tab and a Retry button that resumes from the failed step (`POST /v1/runs/:id/retry`).
+- **Call missions**: `call_me({reason, goal, questions})` creates `users/{uid}/calls/{id}`; the voice service runs a Gemini Live sub-agent with that mission, it files the result via `finish_call`, and `calls.js:wrapUp` writes the report to the chat, Telegram and Discord. Agents read it with `call_report`.
+- **Discord**: `discord.js`, HTTP interactions at `/discord/interactions` (slash commands /link /ask /run /status). Env: DISCORD_BOT_TOKEN, DISCORD_APP_ID, DISCORD_PUBLIC_KEY.
+- **Telegram and Discord chat** now run the real Mate (tools + memory) via `bridge.js`.
+- **Files**: work without Drive (small files stored inline, <= 700 KB); connect Drive for larger files.

@@ -14,7 +14,7 @@ const KEYS = ['home', 'my-space', 'agents', 'call'];
 
 /** One screen holding all four tabs in a swipeable pager, with the floating pill under it. */
 export default function Main() {
-  const p = useLocalSearchParams<{ tab?: string; mate?: string; reason?: string; conv?: string }>();
+  const p = useLocalSearchParams<{ tab?: string; mate?: string; reason?: string; conv?: string; call?: string }>();
   const start = Math.max(0, KEYS.indexOf(p.tab ?? 'home'));
   const { width } = useWindowDimensions();
   const pager = useRef<PagerView>(null);
@@ -32,7 +32,7 @@ export default function Main() {
         <View key="home" collapsable={false}>{seen.has(0) ? <HomeScreen /> : null}</View>
         <View key="my-space" collapsable={false}>{seen.has(1) ? <MySpaceScreen /> : null}</View>
         <View key="agents" collapsable={false}>{seen.has(2) ? <AgentsScreen /> : null}</View>
-        <View key="call" collapsable={false}>{seen.has(3) ? <CallScreen mate={p.mate} reason={p.reason} conv={p.conv} /> : null}</View>
+        <View key="call" collapsable={false}>{seen.has(3) ? <CallScreen mate={p.mate} reason={p.reason} conv={p.conv} call={p.call} /> : null}</View>
       </PagerView>
       <PillBar progress={progress} width={width} go={(i) => { mark(i); pager.current?.setPage(i); }} />
     </View>

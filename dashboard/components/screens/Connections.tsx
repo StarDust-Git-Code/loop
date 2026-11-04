@@ -5,7 +5,7 @@ import { useRepo } from '../../lib/hooks';
 import { mateImg, mateName } from '../../lib/mates';
 import type { Connection, MateKey, Provider } from '../../lib/types';
 import { useToast } from '../ui/toast';
-import { Btn, confirmThen, ErrorNote, Field, Input, Loading, Modal, Page, Toggle } from '../ui/ui';
+import { Btn, confirmThen, ErrorNote, Field, Input, Loading, Modal, Page, Pill, Toggle } from '../ui/ui';
 import { Icon } from '../ui/Icon';
 
 const card = { background: '#fff', border: '1px solid rgba(27,24,34,.17)', borderRadius: 20, boxShadow: '0 2px 6px rgba(31,26,23,.05)', padding: 22, display: 'flex', flexDirection: 'column', gap: 14, minHeight: 0 } as const;
@@ -37,6 +37,9 @@ export function Connections() {
   const mates = (tg?.config.mates ?? CORE.join(',')).split(',').filter(Boolean);
   const [link, setLink] = useState<{ code: string; bot: string | null; expiresInMinutes: number } | null>(null); const [linking, setLinking] = useState(false);
   useEffect(() => { if (!link || tg) return; const t = setInterval(() => { void reload(); }, 3000); return () => clearInterval(t); }, [link, tg, reload]);
+  const dc = items.find((c) => c.provider === 'discord');
+  const [dlink, setDlink] = useState<{ code: string; command: string; invite: string | null; expiresInMinutes: number } | null>(null); const [dlinking, setDlinking] = useState(false);
+  useEffect(() => { if (!dlink || dc) return; const t = setInterval(() => { void reload(); }, 3000); return () => clearInterval(t); }, [dlink, dc, reload]);
   const def = sheet && OTHER[sheet];
 
   return (
@@ -103,6 +106,30 @@ export function Connections() {
                 <Btn variant="primary" style={{ flex: 1, height: 48 }} onClick={() => toast('Telegram settings saved')}>Save</Btn>
                 <Btn variant="danger" small aria-label="Disconnect Telegram" onClick={() => confirmThen('Disconnect Telegram?', () => remove(tg.id))}><Icon name="close" size={16} /></Btn>
               </div></>}
+          </section>
+
+          <section style={card}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}><span style={{ width: 48, height: 48, borderRadius: 12, background: '#E4E7FF', color: '#3B45C4', fontWeight: 700, display: 'grid', placeItems: 'center' }}>DC</span><div style={{ flex: 1 }}><b style={{ fontSize: 17 }}>Discord</b><div style={{ color: '#6B6572', fontSize: 13 }}>Slash commands: /ask, /run, /status. Run updates and call reports land here.</div></div>{dc && <Pill tone={dc.status === 'connected' ? 'ok' : 'warn'}>{dc.status === 'connected' ? 'Connected' : 'Pending'}</Pill>}</div>
+            {!dc ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                <p style={{ color: '#6B6572', margin: 0, fontSize: 13.5, lineHeight: 1.55 }}>Add the bot to Discord, then get a code here and send <b>/link</b> with it. The bot is set up on the server.</p>
+                {!dlink ? <Btn variant="primary" disabled={dlinking} onClick={async () => { setDlinking(true); try { setDlink(await api.connections.discordLinkCode()); } catch (e) { toast(e instanceof Error ? e.message : 'Could not get a code'); } finally { setDlinking(false); } }}>{dlinking ? 'Getting a code…' : 'Get link code'}</Btn> : (
+                  <div style={{ background: '#F4F0FF', border: '1px solid rgba(106,77,244,.3)', borderRadius: 14, padding: 16, display: 'flex', flexDirection: 'column', gap: 10 }}>
+                    <p style={cap}>SEND THIS IN DISCORD</p>
+                    <code style={{ fontSize: 20, fontWeight: 700, letterSpacing: '.04em', userSelect: 'all' }}>{dlink.command}</code>
+                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                      <Btn small onClick={() => { void navigator.clipboard.writeText(dlink.command); toast('Copied'); }}>Copy</Btn>
+                      {dlink.invite && <Btn small onClick={() => window.open(dlink.invite!, '_blank', 'noopener')}>Add the bot</Btn>}
+                      <Btn small onClick={() => setDlink(null)}>New code</Btn>
+                    </div>
+                    <p style={{ margin: 0, fontSize: 12.5, color: '#6B6572' }}>Expires in {dlink.expiresInMinutes} minutes. This page updates by itself once the bot says "Linked".</p>
+                  </div>)}
+              </div>
+            ) : (
+              <div style={{ display: 'flex', gap: 12 }}>
+                <Btn style={{ flex: 1, height: 44 }} onClick={async () => { try { await api.connections.test(dc.id); toast('Test message sent'); } catch (e) { toast(e instanceof Error ? e.message : 'Test failed'); } }}>Send test message</Btn>
+                <Btn variant="danger" small aria-label="Disconnect Discord" onClick={() => confirmThen('Disconnect Discord?', () => remove(dc.id))}><Icon name="close" size={16} /></Btn>
+              </div>)}
           </section>
 
           {(Object.keys(OTHER) as Provider[]).some((p) => items.some((c) => c.provider === p)) && (

@@ -1,3 +1,4 @@
+import { learnFromTurn } from './memory.js';
 import multipart from '@fastify/multipart';
 import { timingSafeEqual } from 'node:crypto';
 import { Readable } from 'node:stream';
@@ -13,13 +14,16 @@ import { MATE } from './mates.js';
 import { runRoundTable, pickParticipants } from './brainstorm.js';
 import { setToolHooks } from './tools.js';
 import { getSettings, patchSettings } from './settings.js';
-import { startRun, control, steer, decide, subscribe, jobEvent, recoverRuns, activeCount, liveRuns } from './engine.js';
+import { startRun, retryRun, control, steer, decide, subscribe, jobEvent, recoverRuns, activeCount, liveRuns } from './engine.js';
 import { captureConsole } from '../lib/console.js';
 import { hooks as schedHooks, startScheduler, tick } from './sched.js';
 import { indexKnowledge, searchKnowledge } from './knowledge.js';
 import { verifyMcp } from './mcp.js';
 import { putFile, getFileStream, deleteDriveFile } from './files.js';
-import { telegramReady, notify as tgNotify, send as tgSend, linkCode, handleUpdate, setWebhook } from './telegram.js';
+import { telegramReady, send as tgSend, linkCode, handleUpdate, setWebhook } from './telegram.js';
+import { notify as anyNotify } from './notify.js';
+import { discordReady, verifySignature, handleInteraction, handleLinked, linkCode as discordLinkCode, registerCommands, sendChannel } from './discord.js';
+import { createCall, getCall, listCalls } from './calls.js';
 import { startWhatsApp, waStatus, waChats, waRecent, resumeWhatsApp } from './whatsapp.js';
 import { open } from '../lib/crypto.js';
 
@@ -28,7 +32,7 @@ for (const k of ['SERVICE_SECRET', 'MASTER_KEY']) need(k);
 if (env('MEMORY_DB') !== '1' || env('NODE_ENV') === 'production') need('FIREBASE_SERVICE_ACCOUNT_B64');
 
 setToolHooks({
-  events: schedHooks.events, tasks: schedHooks.tasks, control, liveRuns, startRun, steer, notify: tgNotify,
+  events: schedHooks.events, tasks: schedHooks.tasks, control, liveRuns, startRun, steer, notify: anyNotify,
   // ask_mate: one focused, read-only, tool-less answer from another Mate.
   ask: async (uid, mateKey, question) => {
     const cfgs = Object.fromEntries((await userCol(uid, 'mates').get()).docs.map((d) => [d.id, d.data()]));
@@ -47,6 +51,19 @@ app.post('/telegram/webhook/:secret', async (req, reply) => {
   if (!env('TELEGRAM_WEBHOOK_SECRET') || !same(req.params.secret, env('TELEGRAM_WEBHOOK_SECRET'))) return reply.code(404).send();
   handleUpdate(req.body).catch((e) => req.log.error(e)); // answer Telegram fast, work in the background
   return { ok: true };
+});
+
+// Discord signs every interaction; verify against the raw body, so this route gets its own JSON parser.
+await app.register(async (inst) => {
+  inst.addContentTypeParser('application/json', { parseAs: 'string' }, (req, body, done) => done(null, body));
+  inst.post('/discord/interactions', async (req, reply) => {
+    const raw = typeof req.body === 'string' ? req.body : '';
+    if (!discordReady() || !verifySignature(raw, String(req.headers['x-signature-ed25519'] ?? ''), String(req.headers['x-signature-timestamp'] ?? ''))) return reply.code(401).send('invalid request signature');
+    let i; try { i = JSON.parse(raw); } catch { return reply.code(400).send(); }
+    const first = handleInteraction(i);
+    if (first) return first;
+    return handleLinked(i, { startRun, liveRuns });
+  });
 });
 
 const cronAuth = (req) => env('CRON_SECRET') && same(req.headers['x-cron-secret'] ?? req.query?.key ?? '', env('CRON_SECRET'));
@@ -76,6 +93,7 @@ await app.register(async (v1) => {
   /* runs */
   v1.post('/v1/runs', async (req, reply) => reply.code(201).send(await startRun(req.user.uid, req.body ?? {})));
   for (const a of ['stop', 'pause', 'resume']) v1.post(`/v1/runs/:id/${a}`, async (req) => control(req.user.uid, req.params.id, a));
+  v1.post('/v1/runs/:id/retry', async (req) => retryRun(req.user.uid, req.params.id));
   v1.post('/v1/runs/:id/steer', async (req) => steer(req.user.uid, req.params.id, req.body?.text ?? ''));
   v1.post('/v1/runs/:id/approvals/:aid', async (req) => decide(req.user.uid, req.params.id, req.params.aid, req.body?.decision));
   v1.get('/v1/runs/:id/events', async (req, reply) => {
@@ -141,7 +159,7 @@ await app.register(async (v1) => {
     if (!stream) {
       if (sitting) { await roundTable(() => {}); return userMsg; }
       for (const mate of responders) {
-        try { const r = await turn(mate, () => {}); messages.push({ id: rid(), role: 'mate', mate, text: r.text, at: now(), state: 'sent', ...(r.thought ? { thought: r.thought.slice(0, 8000) } : {}) }); }
+        try { const r = await turn(mate, () => {}); messages.push({ id: rid(), role: 'mate', mate, text: r.text, at: now(), state: 'sent', ...(r.thought ? { thought: r.thought.slice(0, 8000) } : {}) }); void learnFromTurn(uid, { user: text, assistant: r.text, mate, settings }); }
         catch (e) { messages.push({ id: rid(), role: 'system', text: `${nameOf(mate)} could not reply: ${e.message.slice(0, 300)}`, at: now(), state: 'error' }); }
       }
       await save();
@@ -165,7 +183,7 @@ await app.register(async (v1) => {
       let out;
       try { const r = await turn(mate, write, ac.signal); out = { id: rid(), role: 'mate', mate, text: r.text, at: now(), state: 'sent', ...(r.thought ? { thought: r.thought.slice(0, 8000) } : {}) }; }
       catch (e) { out = gone ? null : { id: rid(), role: 'system', text: `${nameOf(mate)} could not reply: ${String(e.message).slice(0, 300)}`, at: now(), state: 'error' }; }
-      if (out) { messages.push(out); await save().catch(() => {}); write({ type: 'done', message: out }); }
+      if (out) { messages.push(out); await save().catch(() => {}); write({ type: 'done', message: out }); if (out.role === 'mate') void learnFromTurn(uid, { user: text, assistant: out.text, mate, settings }); }
     }
     if (!responders.length) write({ type: 'done', message: messages.at(-1) });
     clearInterval(beat);
@@ -191,6 +209,10 @@ await app.register(async (v1) => {
         if (!telegramReady()) error = 'TELEGRAM_BOT_TOKEN is not set on the API service.';
         else if (!c.config?.chatId) { status = 'pending'; error = 'Not linked yet. Get a code and send /start CODE to the bot.'; }
         else { await tgSend(c.config.chatId, 'Loopmates test message: connected'); status = 'connected'; }
+      } else if (c.provider === 'discord') {
+        if (!discordReady()) error = 'Discord is not configured on the API service.';
+        else if (!c.config?.channelId) { status = 'pending'; error = 'Not linked yet. Get a code and use /link in Discord.'; }
+        else { await sendChannel(c.config.channelId, 'Loopmates test message: connected'); status = 'connected'; }
       } else if (c.provider === 'whatsapp') {
         const w = waStatus(); status = w.status === 'open' ? 'connected' : 'pending'; error = status === 'pending' ? `Bridge is ${w.status}.` : '';
       } else if (c.provider === 'gdrive') {
@@ -232,6 +254,9 @@ await app.register(async (v1) => {
 
   /* telegram + whatsapp */
   v1.post('/v1/telegram/link-code', async (req) => linkCode(req.user.uid, req.body?.connectionId));
+  v1.post('/v1/discord/link-code', async (req, reply) => (discordReady() ? discordLinkCode(req.user.uid, req.body?.connectionId) : reply.code(503).send({ error: 'Discord is not configured on the API service (DISCORD_BOT_TOKEN, DISCORD_PUBLIC_KEY, DISCORD_APP_ID).' })));
+  v1.get('/v1/calls', async (req) => listCalls(req.user.uid, Number(req.query.limit) || 15));
+  v1.get('/v1/calls/:id', async (req, reply) => (await getCall(req.user.uid, req.params.id)) ?? reply.code(404).send({ error: 'Not found' }));
   v1.get('/v1/whatsapp/status', async () => waStatus());
   v1.post('/v1/whatsapp/pair', async (req) => startWhatsApp({ phone: req.body?.phone }));
   v1.get('/v1/whatsapp/recent', async (req) => waRecent(String(req.query.chat ?? '')));
@@ -251,4 +276,5 @@ const recovered = await recoverRuns().catch((e) => { app.log.error(e); return 0;
 if (recovered) app.log.warn(`marked ${recovered} interrupted run(s) as failed`);
 startScheduler();
 resumeWhatsApp().catch((e) => app.log.warn(`whatsapp: ${e.message}`));
+if (discordReady()) registerCommands().then((r) => app.log.info(`discord commands: ${r.ok ? 'registered' : r.error}`)).catch(() => {});
 if (telegramReady() && env('PUBLIC_URL') && env('TELEGRAM_WEBHOOK_SECRET')) setWebhook(env('PUBLIC_URL')).then((r) => app.log.info(`telegram webhook: ${r.ok ? 'set' : r.description}`)).catch(() => {});

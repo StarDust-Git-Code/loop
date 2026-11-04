@@ -16,6 +16,8 @@ export default function Connections() {
   const tg = (c.data ?? []).find((x) => x.provider === 'telegram');
   const [busy, setBusy] = useState(false); const [err, setErr] = useState<string | null>(null); const [msg, setMsg] = useState<string | null>(null);
   const [code, setCode] = useState<{ code: string; link?: string } | null>(null);
+  const dc = (c.data ?? []).find((x) => x.provider === 'discord');
+  const [dcode, setDcode] = useState<{ code: string; command: string; invite?: string | null } | null>(null);
   const run = async (f: () => Promise<void>) => { setBusy(true); setErr(null); setMsg(null); try { await f(); } catch (e) { setErr(e instanceof Error ? e.message : 'That did not work'); } finally { setBusy(false); } };
   const link = () => run(async () => { setCode(await api.telegramCode(tg?.id)); });
   return (
@@ -32,7 +34,17 @@ export default function Connections() {
           {tg ? <Btn label="Send test message" kind="soft" onPress={() => run(async () => { const t = await api.connections.test(tg.id); setMsg(t.status === 'connected' ? 'Test message sent.' : t.message ?? 'Test finished.'); c.reload(); })} /> : null}
         </Card>
       </Animated.View>
-      {(c.data ?? []).filter((x) => x.provider !== 'telegram').map((x) => <Row key={x.id}><Text style={{ flex: 1, fontWeight: '800', color: C.ink }}>{x.label || x.provider}</Text><Pill label={x.status} tone={TONE[x.status]} /></Row>)}
+      <Animated.View entering={FadeInDown.delay(60).duration(260)}>
+        <Card style={{ padding: 14, gap: 12 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}><Text style={{ fontSize: 17, fontWeight: '800', color: C.ink, flex: 1 }}>Discord</Text><Pill label={dc ? dc.status : 'not set up'} tone={dc ? TONE[dc.status] : 'muted'} /></View>
+          <Text style={{ color: C.muted, fontSize: 13.5, lineHeight: 19 }}>Use /ask, /run and /status in Discord. Run updates and call reports arrive there. Add the bot, then link with a code.</Text>
+          <Btn label="Get a link code" onPress={() => run(async () => { setDcode(await api.discordCode(dc?.id)); })} busy={busy} />
+          {dcode ? <Card style={{ padding: 12, gap: 6 }}><Caption>SEND THIS IN DISCORD</Caption><Text selectable style={{ fontFamily: 'monospace', fontSize: 16, color: C.ink }}>{dcode.command}</Text>
+            <View style={{ flexDirection: 'row', gap: 8 }}><Btn small label="Copy" kind="ghost" onPress={() => Clipboard.setStringAsync(dcode.command)} />{dcode.invite ? <Btn small label="Add the bot" kind="ghost" onPress={() => Linking.openURL(dcode.invite!)} /> : null}</View></Card> : null}
+          {dc ? <Btn label="Send test message" kind="soft" onPress={() => run(async () => { const t = await api.connections.test(dc.id); setMsg(t.status === 'connected' ? 'Test message sent.' : t.message ?? 'Test finished.'); c.reload(); })} /> : null}
+        </Card>
+      </Animated.View>
+      {(c.data ?? []).filter((x) => x.provider !== 'telegram' && x.provider !== 'discord').map((x) => <Row key={x.id}><Text style={{ flex: 1, fontWeight: '800', color: C.ink }}>{x.label || x.provider}</Text><Pill label={x.status} tone={TONE[x.status]} /></Row>)}
       <Text style={{ color: C.muted, fontSize: 12.5 }}>WhatsApp, GitHub, email and Google Drive are set up from the web dashboard.</Text>
     </Screen>
   );
