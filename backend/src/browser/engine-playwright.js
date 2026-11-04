@@ -8,10 +8,15 @@ export const name = 'playwright';
 
 export async function create({ instances, maxSessions }) {
   const { chromium } = await import('playwright-core');
+  // Hosted mode: BROWSERLESS_TOKEN drives a remote Chromium at browserless.io over CDP, so no browser runs on this machine.
+  const token = env('BROWSERLESS_TOKEN');
+  const remoteUrl = token ? `${env('BROWSERLESS_URL') || 'wss://production-sfo.browserless.io'}?token=${encodeURIComponent(token)}&timeout=${num('BROWSERLESS_TIMEOUT_MS', 300000)}` : '';
+  if (remoteUrl) { instances = 1; maxSessions = Math.max(1, num('BROWSERLESS_CONCURRENCY', 1)); }
   const pool = Array.from({ length: instances }, (_, i) => ({ i, browser: null, launching: null, sessions: new Set() }));
   let total = 0;
   const launch = (slot) => {
     if (slot.browser?.isConnected()) return slot.browser;
+    if (remoteUrl) return chromium.connectOverCDP(remoteUrl, { timeout: 30_000 });
     slot.launching ??= chromium.launch({
       headless: true, executablePath: env('BROWSER_EXECUTABLE') || undefined,
       args: ['--no-sandbox', '--disable-dev-shm-usage', '--disable-gpu', '--disable-background-networking', '--disable-extensions', '--mute-audio', '--no-first-run', '--js-flags=--max-old-space-size=1024'],
@@ -28,7 +33,8 @@ export async function create({ instances, maxSessions }) {
     async open() {
       if (total >= maxSessions) throw bad(`All ${maxSessions} browser sessions are busy. Try again in a minute.`, 429);
       const slot = [...pool].sort((a, b) => a.sessions.size - b.sessions.size)[0];
-      const ctx = await (await launch(slot)).newContext({ viewport: { width: 1280, height: 800 }, locale: 'en-US', acceptDownloads: false, serviceWorkers: 'block', permissions: [] });
+      const br = await launch(slot).catch((e) => { throw bad(`Could not start a browser: ${String(e.message).split('\n')[0].slice(0, 140)}`, 502); });
+      const ctx = await br.newContext({ viewport: { width: 1280, height: 800 }, locale: 'en-US', acceptDownloads: false, serviceWorkers: 'block', permissions: [] });
       await ctx.route('**/*', guard);
       ctx.setDefaultTimeout(ACT_MS); ctx.setDefaultNavigationTimeout(NAV_MS);
       let cur = await ctx.newPage(); ctx.on('page', (p) => { cur = p; });
@@ -67,7 +73,7 @@ export async function create({ instances, maxSessions }) {
         },
         screenshot: async (full) => (await cur.screenshot({ type: 'png', fullPage: !!full })).toString('base64'),
         url: () => cur.url(),
-        async destroy() { slot.sessions.delete(key); total--; await ctx.close().catch(() => {}); },
+        async destroy() { slot.sessions.delete(key); total--; await ctx.close().catch(() => {}); if (remoteUrl) await br.close().catch(() => {}); },
       };
       return h;
     },

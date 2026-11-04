@@ -2,6 +2,7 @@
 // Every call is signed with SERVICE_SECRET. Two engines behind one API:
 //   playwright  Chromium, for x86_64 / arm64 machines (default)
 //   webdriver   Firefox + geckodriver, for machines without Chromium such as IBM LinuxONE (s390x). Picked automatically there.
+// Hosted option: set BROWSERLESS_TOKEN (browserless.io free tier, 1 concurrent session) and this can run on Render with no browser installed.
 // env: SERVICE_SECRET, PORT (10000), HOST, BROWSER_ENGINE (auto), BROWSER_INSTANCES (2), BROWSER_MAX_SESSIONS (4, playwright only),
 //      BROWSER_IDLE_SECONDS (300), BROWSER_EXECUTABLE (playwright) | BROWSER_BINARY + GECKODRIVER_PATH (webdriver)
 import os from 'node:os';

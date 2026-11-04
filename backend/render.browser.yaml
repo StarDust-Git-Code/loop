@@ -1,0 +1,17 @@
+# Render #5: browser service driving a hosted Chromium at browserless.io (free tier: 1 concurrent session). No browser installed here.
+services:
+  - type: web
+    name: loopmates-browser
+    runtime: node
+    plan: free
+    region: singapore
+    rootDir: backend
+    buildCommand: npm ci --omit=dev
+    startCommand: node src/browser/index.js
+    healthCheckPath: /healthz
+    autoDeploy: true
+    envVars:
+      - { key: NODE_ENV, value: production }
+      - { key: BROWSER_ENGINE, value: playwright }
+      - { key: SERVICE_SECRET, sync: false }     # same value as the api service
+      - { key: BROWSERLESS_TOKEN, sync: false }  # from browserless.io account
