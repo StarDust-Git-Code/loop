@@ -5,10 +5,13 @@ import { validTz } from '../lib/cron.js';
 export const DEFAULT_SETTINGS = {
   displayName: '', email: '', workspaceName: 'My workspace', timezone: 'Asia/Kolkata', model: '',
   askBeforeRisky: true, maxSteps: 12, allowNetwork: true, stopAfterMinutes: 30, notifyTelegram: true, notifyEmail: false,
-  permissionMode: 'ask', retriesOnFailure: 2, verifySteps: true, autoMemory: true, fastModel: '', hookBeforeTool: '', hookAfterStep: '', hookOnFinish: '', hookOnFailure: '',
+  permissionMode: 'ask', retriesOnFailure: 2, verifySteps: true, autoMemory: true, autoGraph: true, autoRecall: 3, fastModel: '', hookBeforeTool: '', hookAfterStep: '', hookOnFinish: '', hookOnFailure: '',
   guardContainer: true, guardPurchases: true, guardLog: true,
   chunkSize: 800, overlap: 100, topK: 5, hybrid: true, rerank: false, citeAlways: true, memoryScope: 'private',
   prefersShort: false, shareSchedule: false,
+  notifyApp: true, notifyDiscord: true, notifySlack: true, notifyWhatsapp: true, leader: 'mimo',
+  standupOn: false, standupDay: 1, standupAt: '09:00', /* weekly team stand-up from the leader (day 0 = Sunday) */
+  companyCheckinsAuto: false, companyDailyLlmBudget: 200, maxCallsPerDay: 3, urgentBreaksQuiet: true, briefingOn: false, briefingAt: '08:00', briefingCall: false, coderHarness: 'builtin', coderSandbox: 'auto', quietHoursOn: false, quietFrom: '22:00', quietTo: '07:00',
   maxContextTokens: 0, maxOutputTokens: 0, defaultThinking: 'high', showReasoning: true, brainstormRounds: 2, // developer options: 0 = automatic
 };
 const ref = (uid) => userDoc(uid, 'meta', 'settings');
@@ -24,6 +27,11 @@ export async function patchSettings(uid, patch) {
   const range = (k, lo, hi) => { if (k in clean) clean[k] = clean[k] === 0 ? 0 : Math.min(hi, Math.max(lo, Math.round(clean[k]))); };
   range('brainstormRounds', 1, 4); if (clean.brainstormRounds === 0) delete clean.brainstormRounds;
   range('maxContextTokens', 1000, 2_000_000); range('maxOutputTokens', 64, 64_000);
+  range('maxCallsPerDay', 0, 20); range('companyDailyLlmBudget', 0, 100_000);
+  range('standupDay', 0, 6);
+  for (const k of ['quietFrom', 'quietTo', 'briefingAt', 'standupAt']) if (k in clean && !/^([01]\d|2[0-3]):[0-5]\d$/.test(clean[k])) delete clean[k];
+  if (clean.coderHarness && !['builtin', 'claude', 'codex', 'opencode'].includes(clean.coderHarness)) delete clean.coderHarness;
+  if (clean.coderSandbox && !['auto', 'docker', 'host'].includes(clean.coderSandbox)) delete clean.coderSandbox;
   if (clean.defaultThinking && !['low', 'medium', 'high', 'xhigh'].includes(clean.defaultThinking)) delete clean.defaultThinking;
   await ref(uid).set({ ...clean, updatedAt: now() }, { merge: true });
   return getSettings(uid);

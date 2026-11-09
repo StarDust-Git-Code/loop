@@ -14,7 +14,8 @@ export type Workflow = { id: string; name: string; description: string; nodes: {
 export type Connection = { id: string; provider: 'telegram' | 'discord' | 'whatsapp' | 'gdrive' | 'github' | 'email'; label: string; status: 'disconnected' | 'pending' | 'connected' | 'error'; config: Record<string, string> };
 export type FileItem = { id: string; name: string; size: number; mime: string; source: string; createdAt: string };
 export type MateConfig = { id: string; mate: MateKey; enabled: boolean; thinking?: string; instructions?: string; model?: string; tools?: string[]; description?: string; outputFormat?: string; memoryScope?: string };
-export type Settings = { displayName?: string; defaultThinking?: string; showReasoning?: boolean; brainstormRounds?: number };
+export type Settings = { displayName?: string; defaultThinking?: string; showReasoning?: boolean; brainstormRounds?: number; notifyApp?: boolean; quietHoursOn?: boolean; quietFrom?: string; quietTo?: string; timezone?: string };
+export type Question = { id: string; mate: MateKey; question: string; options: string[]; fallback: string; runId: string; status: 'open' | 'answered' | 'expired'; expiresAt: string };
 export type ChatEvent =
   | { type: 'start' } | { type: 'delta'; text: string } | { type: 'think'; text: string } | { type: 'mate'; mate: MateKey; summary?: boolean }
   | { type: 'round'; n: number; of: number } | { type: 'reset' } | { type: 'tool'; name: string } | { type: 'tool_result'; name: string }

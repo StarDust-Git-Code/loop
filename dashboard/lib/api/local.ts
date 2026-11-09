@@ -39,15 +39,18 @@ function repo<T extends { id: ID; createdAt: string; updatedAt: string }, In>(na
 }
 
 const DEFAULT_SETTINGS: SettingsData = {
+  leader: 'mimo', coderHarness: 'builtin', coderSandbox: 'auto', maxCallsPerDay: 3, urgentBreaksQuiet: true, briefingOn: false, briefingAt: '08:00', briefingCall: false, companyCheckinsAuto: false, companyDailyLlmBudget: 200,
   displayName: '', email: '', workspaceName: 'Personal workspace', timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-  model: '', askBeforeRisky: true, maxSteps: 40, allowNetwork: true, stopAfterMinutes: 20, notifyTelegram: false, notifyEmail: false,
-  permissionMode: 'ask', retriesOnFailure: 2, verifySteps: true, autoMemory: true,
+  model: '', askBeforeRisky: true, maxSteps: 40, allowNetwork: true, stopAfterMinutes: 20, notifyTelegram: false, notifyEmail: false, notifyApp: true, notifyDiscord: true, quietHoursOn: false, quietFrom: '22:00', quietTo: '07:00',
+  permissionMode: 'ask', retriesOnFailure: 2, verifySteps: true, autoMemory: true, autoGraph: true, autoRecall: 3,
   hookBeforeTool: 'Ask me before writing files outside /workspace or sending any message.', hookAfterStep: 'Save new findings to Knowledge with their source.', hookOnFinish: 'Send me a Telegram summary with links to the files.', hookOnFailure: 'Retry twice, then ping me and wait.',
   guardContainer: true, guardPurchases: true, guardLog: true,
   chunkSize: 800, overlap: 100, topK: 6, hybrid: true, rerank: true, citeAlways: true, memoryScope: 'shared',
   prefersShort: true, shareSchedule: false,
   maxContextTokens: 0, maxOutputTokens: 0, defaultThinking: 'high', showReasoning: true, brainstormRounds: 2,
 };
+
+const needServer = async (): Promise<never> => { throw new Error('This needs your Loopmates server. Sign in and pair it first.'); };
 
 export function createLocalApi(): Api {
   const runs = repo<Run, never>('runs') as Api['runs'];
@@ -105,9 +108,19 @@ export function createLocalApi(): Api {
 
   return {
     capabilities: { backend: false },
+    server: {
+      status: needServer, config: needServer, saveConfig: needServer, driveStart: needServer, driveFolders: needServer, driveFolder: needServer,
+      mateCards: async () => ({}), restoreAgent: needServer, harnesses: needServer, testHarness: needServer,
+    },
+    inbox: {
+      questions: async () => [], answer: needServer, list: async () => [], markRead: async () => {}, pushKey: needServer,
+      devices: async () => [], addDevice: needServer, removeDevice: needServer,
+    },
     auth: { session: async () => ({ signedIn: false }), signOut: async () => {} },
     tasks: repo('tasks'), workflows: repo('workflows'), automations: repo('automations'), knowledge: repo('knowledge'),
-    memories: repo('memories'), skills: repo('skills'), mcp, connections, calls: { get: async () => undefined }, conversations, events: repo('events'), files,
+    memories: repo('memories'), watches: repo('watches'), people: repo('people'), teams: repo('teams'), assignments: repo('assignments'), checkins: repo('checkins'), company: { importCsv: needServer, invite: needServer, sendCheckin: needServer }, leader: { get: needServer, check: needServer, briefing: needServer, standup: needServer, standups: async () => [] },
+    integrations: { list: async () => [], test: needServer, linkCode: needServer, spotifyStart: needServer, obsidianSync: needServer, healthKey: needServer, healthImport: needServer },
+    voicePreview: needServer, graph: { get: async () => ({ nodes: [], edges: [] }), removeNode: needServer, merge: needServer }, skills: repo('skills'), mcp, connections, calls: { get: async () => undefined, list: async () => [], now: needServer, cancel: needServer }, conversations, events: repo('events'), files,
     mateConfigs: repo('mateConfigs', defaultsFor as never) as never, runs, providers,
     search: { knowledge: async () => [] },
     settings: {

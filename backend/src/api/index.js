@@ -2,57 +2,56 @@ import { learnFromTurn } from './memory.js';
 import multipart from '@fastify/multipart';
 import { timingSafeEqual } from 'node:crypto';
 import { Readable } from 'node:stream';
-import { env, need, now, uid as rid } from '../lib/env.js';
-import { svcJson } from '../lib/svc.js';
-import { createServer, svcOnly, listen } from '../lib/server.js';
-import { requireUser } from './auth.js';
+import { env, now, uid as rid } from '../lib/env.js';
+import { originAllowed } from '../lib/server.js';
+import { requireUser, requireOwner } from './auth.js';
+import { mountAdmin } from './admin.js';
+import { initPush, addDevice, listDevices, removeDevice, vapidPublicKey } from './push.js';
+import { answerQuestion, openQuestions, answerFromDiscord } from './ask.js';
+import { startPresence } from './pairing.js';
 import { userCol } from './db.js';
 import { registerCrud, COLLECTIONS, sealOut } from './crud.js';
-import { chat, fetchModels } from './llm.js';
+import { fetchModels } from './llm.js';
 import { converse } from './agent.js';
-import { MATE } from './mates.js';
+import { loadRoster, invalidateRoster, createAgent, removeAgent, restoreAgent } from './roster.js';
 import { runRoundTable, pickParticipants } from './brainstorm.js';
 import { setToolHooks } from './tools.js';
 import { getSettings, patchSettings } from './settings.js';
-import { startRun, retryRun, control, steer, decide, subscribe, jobEvent, recoverRuns, activeCount, liveRuns } from './engine.js';
-import { captureConsole } from '../lib/console.js';
+import { startRun, retryRun, control, steer, decide, subscribe, recoverRuns, activeCount, liveRuns, runLog } from './engine.js';
 import { hooks as schedHooks, startScheduler, tick } from './sched.js';
 import { indexKnowledge, searchKnowledge } from './knowledge.js';
 import { verifyMcp } from './mcp.js';
+import { graphSnapshot, deleteNode, mergeNodes } from './graph.js';
+import { watchHook, ensureDefaultWatches, runWatch, briefingHook, sendBriefing, standupHook, runStandup } from './watch.js';
+import { importPeople, inviteCode, sendCheckin, overview, setCompanySender } from './company.js';
 import { putFile, getFileStream, deleteDriveFile } from './files.js';
-import { telegramReady, send as tgSend, linkCode, handleUpdate, setWebhook } from './telegram.js';
+import { telegramReady, send as tgSend, linkCode, startPolling } from './telegram.js';
 import { notify as anyNotify } from './notify.js';
-import { discordReady, verifySignature, handleInteraction, handleLinked, linkCode as discordLinkCode, registerCommands, sendChannel } from './discord.js';
+import { discordReady, verifySignature, handleInteraction, handleLinked, linkCode as discordLinkCode, registerCommands, sendChannel, startGateway } from './discord.js';
 import { createCall, getCall, listCalls } from './calls.js';
 import { startWhatsApp, waStatus, waChats, waRecent, resumeWhatsApp } from './whatsapp.js';
 import { open } from '../lib/crypto.js';
-
-captureConsole();
-for (const k of ['SERVICE_SECRET', 'MASTER_KEY']) need(k);
-if (env('MEMORY_DB') !== '1' || env('NODE_ENV') === 'production') need('FIREBASE_SERVICE_ACCOUNT_B64');
+import { health as driveHealth, driveReady } from '../drive/index.js';
+import { testGithub } from './github.js';
+import { mountIntegrations, mountIntegrationsPublic, bootIntegrations } from '../integrations/index.js';
 
 setToolHooks({
-  events: schedHooks.events, tasks: schedHooks.tasks, control, liveRuns, startRun, steer, notify: anyNotify,
+  events: schedHooks.events, tasks: schedHooks.tasks, control, liveRuns, startRun, steer, notify: anyNotify, runLog,
   // ask_mate: one focused, read-only, tool-less answer from another Mate.
   ask: async (uid, mateKey, question) => {
-    const cfgs = Object.fromEntries((await userCol(uid, 'mates').get()).docs.map((d) => [d.id, d.data()]));
-    if (!MATE[mateKey]) throw Object.assign(new Error(`No Mate called "${mateKey}"`), { tool: true });
-    if (cfgs[mateKey]?.enabled === false) throw Object.assign(new Error(`${MATE[mateKey].name} is switched off`), { tool: true });
+    const ro = await loadRoster(uid); const cfgs = ro.cfgs;
+    if (!ro.has(mateKey)) throw Object.assign(new Error(`No agent called "${mateKey}"`), { tool: true });
+    if (!ro.on(mateKey)) throw Object.assign(new Error(`${ro.name(mateKey)} is switched off`), { tool: true });
     const r = await converse({ uid, mateKey, cfg: cfgs[mateKey] ?? {}, settings: await getSettings(uid), mode: 'chat', history: [{ role: 'user', content: question }], emit: () => {}, maxTokens: 700, readOnly: true, noTools: true, ctx: { depth: 1 } });
-    return `${MATE[mateKey].name} says:\n${r.text}`;
+    return `${ro.name(mateKey)} says:\n${r.text}`;
   },
 });
-const app = await createServer('api', { bodyLimit: 4 * 1024 * 1024 });
+/** Mount the REST API, SSE and bot endpoints on the main server. */
+export async function mountApi(app) {
 const same = (a, b) => { const x = Buffer.from(String(a)), y = Buffer.from(String(b)); return x.length === y.length && timingSafeEqual(x, y); };
-const originOk = (o) => !!o && env('ALLOWED_ORIGINS').split(',').map((s) => s.trim()).includes(o);
+const originOk = (o) => !!o && originAllowed(o);
 
 /* ---------- public-ish (own auth) ---------- */
-app.post('/telegram/webhook/:secret', async (req, reply) => {
-  if (!env('TELEGRAM_WEBHOOK_SECRET') || !same(req.params.secret, env('TELEGRAM_WEBHOOK_SECRET'))) return reply.code(404).send();
-  handleUpdate(req.body).catch((e) => req.log.error(e)); // answer Telegram fast, work in the background
-  return { ok: true };
-});
-
 // Discord signs every interaction; verify against the raw body, so this route gets its own JSON parser.
 await app.register(async (inst) => {
   inst.addContentTypeParser('application/json', { parseAs: 'string' }, (req, body, done) => done(null, body));
@@ -66,29 +65,79 @@ await app.register(async (inst) => {
   });
 });
 
-const cronAuth = (req) => env('CRON_SECRET') && same(req.headers['x-cron-secret'] ?? req.query?.key ?? '', env('CRON_SECRET'));
-const tickRoute = async (req, reply) => (cronAuth(req) ? { ...(await tick()), active: activeCount() } : reply.code(401).send({ error: 'bad cron secret' }));
-app.get('/internal/tick', tickRoute);
-app.post('/internal/tick', tickRoute);
+await mountIntegrationsPublic(app);
 
-/* ---------- service-to-service ---------- */
-app.post('/internal/llm', { preHandler: svcOnly }, async (req) => {
-  const { uid, model, messages, temperature, maxTokens, json } = req.body ?? {};
-  if (!uid || !Array.isArray(messages)) throw Object.assign(new Error('uid and messages required'), { statusCode: 400 });
-  return chat(uid, { model, messages, temperature, maxTokens, json });
-});
-app.post('/internal/runs/:id/events', { preHandler: svcOnly }, async (req) => ({ ok: jobEvent(req.params.id, req.body ?? {}) }));
+// Tests only: run the scheduler now (the server ticks on its own every 30 s).
+if (env('TEST_HOOKS') === '1' && env('NODE_ENV') !== 'production') {
+  const tickRoute = async (req, reply) => (env('CRON_SECRET') && same(req.headers['x-cron-secret'] ?? '', env('CRON_SECRET')) ? { ...(await tick()), active: activeCount() } : reply.code(401).send({ error: 'bad cron secret' }));
+  app.get('/internal/tick', tickRoute);
+}
 
 /* ---------- user API ---------- */
 await app.register(async (v1) => {
   v1.addHook('preHandler', requireUser);
   await v1.register(multipart, { limits: { fileSize: 15 * 1024 * 1024, files: 1 } });
 
+  mountAdmin(app, v1, { requireOwner });
+  mountIntegrations(v1, { requireOwner });
+
+  /* app notifications: devices, inbox, questions */
+  v1.get('/v1/mates/cards', async () => (await import('./prompt.js')).defaultCards());
+  // A short spoken sample of an agent's call voice (Agents → Configure → Voice on calls → Play).
+  v1.get('/v1/voice/preview', async (req, reply) => {
+    const { VOICE_NAMES, voiceFor } = await import('./mates.js'); const { cardFor } = await import('./prompt.js'); const { previewVoice } = await import('../voice/preview.js');
+    const ro = await loadRoster(req.user.uid); const mate = ro.has(String(req.query?.mate ?? '')) ? String(req.query.mate) : ro.leader;
+    const cfg = ro.cfgs[mate] ?? {}; const voice = VOICE_NAMES.includes(String(req.query?.voice ?? '')) ? String(req.query.voice) : voiceFor(mate, cfg);
+    const audio = await previewVoice({ voice, name: ro.name(mate), blurb: ro.byKey[mate]?.blurb ?? '', card: cardFor(mate, { ...cfg, personality: String(req.query?.personality ?? cfg.personality ?? '') }, ro.byKey[mate]) });
+    return reply.type('audio/wav').header('cache-control', 'private, max-age=3600').send(audio);
+  });
+  v1.get('/v1/push/key', async () => ({ publicKey: vapidPublicKey() }));
+  v1.get('/v1/devices', async (req) => listDevices(req.user.uid));
+  v1.post('/v1/devices', async (req, reply) => reply.code(201).send(await addDevice(req.user.uid, req.body ?? {})));
+  v1.delete('/v1/devices/:id', async (req, reply) => { await removeDevice(req.user.uid, req.params.id); return reply.code(204).send(); });
+  v1.get('/v1/inbox', async (req) => (await userCol(req.user.uid, 'inbox').limit(300).get()).docs.map((d) => ({ id: d.id, ...d.data() })).sort((a, b) => String(b.at).localeCompare(String(a.at))).slice(0, 50));
+  v1.post('/v1/inbox/read', async (req) => { const snap = await userCol(req.user.uid, 'inbox').where('read', '==', false).get(); await Promise.all(snap.docs.map((d) => d.ref.set({ read: true }, { merge: true }))); return { ok: true, n: snap.size }; });
+  v1.get('/v1/questions', async (req) => openQuestions(req.user.uid));
+  v1.post('/v1/questions/:id/answer', async (req) => ({ ok: true, text: await answerQuestion(req.user.uid, req.params.id, req.body?.answer, 'app') }));
+
   v1.get('/v1/auth/session', async (req) => ({ signedIn: true, name: req.user.name, email: req.user.email, plan: 'Free' }));
   v1.post('/v1/auth/sign-out', async (req, reply) => reply.code(204).send());
 
   v1.get('/v1/settings', async (req) => getSettings(req.user.uid));
-  v1.patch('/v1/settings', async (req) => patchSettings(req.user.uid, req.body ?? {}));
+  v1.patch('/v1/settings', async (req, reply) => {
+    const uid = req.user.uid; const body = { ...(req.body ?? {}) };
+    if ('leader' in body) { const r = await loadRoster(uid); if (!r.has(body.leader)) return reply.code(400).send({ error: 'That agent does not exist (or was removed).' }); }
+    const out = await patchSettings(uid, body);
+    if ('leader' in body) { // a new leader is always switched on
+      const ref = userCol(uid, 'mates').doc(out.leader); const cur = (await ref.get()).data();
+      if (cur && cur.enabled === false) await ref.set({ enabled: true, updatedAt: now() }, { merge: true });
+    }
+    invalidateRoster(uid);
+    if (['briefingOn', 'briefingAt', 'timezone'].some((k) => k in body)) await briefingHook(uid, out).catch(() => {});
+    if (['standupOn', 'standupDay', 'standupAt', 'timezone'].some((k) => k in body)) await standupHook(uid, out).catch(() => {});
+    return out;
+  });
+  /* the leader's watch: what it keeps an eye on, and what it raised */
+  v1.get('/v1/leader', async (req) => {
+    const uid = req.user.uid; await ensureDefaultWatches(uid);
+    const [w, a, ro, s] = await Promise.all([userCol(uid, 'watches').limit(50).get(), userCol(uid, 'alerts').limit(300).get(), loadRoster(uid), getSettings(uid)]);
+    return { leader: ro.leader, name: ro.name(ro.leader), watches: w.docs.map((d) => ({ id: d.id, ...d.data() })), alerts: a.docs.map((d) => ({ id: d.id, ...d.data() })).sort((x, y) => String(y.at).localeCompare(String(x.at))).slice(0, 40),
+      calls: { maxPerDay: s.maxCallsPerDay, urgentBreaksQuiet: s.urgentBreaksQuiet }, briefing: { on: s.briefingOn, at: s.briefingAt, call: s.briefingCall } };
+  });
+  v1.post('/v1/watches/:id/check', async (req) => ({ raised: await runWatch(req.user.uid, req.params.id) }));
+  v1.post('/v1/leader/briefing', async (req) => sendBriefing(req.user.uid));
+  v1.post('/v1/leader/standup', async (req) => runStandup(req.user.uid));
+  v1.get('/v1/standups', async (req) => (await userCol(req.user.uid, 'standups').limit(100).get()).docs.map((d) => ({ id: d.id, ...d.data() })).sort((a, b) => String(b.at).localeCompare(String(a.at))).slice(0, 12));
+  /* company: directory import, employee invites, sending approved check-ins, workload */
+  v1.post('/v1/people/import', async (req) => importPeople(req.user.uid, req.body?.csv));
+  v1.post('/v1/people/:id/invite', async (req) => inviteCode(req.user.uid, req.params.id));
+  v1.post('/v1/checkins/:id/send', async (req) => sendCheckin(req.user.uid, req.params.id));
+  v1.get('/v1/company/overview', async (req) => { const o = await overview(req.user.uid, { team: String(req.query?.team ?? '') }); return { avg: o.avg, people: o.rows.map((r) => ({ id: r.p.id, open: r.open, overdue: r.overdue, blocked: r.blocked })), overloaded: o.overloaded.map((r) => r.p.id) }; });
+  /* agents: the roster, custom agents, remove/restore. The leader is settings.leader. */
+  v1.get('/v1/mates/roster', async (req) => { const r = await loadRoster(req.user.uid); return { leader: r.leader, agents: r.list.map((d) => ({ ...d, enabled: r.on(d.key) })), removed: r.removed.map((d) => ({ key: d.key, name: d.name, builtin: d.builtin })) }; });
+  v1.post('/v1/mates', async (req, reply) => reply.code(201).send(await createAgent(req.user.uid, req.body ?? {})));
+  v1.delete('/v1/mates/:id', async (req, reply) => { await removeAgent(req.user.uid, req.params.id); return reply.code(204).send(); });
+  v1.post('/v1/mates/:id/restore', async (req, reply) => { await restoreAgent(req.user.uid, req.params.id); return reply.code(204).send(); });
 
   /* runs */
   v1.post('/v1/runs', async (req, reply) => reply.code(201).send(await startRun(req.user.uid, req.body ?? {})));
@@ -119,18 +168,19 @@ await app.register(async (v1) => {
     const ref = userCol(uid, 'conversations').doc(req.params.id);
     const conv = (await ref.get()).data();
     if (!conv) return reply.code(404).send({ error: 'Not found' });
-    const home = req.body?.mate || conv.mate || 'mimo';
+    const ro = await loadRoster(uid);
+    const home = ro.has(req.body?.mate) ? req.body.mate : ro.has(conv.mate) ? conv.mate : ro.leader;
     const userMsg = { id: rid(), role: 'user', text, at: now(), state: 'sent' };
     const messages = [...(conv.messages ?? []), userMsg];
-    const cfgs = Object.fromEntries((await userCol(uid, 'mates').get()).docs.map((d) => [d.id, d.data()]));
+    const cfgs = ro.cfgs;
     const settings = await getSettings(uid);
     // @mentions: every mentioned Mate answers in turn; with none, the chat's own Mate answers.
-    const asked = [...new Set([...text.matchAll(/(?:^|\s)@([a-z]+)/gi)].map((m) => m[1].toLowerCase()))].filter((k) => MATE[k]).slice(0, 3);
-    const skipped = asked.filter((k) => cfgs[k] ? cfgs[k].enabled === false : !MATE[k].core);
+    const asked = [...new Set([...text.matchAll(/(?:^|\s)@([a-z][a-z0-9]*)/gi)].map((m) => m[1].toLowerCase()))].filter((k) => ro.has(k)).slice(0, 3);
+    const skipped = asked.filter((k) => !ro.on(k));
     const mates = asked.filter((k) => !skipped.includes(k));
     const responders = mates.length ? mates : (asked.length ? [] : [home]);
     const members = [...new Set([...(conv.members ?? []), ...mates])];
-    const nameOf = (k) => MATE[k]?.name ?? k;
+    const nameOf = (k) => ro.name(k);
     // History budget: automatic ~28k chars, or derived from the developer option (about 4 chars per token, minus room for the prompt and the answer).
     const HIST_CHARS = settings.maxContextTokens > 0 ? Math.max(2000, settings.maxContextTokens * 4 - 6000 - (settings.maxOutputTokens || 1500) * 4) : 28_000;
     const historyFor = (me, src = messages) => {
@@ -149,12 +199,12 @@ await app.register(async (v1) => {
     if (skipped.length) messages.push(sysNote(`${skipped.map(nameOf).join(', ')} ${skipped.length > 1 ? 'are' : 'is'} switched off. Turn on in Agents to use @${skipped[0]}.`));
     const table = conv.mode === 'brainstorm' && !text.startsWith('/btw');
     const rounds = Math.min(4, Math.max(1, Number(conv.rounds) || settings.brainstormRounds || 2));
-    const seat = table ? pickParticipants({ mentioned: mates, home, members: conv.members ?? [], cfgs }) : [];
+    const seat = table ? pickParticipants({ mentioned: mates, home, members: conv.members ?? [], ro }) : [];
     if (table && seat.length < 2) messages.push(sysNote('Brainstorm needs at least two agents. Switch some on in Agents, or @mention them.'));
     const sitting = table && seat.length >= 2;
     if (sitting) for (const k of seat) if (!members.includes(k) && k !== home) members.push(k);
     const snap = [...messages]; // the chat as it was when the table was called; turns are appended separately
-    const roundTable = (emit, signal) => runRoundTable({ uid, topic: text, participants: seat, rounds, cfgs, settings, baseHistory: (me) => historyFor(me, snap), emit, signal, onMessage: async (m) => { messages.push(m); await save().catch(() => {}); } });
+    const roundTable = (emit, signal) => runRoundTable({ uid, topic: text, participants: seat, rounds, cfgs, ro, settings, baseHistory: (me) => historyFor(me, snap), emit, signal, onMessage: async (m) => { messages.push(m); await save().catch(() => {}); } });
 
     if (!stream) {
       if (sitting) { await roundTable(() => {}); return userMsg; }
@@ -190,11 +240,16 @@ await app.register(async (v1) => {
     raw.end();
   });
 
+  /* knowledge graph: what the agents have learned (Memory screen) */
+  v1.get('/v1/graph', async (req) => graphSnapshot(req.user.uid, { history: req.query?.history === '1' }));
+  v1.delete('/v1/graph/nodes/:id', async (req, reply) => { await deleteNode(req.user.uid, req.params.id); return reply.code(204).send(); });
+  v1.post('/v1/graph/merge', async (req, reply) => { await mergeNodes(req.user.uid, String(req.body?.from ?? ''), String(req.body?.into ?? '')); return reply.code(204).send(); });
+
   /* mcp / connections / providers */
   v1.post('/v1/mcp-servers/:id/verify', async (req, reply) => {
     const ref = userCol(req.user.uid, 'mcp').doc(req.params.id); const s = (await ref.get()).data();
     if (!s) return reply.code(404).send({ error: 'Not found' });
-    const r = await verifyMcp(s);
+    const r = await verifyMcp(s, req.user.uid, ref.id);
     const patch = { status: r.ok ? 'connected' : 'error', tools: r.ok ? r.tools : s.tools ?? [], updatedAt: now() };
     await ref.set(patch, { merge: true });
     return { id: ref.id, ...s, ...patch, ...(r.ok ? {} : { error: r.error }) };
@@ -206,21 +261,23 @@ await app.register(async (v1) => {
     let status = 'error', error = '';
     try {
       if (c.provider === 'telegram') {
-        if (!telegramReady()) error = 'TELEGRAM_BOT_TOKEN is not set on the API service.';
+        if (!telegramReady()) error = 'No Telegram bot token on your Loopmates server yet. Add it in Connections → Telegram.';
         else if (!c.config?.chatId) { status = 'pending'; error = 'Not linked yet. Get a code and send /start CODE to the bot.'; }
         else { await tgSend(c.config.chatId, 'Loopmates test message: connected'); status = 'connected'; }
       } else if (c.provider === 'discord') {
-        if (!discordReady()) error = 'Discord is not configured on the API service.';
+        if (!discordReady()) error = 'Discord is not set up on your Loopmates server yet. Add the app ID, public key and bot token in Connections → Discord.';
         else if (!c.config?.channelId) { status = 'pending'; error = 'Not linked yet. Get a code and use /link in Discord.'; }
         else { await sendChannel(c.config.channelId, 'Loopmates test message: connected'); status = 'connected'; }
       } else if (c.provider === 'whatsapp') {
         const w = waStatus(); status = w.status === 'open' ? 'connected' : 'pending'; error = status === 'pending' ? `Bridge is ${w.status}.` : '';
       } else if (c.provider === 'gdrive') {
-        await svcJson(env('ARTIFACTS_URL'), '/v1/health'); status = 'connected';
+        if (!driveReady()) { status = 'pending'; error = 'Google Drive is not connected yet. Follow the steps in Connections → Google Drive.'; }
+        else { await driveHealth(); status = 'connected'; }
       } else if (c.provider === 'github') {
         const tok = c.secretsEnc?.token ? open(c.secretsEnc.token, `${uid}|connection|${ref.id}|token`) : '';
-        const r = await fetch('https://api.github.com/user', { headers: { authorization: `Bearer ${tok}`, 'user-agent': 'loopmates' }, signal: AbortSignal.timeout(15_000) });
-        if (r.ok) status = 'connected'; else error = `GitHub answered ${r.status}`;
+        const repos = String(c.config?.repos ?? env('GITHUB_REPOS')).split(',').map((x) => x.trim()).filter(Boolean);
+        const r = await testGithub(tok || env('GITHUB_TOKEN'), repos);
+        if (r.ok) { status = 'connected'; await ref.set({ config: { ...(c.config ?? {}), login: r.login, check: r.repos.join('; ').slice(0, 500) } }, { merge: true }); } else error = r.error;
       } else { status = 'pending'; error = 'Email delivery is not available yet.'; }
     } catch (e) { error = e.message.slice(0, 200); }
     await ref.set({ status, updatedAt: now() }, { merge: true });
@@ -254,8 +311,15 @@ await app.register(async (v1) => {
 
   /* telegram + whatsapp */
   v1.post('/v1/telegram/link-code', async (req) => linkCode(req.user.uid, req.body?.connectionId));
-  v1.post('/v1/discord/link-code', async (req, reply) => (discordReady() ? discordLinkCode(req.user.uid, req.body?.connectionId) : reply.code(503).send({ error: 'Discord is not configured on the API service (DISCORD_BOT_TOKEN, DISCORD_PUBLIC_KEY, DISCORD_APP_ID).' })));
+  v1.post('/v1/discord/link-code', async (req, reply) => (discordReady() ? discordLinkCode(req.user.uid, req.body?.connectionId) : reply.code(503).send({ error: 'Discord is not set up on your Loopmates server yet (application ID, public key, bot token).' })));
   v1.get('/v1/calls', async (req) => listCalls(req.user.uid, Number(req.query.limit) || 15));
+  // "Call me now" from a chat: a call with this Mate that carries the chat's context (the same snapshot as a timer).
+  v1.post('/v1/calls/now', async (req) => {
+    const { mate = '', convId = '', reason = '' } = req.body ?? {};
+    const c = await createCall(req.user.uid, { mate: String(mate), convId: String(convId), reason: String(reason || 'You asked to talk about this chat').slice(0, 300), goal: 'Talk it through with the owner, then sum up what was decided.' });
+    return { id: c.id, mate: c.mate, reason: c.reason };
+  });
+  v1.post('/v1/calls/:id/cancel', async (req) => (await import('./calls.js')).cancelCall(req.user.uid, req.params.id));
   v1.get('/v1/calls/:id', async (req, reply) => (await getCall(req.user.uid, req.params.id)) ?? reply.code(404).send({ error: 'Not found' }));
   v1.get('/v1/whatsapp/status', async () => waStatus());
   v1.post('/v1/whatsapp/pair', async (req) => startWhatsApp({ phone: req.body?.phone }));
@@ -263,18 +327,28 @@ await app.register(async (v1) => {
 
   registerCrud(v1, {
     hooks: {
-      ...schedHooks,
+      ...schedHooks, watches: watchHook,
       knowledge: async (uid, id, doc, op) => { if (op === 'set' && doc?.status === 'pending') void indexKnowledge(uid, id); },
       files: async (uid, id, doc, op, prev) => { if (op === 'delete') await deleteDriveFile(prev?.driveId); },
     },
   });
 });
+}
 
-/* ---------- boot ---------- */
-await listen(app);
+/** Background work that starts once the server listens. */
+export async function bootApi(app) {
+  setCompanySender((chatId, text) => tgSend(chatId, text));
+  if (env('OWNER_UID')) void ensureDefaultWatches(env('OWNER_UID')).catch(() => {});
 const recovered = await recoverRuns().catch((e) => { app.log.error(e); return 0; });
 if (recovered) app.log.warn(`marked ${recovered} interrupted run(s) as failed`);
 startScheduler();
 resumeWhatsApp().catch((e) => app.log.warn(`whatsapp: ${e.message}`));
-if (discordReady()) registerCommands().then((r) => app.log.info(`discord commands: ${r.ok ? 'registered' : r.error}`)).catch(() => {});
-if (telegramReady() && env('PUBLIC_URL') && env('TELEGRAM_WEBHOOK_SECRET')) setWebhook(env('PUBLIC_URL')).then((r) => app.log.info(`telegram webhook: ${r.ok ? 'set' : r.description}`)).catch(() => {});
+if (discordReady()) {
+  registerCommands().then((r) => app.log.info(`discord commands: ${r.ok ? 'registered' : r.error}`)).catch(() => {});
+  startGateway({ startRun, liveRuns, onComponent: answerFromDiscord, log: app.log });
+}
+if (telegramReady()) startPolling(app.log);
+bootIntegrations(app.log);
+await initPush().catch((e) => app.log.warn(`push: ${e.message}`));
+startPresence(app.log);
+}

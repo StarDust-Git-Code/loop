@@ -3,7 +3,7 @@ import { env, now } from '../lib/env.js';
 import { tail, counts } from '../lib/console.js';
 import { db, userCol } from './db.js';
 import { providerSummary } from './llm.js';
-import { MATE_DEFS } from './mates.js';
+import { loadRoster } from './roster.js';
 import { hooks } from './toolhooks.js';
 
 const bad = (m) => Object.assign(new Error(m), { tool: true });
@@ -11,12 +11,6 @@ const DONE = new Set(['done', 'failed', 'stopped']);
 const mins = (iso) => Math.round((Date.now() - Date.parse(iso)) / 60_000);
 const short = (r) => `${r.id} | ${r.status} | ${r.title}${r.updatedAt ? ` | updated ${mins(r.updatedAt)}m ago` : ''}${r.error ? ` | error: ${String(r.error).slice(0, 120)}` : ''}`;
 const runs = async (uid, n = 120) => (await userCol(uid, 'runs').limit(n).get()).docs.map((d) => ({ id: d.id, ...d.data() })).sort((a, b) => String(b.updatedAt).localeCompare(String(a.updatedAt)));
-const ping = async (url) => {
-  if (!url) return { ok: false, note: 'not configured' };
-  const t = Date.now();
-  try { const r = await fetch(`${url.replace(/\/$/, '')}/healthz`, { signal: AbortSignal.timeout(8000) }); return { ok: r.ok, note: `${r.status} in ${Date.now() - t}ms` }; }
-  catch (e) { return { ok: false, note: e.name === 'TimeoutError' ? 'timed out (may be waking up)' : 'unreachable' }; }
-};
 
 export const MONITOR_TOOLS = {
   time_now: { group: '*', desc: 'Current date and time, optionally in a timezone.', args: '{"timezone": "optional IANA name like Asia/Kolkata"}', run: async (c, a) => {
@@ -24,8 +18,8 @@ export const MONITOR_TOOLS = {
     try { return `${new Intl.DateTimeFormat('en-GB', { dateStyle: 'full', timeStyle: 'long', timeZone: tz }).format(new Date())} | ISO ${new Date().toISOString()}`; } catch { throw bad('Unknown timezone'); }
   } },
   mates_list: { group: '*', desc: 'The roster of Mates: who is switched on, their tools and model.', args: '{}', run: async (c) => {
-    const cfg = Object.fromEntries((await userCol(c.uid, 'mates').get()).docs.map((d) => [d.id, d.data()]));
-    return MATE_DEFS.map((m) => `${m.key} | ${cfg[m.key]?.enabled ?? m.core ? 'on' : 'off'} | ${m.blurb} | tools: ${(cfg[m.key]?.tools ?? m.tools).join(', ') || 'none'}`).join('\n');
+    const ro = await loadRoster(c.uid); const cfg = ro.cfgs;
+    return ro.list.map((m) => `${m.key}${m.key === ro.leader ? ' (leader)' : ''} | ${m.name} | ${ro.on(m.key) ? 'on' : 'off'} | ${m.blurb} | tools: ${(cfg[m.key]?.tools ?? m.tools).join(', ') || 'none'}`).join('\n');
   } },
   runs_active: { group: '*', desc: 'Runs that are queued, running, paused or waiting for approval right now.', args: '{}', run: async (c) => {
     const live = new Map((hooks.liveRuns?.(c.uid) ?? []).map((r) => [r.id, r]));
@@ -60,9 +54,13 @@ export const MONITOR_TOOLS = {
     const rows = (await userCol(c.uid, 'automations').limit(50).get()).docs.map((d) => d.data());
     return rows.length ? rows.map((x) => `${x.enabled ? 'on ' : 'off'} | ${x.name} | ${x.schedule?.kind ?? 'manual'} ${x.schedule?.cron ?? x.schedule?.time ?? ''}`).join('\n') : 'No automations.';
   } },
-  connections_status: { group: '*', desc: 'Telegram, WhatsApp, Drive, GitHub connection status.', args: '{}', run: async (c) => {
+  connections_status: { group: '*', desc: 'What is linked and working: app push, Telegram, Discord, Google Drive, GitHub, browser, voice, tunnel. Same states the owner sees on the Server page, with the step that is missing.', args: '{}', run: async (c) => {
+    const { serverStatus } = await import('./admin.js');
+    const st = await serverStatus().catch(() => null);
     const rows = (await userCol(c.uid, 'connections').limit(20).get()).docs.map((d) => d.data());
-    return rows.length ? rows.map((x) => `${x.provider} | ${x.status}${x.error ? ` | ${x.error}` : ''}`).join('\n') : 'No connections yet.';
+    const mine = rows.length ? rows.map((x) => `${x.provider}: ${x.status}`).join(', ') : 'none';
+    const feats = st ? st.features.map((f) => `${f.ready ? 'ready' : 'missing'} | ${f.label} | ${f.note}${f.fix ? ` | fix: ${f.fix}` : ''}`).join('\n') : 'Server status unavailable.';
+    return `${feats}\nLinked chats for this owner: ${mine}`;
   } },
   files_list: { group: '*', desc: 'Recent files in the workspace.', args: '{"limit": 10}', run: async (c, a) => {
     const rows = (await userCol(c.uid, 'files').limit(100).get()).docs.map((d) => d.data()).sort((x, y) => String(y.createdAt).localeCompare(String(x.createdAt))).slice(0, Math.min(Number(a.limit) || 10, 25));
@@ -84,7 +82,7 @@ export const MONITOR_TOOLS = {
     const m = process.memoryUsage();
     const live = hooks.liveRuns?.(c.uid) ?? [];
     return [`uptime ${Math.round(process.uptime() / 60)} min | heap ${Math.round(m.heapUsed / 1048576)} MB | rss ${Math.round(m.rss / 1048576)} MB | node ${process.version}`,
-      `live runs: ${live.length}`, `coder service: ${env('CODER_URL') ? 'configured' : 'NOT configured'} | artifacts/Drive: ${env('ARTIFACTS_URL') ? 'configured' : 'NOT configured'} | telegram: ${env('TELEGRAM_BOT_TOKEN') ? 'configured' : 'NOT configured'} | web search: ${env('BRAVE_API_KEY') ? 'Brave' : 'DuckDuckGo fallback'}`,
+      `live runs: ${live.length}`, `coder: in-process | Drive: ${env('GOOGLE_REFRESH_TOKEN') ? 'connected' : 'NOT connected'} | telegram: ${env('TELEGRAM_BOT_TOKEN') ? 'configured' : 'NOT configured'} | web search: ${env('BRAVE_API_KEY') ? 'Brave' : 'DuckDuckGo fallback'}`,
       `console last 15 min: ${JSON.stringify(counts(15 * 60_000))}`].join('\n');
   } },
   watchdog: { group: '*', desc: 'Full health check with findings: stuck runs, failures, dead services, overdue jobs, stale approvals, LLM trouble, console errors.', args: '{}', run: async (c) => {
@@ -97,9 +95,7 @@ export const MONITOR_TOOLS = {
     }
     const failed = all.filter((r) => r.status === 'failed' && Date.parse(r.updatedAt) > Date.now() - 86_400_000);
     if (failed.length) add(failed.length > 2 ? 'HIGH' : 'MED', `${failed.length} run(s) failed in the last 24h: ${failed.slice(0, 3).map((r) => `"${r.title}" (${String(r.error ?? '').slice(0, 70)})`).join('; ')}`);
-    const [coder, art] = await Promise.all([ping(env('CODER_URL')), ping(env('ARTIFACTS_URL'))]);
-    if (env('CODER_URL') && !coder.ok) add('HIGH', `Coder service: ${coder.note}.`); if (env('ARTIFACTS_URL') && !art.ok) add('MED', `Artifacts service: ${art.note}.`);
-    if (!env('CODER_URL')) add('LOW', 'Coder service is not configured, so code steps cannot run.'); if (!env('ARTIFACTS_URL')) add('LOW', 'Artifacts/Drive is not configured, so files cannot be saved.');
+    if (!env('GOOGLE_REFRESH_TOKEN')) add('LOW', 'Google Drive is not connected, so files over 700 KB cannot be saved.');
     const prov = await providerSummary(c.uid);
     if (!prov.length) add('HIGH', 'No LLM provider is configured.'); else if (prov.every((p) => p.cooling)) add('HIGH', 'Every LLM provider is cooling down after errors.'); else if (prov.some((p) => p.cooling)) add('LOW', `${prov.filter((p) => p.cooling).map((p) => p.name).join(', ')} cooling down; failover is covering.`);
     const jobs = (await db.collection('jobs').where('uid', '==', c.uid).limit(100).get()).docs.map((d) => d.data()).filter((j) => j.nextAt < Date.now() - 180_000);

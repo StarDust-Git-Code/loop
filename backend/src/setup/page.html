@@ -1,0 +1,226 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Loopmates server</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap">
+<style>
+:root { --accent: #2F6BFF; --accent-ink: #1F55E6; --ink: #0F172A; --muted: #5B6474; --line: rgba(15,23,42,.10); --soft: rgba(15,23,42,.06); --ok: #16A34A; --bad: #B3261E; --warn: #B45309; }
+* { box-sizing: border-box; }
+body { margin: 0; background: #fff; color: var(--ink); font: 15px/1.5 'Plus Jakarta Sans', system-ui, sans-serif; }
+.blur { position: fixed; inset: 0; pointer-events: none; z-index: 0; overflow: hidden; }
+.blur i { position: absolute; border-radius: 50%; filter: blur(36px); top: -260px; left: 50%; margin-left: -520px; width: 1040px; height: 560px; background: radial-gradient(closest-side, rgba(47,107,255,.26), rgba(47,107,255,0)); }
+main { position: relative; z-index: 1; max-width: 880px; margin: 0 auto; padding: 32px 16px 80px; }
+header { display: flex; align-items: center; gap: 10px; margin-bottom: 28px; }
+header b { font-size: 18px; letter-spacing: -.02em; }
+header .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--accent); }
+header .grow { flex: 1; }
+header small { color: var(--muted); }
+h1 { font-size: 34px; letter-spacing: -.03em; line-height: 1.15; margin: 0 0 6px; }
+.lede { color: var(--muted); margin: 0 0 28px; }
+nav.tabs { display: flex; gap: 4px; flex-wrap: wrap; margin-bottom: 20px; }
+nav.tabs button { border: 0; background: transparent; padding: 8px 12px; border-radius: 10px; font: 600 14px inherit; font-family: inherit; color: var(--muted); cursor: pointer; }
+nav.tabs button[aria-selected=true] { background: rgba(15,23,42,.05); color: var(--ink); }
+section.card { background: rgba(255,255,255,.88); border: 1px solid var(--line); border-radius: 20px; padding: 20px 22px; margin-bottom: 16px; }
+section.card h2 { font-size: 16px; margin: 0 0 4px; }
+section.card > p { color: var(--muted); margin: 0 0 14px; font-size: 14px; }
+label { display: block; font-size: 13px; font-weight: 600; margin: 12px 0 4px; }
+.help { font-size: 12.5px; color: var(--muted); margin-top: 4px; }
+input, textarea, select { width: 100%; font: inherit; font-size: 14px; color: var(--ink); background: #fff; border: 1px solid rgba(15,23,42,.14); border-radius: 10px; padding: 9px 11px; }
+textarea { min-height: 120px; font-family: ui-monospace, Consolas, monospace; font-size: 12.5px; }
+input:focus, textarea:focus, select:focus { outline: 2px solid var(--accent); outline-offset: 1px; border-color: transparent; }
+.row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-top: 14px; }
+button.btn { height: 38px; padding: 0 16px; border-radius: 10px; border: 1px solid rgba(15,23,42,.14); background: #fff; font: 600 14px inherit; font-family: inherit; color: var(--ink); cursor: pointer; }
+button.btn:hover { border-color: var(--accent); color: var(--accent-ink); }
+button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+button.primary:hover { background: var(--accent-ink); color: #fff; }
+button:disabled { opacity: .5; cursor: default; }
+.note { font-size: 13.5px; color: var(--muted); }
+.note.ok { color: var(--ok); } .note.bad { color: var(--bad); }
+ul.status { list-style: none; margin: 0; padding: 0; }
+ul.status li { display: grid; grid-template-columns: 12px 180px 1fr; gap: 12px; align-items: baseline; padding: 10px 0; border-bottom: 1px solid var(--soft); }
+ul.status li:last-child { border-bottom: 0; }
+.lamp { width: 8px; height: 8px; border-radius: 50%; background: #CBD5E1; display: inline-block; }
+.lamp.on { background: var(--ok); } .lamp.off { background: #F59E0B; }
+.fix { display: block; font-size: 12.5px; color: var(--warn); }
+.code { font: 700 44px/1 ui-monospace, Consolas, monospace; letter-spacing: .18em; color: var(--ink); background: #F2F6FF; border-radius: 14px; padding: 16px 20px; display: inline-block; }
+.pill { display: inline-block; font-size: 12px; font-weight: 600; padding: 2px 8px; border-radius: 999px; background: #F3F5F9; color: var(--muted); }
+.pill.ok { background: #E8F7EE; color: var(--ok); }
+pre.log { background: #0F172A; color: #E2E8F0; border-radius: 12px; padding: 12px; font-size: 12px; max-height: 200px; overflow: auto; white-space: pre-wrap; }
+.folders { border: 1px solid var(--line); border-radius: 12px; max-height: 260px; overflow: auto; margin-top: 10px; }
+.folders button { display: block; width: 100%; text-align: left; border: 0; border-bottom: 1px solid var(--soft); background: #fff; padding: 9px 12px; font: inherit; font-size: 14px; cursor: pointer; }
+.folders button:hover { background: #F2F6FF; }
+.hidden { display: none !important; }
+@media (max-width: 640px) { ul.status li { grid-template-columns: 12px 1fr; } ul.status li .val { grid-column: 2; } h1 { font-size: 27px; } }
+</style>
+</head>
+<body>
+<div class="blur" aria-hidden="true"><i></i></div>
+<main>
+  <header><span class="dot" aria-hidden="true"></span><b>loopmates</b><span class="grow"></span><small id="where"></small></header>
+  <h1 id="title">Your Loopmates server</h1>
+  <p class="lede" id="lede">Everything here stays on this computer. Secrets are encrypted in your data folder.</p>
+  <p class="note bad" id="err" role="alert"></p>
+
+  <nav class="tabs" role="tablist" id="tabs"></nav>
+  <div id="panes"></div>
+</main>
+<script>
+const KEY = '__SETUP_KEY__';
+const $ = (s, el = document) => el.querySelector(s);
+const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const api = async (path, body, method) => {
+  const r = await fetch(path, { method: method || (body ? 'POST' : 'GET'), headers: { 'x-setup-key': KEY, ...(body ? { 'content-type': 'application/json' } : {}) }, body: body ? JSON.stringify(body) : undefined });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(j.error || `Error ${r.status}`);
+  return j;
+};
+let S = null, tab = location.pathname.endsWith('/status') ? 'status' : (sessionStorage.getItem('lm-tab') || 'start');
+const say = (m) => { $('#err').textContent = m || ''; };
+const field = (k) => S.config.find((f) => f.key === k) || { key: k, label: k, value: '' };
+
+function input(k, type) {
+  const f = field(k);
+  return `<label for="f-${k}">${esc(f.label)}${f.set && f.secret ? ' <span class="pill ok">saved</span>' : ''}${f.fromEnv ? ' <span class="pill">from environment</span>' : ''}</label>
+    <input id="f-${k}" data-key="${k}" type="${f.secret ? 'password' : type || 'text'}" autocomplete="off" placeholder="${f.secret && f.set ? esc(f.value) : ''}" value="${f.secret ? '' : esc(f.value)}">
+    ${f.help ? `<div class="help">${esc(f.help)}</div>` : ''}`;
+}
+async function saveKeys(keys, btn) {
+  const patch = {};
+  for (const k of keys) { const el = $(`#f-${k}`); if (!el) continue; const v = el.value.trim(); const f = field(k); if (f.secret && !v) continue; patch[k] = v; }
+  btn.disabled = true; say('');
+  try { const r = await api('/setup/api/config', patch); if (r.restart) return restarting(); await load(); flash(btn, 'Saved'); }
+  catch (e) { say(e.message); } finally { btn.disabled = false; }
+}
+const flash = (btn, t) => { const o = btn.textContent; btn.textContent = t; setTimeout(() => { btn.textContent = o; }, 1500); };
+function restarting() {
+  $('#panes').innerHTML = '<section class="card"><h2>Restarting the server…</h2><p>This takes a few seconds. The page reloads by itself.</p></section>';
+  const t = setInterval(async () => { try { await api('/setup/api/state'); clearInterval(t); location.reload(); } catch { /* still restarting */ } }, 1500);
+}
+
+const PANES = {
+  start: { label: S => S.configured ? 'Overview' : 'Get started', html: () => S.configured ? overview() : firstRun() },
+  status: { label: () => 'Status', html: () => statusPane() },
+  address: { label: () => 'Public address', html: () => addressPane() },
+  pair: { label: () => 'Pair dashboard', html: () => pairPane() },
+  keys: { label: () => 'Models & channels', html: () => keysPane() },
+  drive: { label: () => 'Google Drive', html: () => drivePane() },
+  more: { label: () => 'GitHub & browser', html: () => morePane() },
+};
+
+function firstRun() {
+  return `<section class="card"><h2>1. Connect your Firebase project</h2>
+    <p>Loopmates keeps your chats, runs and memories in your own free Firebase project. In the Firebase console open Project settings → Service accounts → <b>Generate new private key</b>, then paste the whole file here.</p>
+    <label for="sa">Service-account JSON</label><textarea id="sa" placeholder='{"type": "service_account", "project_id": "…", …}'></textarea>
+    <input type="file" id="safile" accept="application/json,.json" style="margin-top:8px">
+    ${input('ALLOWED_EMAILS', 'email')}${input('ALLOWED_ORIGINS', 'url')}
+    <div class="row"><button class="btn primary" id="save-fb">Save and start</button><span class="note">The server restarts once with your database.</span></div></section>`;
+}
+function overview() {
+  const f = S.status?.features ?? []; const ready = f.filter((x) => x.ready).length;
+  const next = f.find((x) => !x.ready && x.fix);
+  return `<section class="card"><h2>${ready} of ${f.length} features ready</h2><p>${next ? `Next step: <b>${esc(next.label)}</b>. ${esc(next.fix)}` : 'Everything is set up.'}</p>
+    <ul class="status">${f.map(row).join('')}</ul></section>`;
+}
+const row = (x) => `<li><span class="lamp ${x.ready ? 'on' : 'off'}" aria-hidden="true"></span><b>${esc(x.label)}</b><span class="val">${esc(x.note)}${x.fix ? `<span class="fix">${esc(x.fix)}</span>` : ''}</span></li>`;
+function statusPane() {
+  if (!S.configured) return `<section class="card"><h2>Not set up yet</h2><p>Connect Firebase on the first tab.</p></section>`;
+  return `<section class="card"><h2>Status</h2><p>Server ${esc(S.status.commit || '')} · up ${Math.round(S.status.uptime / 60)} min · ${esc(S.status.url)}</p><ul class="status">${S.status.features.map(row).join('')}</ul>
+    <p class="help" style="margin-top:12px">Data folder: ${esc(S.dataDir)}</p></section>`;
+}
+function addressPane() {
+  const t = S.tunnel; const mode = field('TUNNEL_MODE').value || 'off';
+  return `<section class="card"><h2>Public address</h2><p>The dashboard on Vercel and your phone reach this computer through a free Cloudflare Tunnel. Nothing on your router needs to change.</p>
+    <p>Status: <span class="pill ${t.status === 'online' ? 'ok' : ''}">${esc(t.status)}</span> ${t.url ? `<b>${esc(t.url)}</b>` : ''} ${t.error ? `<span class="note bad">${esc(t.error)}</span>` : ''}</p>
+    <label for="tmode">Type</label><select id="tmode">
+      <option value="quick" ${mode === 'quick' ? 'selected' : ''}>Quick tunnel: free random address, no account (changes when the server restarts; the dashboard follows it)</option>
+      <option value="named" ${mode === 'named' ? 'selected' : ''}>Named tunnel: your own domain on Cloudflare (stable)</option>
+      <option value="off" ${mode === 'off' ? 'selected' : ''}>Off: I handle the address myself</option></select>
+    <div id="named" class="${mode === 'named' ? '' : 'hidden'}">${input('TUNNEL_TOKEN')}${input('PUBLIC_URL', 'url')}</div>
+    <div class="row"><button class="btn primary" id="save-tunnel">${t.status === 'online' ? 'Restart tunnel' : 'Start'}</button>${t.binary ? '' : '<span class="note">cloudflared is downloaded automatically (about 40 MB).</span>'}</div></section>`;
+}
+function pairPane() {
+  if (!S.configured) return `<section class="card"><h2>Pair your dashboard</h2><p>Connect Firebase first.</p></section>`;
+  const p = S.pairing;
+  return `<section class="card"><h2>Pair your dashboard</h2>
+    <p>${p.paired ? 'This server is paired. Pair again to switch accounts or browsers.' : 'Open your dashboard, sign in, and enter this code when it asks for your server.'}</p>
+    ${p.code ? `<div class="code" aria-label="Pairing code">${esc(p.code)}</div><p class="help">Valid for 10 minutes. The dashboard will use ${esc(p.url)}</p>` : ''}
+    <div class="row"><button class="btn primary" id="newcode">${p.code ? 'New code' : 'Show a pairing code'}</button>${p.paired ? '<button class="btn" id="unpair">Unpair</button>' : ''}</div>
+    ${p.url.startsWith('http://localhost') ? '<p class="note bad" style="margin-top:12px">No public address yet: only a dashboard on this computer can reach the server. Start a tunnel first.</p>' : ''}</section>`;
+}
+function group(title, intro, keys) {
+  return `<section class="card"><h2>${title}</h2><p>${intro}</p>${keys.map((k) => input(k)).join('')}<div class="row"><button class="btn primary" data-save="${keys.join(',')}">Save</button></div></section>`;
+}
+function keysPane() {
+  return group('AI models', 'Keys used by every agent. Gemini is free and also powers voice calls. You can add more providers per account in the dashboard Settings.', ['GEMINI_API_KEY', 'NVIDIA_API_KEY', 'GROQ_API_KEY', 'CEREBRAS_API_KEY', 'OPENROUTER_API_KEY', 'BRAVE_API_KEY'])
+    + group('Telegram', 'Create a bot with @BotFather (/newbot) and paste its token. The server reads messages with long polling, so no public address is needed. Then link your chat in the dashboard: Connections → Telegram.', ['TELEGRAM_BOT_TOKEN'])
+    + group('Discord', 'discord.com/developers → New Application. Copy the application ID and public key, then Bot → Reset Token. Leave “Interactions Endpoint URL” empty: the bot connects out over the Gateway. Then invite it and link in Connections → Discord.', ['DISCORD_APP_ID', 'DISCORD_PUBLIC_KEY', 'DISCORD_BOT_TOKEN']);
+}
+function drivePane() {
+  if (!S.configured) return `<section class="card"><h2>Google Drive</h2><p>Connect Firebase first.</p></section>`;
+  const ready = field('GOOGLE_REFRESH_TOKEN').set;
+  return `<section class="card"><h2>Google Drive</h2>
+    <p>1. In Google Cloud console create a project, enable the <b>Google Drive API</b>, and set up the OAuth consent screen (External, add yourself as a test user).<br>
+    2. Credentials → Create OAuth client ID → <b>Desktop app</b>. Paste the ID and secret below.<br>
+    3. Press Connect and sign in. While the consent screen is in “Testing”, Google ends the sign-in after 7 days: publish the app (no review needed for your own use) or reconnect weekly.</p>
+    ${input('GOOGLE_CLIENT_ID')}${input('GOOGLE_CLIENT_SECRET')}
+    <div class="row"><button class="btn" data-save="GOOGLE_CLIENT_ID,GOOGLE_CLIENT_SECRET">Save</button><button class="btn primary" id="drive-connect">${ready ? 'Reconnect' : 'Connect Google Drive'}</button>${ready ? '<span class="pill ok">connected</span>' : ''}</div>
+    ${ready ? `<h2 style="margin-top:20px">Folder</h2><p>The agents may only use this folder and what is inside it. ${field('DRIVE_ROOT_FOLDER_ID').value ? `Current: <code>${esc(field('DRIVE_ROOT_FOLDER_ID').value)}</code>` : 'None picked: a “Loopmates” folder is created.'}</p>
+      <div class="row"><button class="btn" id="browse">Choose a folder</button></div><div id="picker"></div>` : ''}</section>`;
+}
+function morePane() {
+  const b = S.browser;
+  return group('GitHub', 'Create a fine-grained token at github.com/settings/personal-access-tokens: only the repositories you list here, with Contents and Pull requests set to Read and write. The coder can only clone and push these repos.', ['GITHUB_TOKEN', 'GITHUB_REPOS', 'DEFAULT_REPO'])
+    + `<section class="card"><h2>Browser for the Browser Mate</h2><p>Edge or Chrome on this computer is used when found. Otherwise download Chromium once.</p>
+      <div class="row"><button class="btn primary" id="browser-install" ${b.running ? 'disabled' : ''}>${b.running ? 'Installing…' : 'Install Chromium'}</button></div>${b.lines.length ? `<pre class="log">${esc(b.lines.join('\n'))}</pre>` : ''}</section>`
+    + group('Coding sandbox', 'Docker keeps code the agents run away from your files. Without Docker, commands run as restricted processes.', ['SANDBOX'])
+    + group('Server', 'Changing the allowed emails or port restarts the server.', ['ALLOWED_EMAILS', 'ALLOWED_ORIGINS', 'PORT']);
+}
+
+function render() {
+  const keys = S.configured ? Object.keys(PANES) : ['start', 'address', 'keys', 'more'];
+  if (!keys.includes(tab)) tab = 'start';
+  $('#title').textContent = S.configured ? 'Your Loopmates server' : 'Set up Loopmates on this computer';
+  $('#where').textContent = S.url;
+  $('#tabs').innerHTML = keys.map((k) => `<button role="tab" aria-selected="${k === tab}" data-tab="${k}">${PANES[k].label(S)}</button>`).join('');
+  $('#panes').innerHTML = PANES[tab].html();
+}
+async function load() { S = await api('/setup/api/state'); render(); if (S.problem && !S.configured && S.config.find((f) => f.key === 'FIREBASE_SERVICE_ACCOUNT_B64').set) say(S.problem); }
+
+document.addEventListener('click', async (e) => {
+  const t = e.target.closest('button'); if (!t) return;
+  try {
+    if (t.dataset.tab) { tab = t.dataset.tab; sessionStorage.setItem('lm-tab', tab); history.replaceState(null, '', `/setup${tab === 'status' ? '/status' : ''}?key=${KEY}`); return render(); }
+    if (t.dataset.save) return saveKeys(t.dataset.save.split(','), t);
+    if (t.id === 'save-fb') {
+      const r = await api('/setup/api/config', { ALLOWED_EMAILS: $('#f-ALLOWED_EMAILS').value.trim(), ALLOWED_ORIGINS: $('#f-ALLOWED_ORIGINS').value.trim() });
+      if ($('#sa').value.trim()) { await api('/setup/api/firebase', { json: $('#sa').value.trim() }); return restarting(); }
+      if (r.restart) return restarting();
+      return say('Paste the service-account JSON first.');
+    }
+    if (t.id === 'save-tunnel') { t.disabled = true; const mode = $('#tmode').value; await api('/setup/api/tunnel', { mode, token: $('#f-TUNNEL_TOKEN')?.value.trim(), url: $('#f-PUBLIC_URL')?.value.trim() }); setTimeout(load, 4000); return load(); }
+    if (t.id === 'newcode') { await api('/setup/api/pair', {}); return load(); }
+    if (t.id === 'unpair') { if (confirm('Unpair this server from your dashboard?')) { await api('/setup/api/unpair', {}); return load(); } return; }
+    if (t.id === 'drive-connect') { await saveKeys(['GOOGLE_CLIENT_ID', 'GOOGLE_CLIENT_SECRET'], t); const r = await api('/setup/api/drive/start', {}); window.open(r.url, '_blank'); say(''); return; }
+    if (t.id === 'browse' || t.dataset.folder !== undefined) {
+      const parent = t.dataset.open || '';
+      const r = await api(`/setup/api/drive/folders?parent=${encodeURIComponent(parent)}`);
+      $('#picker').innerHTML = `<div class="folders">${parent ? `<button data-open="" data-folder="">← My Drive</button>` : ''}${r.items.map((f) => `<button data-open="${esc(f.id)}" data-folder="">📁 ${esc(f.name)}</button>`).join('') || '<p class="note" style="padding:10px">No folders here.</p>'}</div>
+        ${parent ? `<div class="row"><button class="btn primary" data-pick="${esc(parent)}">Use this folder</button></div>` : '<p class="help">Open a folder, then press “Use this folder”.</p>'}`;
+      return;
+    }
+    if (t.dataset.pick) { await api('/setup/api/drive/folder', { id: t.dataset.pick }); return load(); }
+    if (t.id === 'browser-install') { await api('/setup/api/browser/install', {}); const poll = setInterval(async () => { await load(); if (!S.browser.running) clearInterval(poll); }, 2000); return load(); }
+  } catch (err) { say(err.message); }
+});
+document.addEventListener('change', async (e) => {
+  if (e.target.id === 'tmode') $('#named').classList.toggle('hidden', e.target.value !== 'named');
+  if (e.target.id === 'safile' && e.target.files[0]) $('#sa').value = await e.target.files[0].text();
+});
+load().catch((e) => say(e.message));
+setInterval(() => { if (tab === 'status' || tab === 'start') load().catch(() => {}); }, 15000);
+</script>
+</body>
+</html>

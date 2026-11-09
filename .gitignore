@@ -43,3 +43,6 @@ next-env.d.ts
 # deploy secrets
 backend/scripts/deploy.env
 backend/node_modules/
+
+# graphify
+graphify-out/

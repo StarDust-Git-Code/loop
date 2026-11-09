@@ -7,18 +7,12 @@
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
-    "backgroundColor": "#FAF9FD",
-    "newArchEnabled": true,
-    "splash": {
-      "image": "./assets/splash-icon.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#6A4DF4"
-    },
+    "backgroundColor": "#FAFBFD",
     "android": {
       "package": "com.loopmates.app",
       "versionCode": 1,
       "adaptiveIcon": {
-        "backgroundColor": "#6A4DF4",
+        "backgroundColor": "#2F6BFF",
         "foregroundImage": "./assets/android-icon-foreground.png",
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
@@ -57,11 +51,18 @@
         {
           "androidPermissions": [
             "android.permission.RECORD_AUDIO",
-            "android.permission.MODIFY_AUDIO_SETTINGS"
+            "android.permission.MODIFY_AUDIO_SETTINGS",
+            "android.permission.FOREGROUND_SERVICE",
+            "android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK",
+            "android.permission.FOREGROUND_SERVICE_MICROPHONE"
           ],
-          "androidForegroundService": false,
+          "androidForegroundService": true,
           "disableFFmpeg": true,
-          "iosBackgroundMode": false
+          "iosBackgroundMode": true,
+          "androidFSTypes": [
+            "mediaPlayback",
+            "microphone"
+          ]
         }
       ],
       [
@@ -79,7 +80,7 @@
       [
         "expo-notifications",
         {
-          "color": "#6A4DF4"
+          "color": "#2F6BFF"
         }
       ],
       [
@@ -115,6 +116,15 @@
               "updatePeriodMillis": 0
             }
           ]
+        }
+      ],
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash-icon.png",
+          "resizeMode": "contain",
+          "backgroundColor": "#FFFFFF",
+          "imageWidth": 200
         }
       ]
     ],

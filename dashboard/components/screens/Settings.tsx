@@ -1,8 +1,9 @@
 'use client';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { api } from '../../lib/api';
+import { enablePush, pushState } from '../../lib/push';
 import { useRepo, useSession, useSettings } from '../../lib/hooks';
 import { fetchModelList, modelKey, PRESET, PRESETS, type Preset } from '../../lib/providers';
 import type { ProviderCfg, SettingsData } from '../../lib/types';
@@ -14,7 +15,7 @@ import s from './settings.module.css';
 
 type Sec = 'general' | 'models' | 'safety' | 'notify' | 'data' | 'dev';
 const SECS: { id: Sec; label: string; icon: string }[] = [{ id: 'general', label: 'General', icon: 'contrast' }, { id: 'models', label: 'Models & providers', icon: 'spark' }, { id: 'safety', label: 'Safety & limits', icon: 'shield' }, { id: 'notify', label: 'Notifications', icon: 'bell' }, { id: 'data', label: 'Data & account', icon: 'db' }, { id: 'dev', label: 'Developer options', icon: 'code' }];
-const TINT = ['#ECE7FF', '#FFF3D6', '#E3F0FF', '#E6F4EA', '#FDE8EE', '#E4EAFF'];
+const TINT = ['#EAF1FF', '#FFF3D6', '#E3F0FF', '#E6F4EA', '#FDE8EE', '#E4EAFF'];
 const tint = (id: string) => TINT[[...id].reduce((a, c) => a + c.charCodeAt(0), 0) % TINT.length];
 
 function Row({ label, sub, children }: { label: string; sub?: string; children: React.ReactNode }) {
@@ -81,7 +82,7 @@ function Safety({ st, set }: P) {
       <div className={s.card}>
         <h2 style={{ margin: '0 0 6px', fontSize: 18 }}>Limits</h2>
         {num('maxSteps', 'Max steps per run', 'A run stops after this many steps.')}{num('retriesOnFailure', 'Retries on failure', 'How often a failed step is tried again.')}{num('stopAfterMinutes', 'Stop after minutes without progress', '0 turns it off.')}
-        <p style={{ margin: '12px 0 0', fontSize: 13.5 }}>Hooks and guardrails live in <Link href="/skills" style={{ color: '#4F34D6' }}>Skills & MCP → Agent harness</Link>.</p>
+        <p style={{ margin: '12px 0 0', fontSize: 13.5 }}>Hooks and guardrails live in <Link href="/skills" style={{ color: '#1F55E6' }}>Skills & MCP → Agent harness</Link>.</p>
       </div>
     </div>
   );
@@ -112,12 +113,31 @@ function Dev({ st, set }: P) {
 }
 
 function Notify({ st, set }: P) {
+  const [push, setPush] = useState<'unsupported' | 'denied' | 'on' | 'off' | 'busy'>('off');
+  const [err, setErr] = useState('');
+  useEffect(() => { void pushState().then(setPush); }, []);
+  const time = (k: 'quietFrom' | 'quietTo') => <input type="time" aria-label={k === 'quietFrom' ? 'Quiet from' : 'Quiet until'} value={st[k] ?? (k === 'quietFrom' ? '22:00' : '07:00')} onChange={(e) => void set({ [k]: e.target.value })} style={{ height: 36, border: '1px solid var(--line)', borderRadius: 10, padding: '0 10px', font: 'inherit' }} />;
   return (
-    <div className={s.card}>
-      <h2 style={{ margin: '0 0 6px', fontSize: 18 }}>Where Loop reaches you</h2>
-      <Row label="Telegram" sub="Run finished, approval needed, run stuck. Pick the exact triggers on Connections."><Toggle label="Telegram notifications" checked={st.notifyTelegram} onChange={(v) => void set({ notifyTelegram: v })} /></Row>
-      <Row label="Email" sub="A daily summary and anything that needs you."><Toggle label="Email notifications" checked={st.notifyEmail} onChange={(v) => void set({ notifyEmail: v })} /></Row>
-      <p style={{ margin: '12px 0 0', fontSize: 13.5, color: 'var(--muted)' }}>Nothing is sent until a backend is connected. Set up channels on <Link href="/connections" style={{ color: '#4F34D6' }}>Connections</Link>.</p>
+    <div style={{ display: 'grid', gap: 16 }}>
+      <div className={s.card}>
+        <h2 style={{ margin: '0 0 6px', fontSize: 18 }}>Where your agents reach you</h2>
+        <p style={{ margin: '0 0 8px', fontSize: 13.5, color: 'var(--muted)' }}>Runs that finish or fail, questions from agents, and calls. Everything also lands in the app inbox.</p>
+        <Row label="This browser" sub={push === 'on' ? 'Notifications are on here.' : push === 'denied' ? 'Blocked: allow notifications for this site in the address bar.' : push === 'unsupported' ? 'This browser cannot show notifications (on iPhone, add the dashboard to the Home Screen first).' : 'Get a notification even when this tab is closed.'}>
+          {push === 'off' || push === 'busy' ? <Btn variant="primary" disabled={push === 'busy'} onClick={async () => { setPush('busy'); setErr(''); try { await enablePush(); setPush('on'); } catch (e) { setErr(e instanceof Error ? e.message : String(e)); setPush(await pushState()); } }}>Turn on</Btn> : null}
+        </Row>
+        <Row label="App (browsers and phone)" sub="Push to every browser and phone where you turned notifications on."><Toggle label="App notifications" checked={st.notifyApp !== false} onChange={(v) => void set({ notifyApp: v })} /></Row>
+        <Row label="Telegram" sub="Needs your chat linked in Connections → Telegram."><Toggle label="Telegram notifications" checked={st.notifyTelegram !== false} onChange={(v) => void set({ notifyTelegram: v })} /></Row>
+        <Row label="Discord" sub="Needs your account linked in Connections → Discord."><Toggle label="Discord notifications" checked={st.notifyDiscord !== false} onChange={(v) => void set({ notifyDiscord: v })} /></Row>
+        <Row label="Slack" sub="Your Slack DM, once linked in Connections → Slack."><Toggle label="Slack notifications" checked={st.notifySlack !== false} onChange={(v) => void set({ notifySlack: v })} /></Row>
+        <Row label="WhatsApp" sub="Connections → WhatsApp. Meta only delivers within 24 hours of your last message to the bot."><Toggle label="WhatsApp notifications" checked={st.notifyWhatsapp !== false} onChange={(v) => void set({ notifyWhatsapp: v })} /></Row>
+        {err && <p style={{ color: 'var(--failed)', fontSize: 13.5, margin: '8px 0 0' }}>{err}</p>}
+      </div>
+      <div className={s.card}>
+        <h2 style={{ margin: '0 0 6px', fontSize: 18 }}>Quiet hours</h2>
+        <Row label="Hold notifications and calls" sub={`In your timezone (${st.timezone}). Agents can still mark something urgent.`}><Toggle label="Quiet hours" checked={!!st.quietHoursOn} onChange={(v) => void set({ quietHoursOn: v })} /></Row>
+        {st.quietHoursOn && <Row label="From – until" sub="Ranges over midnight work, for example 22:00 – 07:00."><span style={{ display: 'flex', gap: 8, alignItems: 'center' }}>{time('quietFrom')}–{time('quietTo')}</span></Row>}
+        <p style={{ margin: '12px 0 0', fontSize: 13.5, color: 'var(--muted)' }}>Link Telegram and Discord on <Link href="/connections" style={{ color: 'var(--accent-ink)' }}>Connections</Link>.</p>
+      </div>
     </div>
   );
 }
@@ -134,8 +154,8 @@ function Data() {
   return (
     <div style={{ display: 'grid', gap: 16 }}>
       <div className={s.card}>
-        <h2 style={{ margin: '0 0 6px', fontSize: 18 }}>Backend</h2>
-        <Row label={api.capabilities.backend ? 'Connected' : 'Not connected'} sub={api.capabilities.backend ? 'Your data and runs live on your backend.' : 'Everything is saved in this browser only, and nothing runs yet. Set NEXT_PUBLIC_API_URL to connect one.'}><span style={{ width: 10, height: 10, borderRadius: '50%', background: api.capabilities.backend ? '#2FA562' : '#D79A2B' }} /></Row>
+        <h2 style={{ margin: '0 0 6px', fontSize: 18 }}>Your Loopmates server</h2>
+        <Row label={api.capabilities.backend ? 'Paired' : 'Demo mode'} sub={api.capabilities.backend ? 'Your agents run on your own computer. See status and pair again on the Server page.' : 'Everything is saved in this browser only, and nothing runs. Sign in to pair your server.'}>{api.capabilities.backend && <Btn href="/server">Server</Btn>}<span style={{ width: 10, height: 10, borderRadius: '50%', background: api.capabilities.backend ? '#2FA562' : '#D79A2B' }} /></Row>
         <Row label="Account" sub={session?.signedIn ? `Signed in as ${session.name ?? ''}` : 'Not signed in.'}>{session?.signedIn && <Btn onClick={() => api.auth.signOut().then(() => location.reload())}>Sign out</Btn>}</Row>
       </div>
       <div className={s.card}>
@@ -171,7 +191,7 @@ function Models({ st, set }: P) {
           {groups.map((g) => <div key={g}><p className={s.pgrp}>{g.toUpperCase()}</p>{PRESETS.filter((p) => p.group === g && p.id !== 'custom').map((p) => { const sv = saved(p); return row(p.id, p.name, p.name[0], sv ? (sv.enabled ? 'on' : 'off') : ''); })}</div>)}
           <p className={s.pgrp}>CUSTOM (OPENAI-COMPATIBLE)</p>
           {customs.map((c) => row(c.id, c.name || 'Custom', 'C', c.enabled ? 'on' : 'off'))}
-          <button className={s.pbtn} aria-current={sel === 'new-custom'} onClick={() => setSel('new-custom')} style={{ color: '#4F34D6', fontWeight: 600 }}><span className={s.ini} style={{ background: '#ECE7FF' }}>+</span>Add custom provider</button>
+          <button className={s.pbtn} aria-current={sel === 'new-custom'} onClick={() => setSel('new-custom')} style={{ color: '#1F55E6', fontWeight: 600 }}><span className={s.ini} style={{ background: '#EAF1FF' }}>+</span>Add custom provider</button>
         </div>
         {cur && <Editor key={sel + (cur.saved?.id ?? '')} preset={cur.preset} saved={cur.saved} st={st} set={set}
           onSave={async (d) => { const r = cur.saved ? await update(cur.saved.id, d) : await create(d); if (!cur.saved && cur.preset.id === 'custom') setSel(r.id); return r; }}
@@ -226,14 +246,14 @@ function Editor({ preset, saved, st, set, onSave, onRemove }: { preset: Preset; 
         {err && <div role="alert" style={{ background: '#FDE8E8', color: '#8E1C14', borderRadius: 10, padding: '10px 14px', fontSize: 13.5, marginBottom: 10, lineHeight: 1.5 }}>{err}</div>}
         {!avail && list.length > 0 && <p style={{ margin: '0 0 8px', fontSize: 12.5, color: 'var(--muted)' }}>{d.models.length ? 'Your enabled models, plus suggestions.' : 'Suggestions only. Press Fetch models to see exactly what this provider offers.'}</p>}
         {list.length === 0 ? <p style={{ color: 'var(--muted)', fontSize: 13.5, margin: 0 }}>{preset.models.length === 0 && !avail ? 'No models yet. Press Fetch models, or add an ID by hand below.' : 'No models match.'}</p> : (
-          <div className={s.mgrid}>{list.map((m) => <button type="button" key={m} className={`${s.mchip} ${d.models.includes(m) ? s.on : ''}`} aria-pressed={d.models.includes(m)} onClick={() => toggle(m)} title={m}><input type="checkbox" readOnly tabIndex={-1} checked={d.models.includes(m)} style={{ accentColor: '#6A4DF4' }} /><span className="mono">{m}</span>{saved && d.models.includes(m) && st.model === modelKey(saved.id, m) && <b style={{ marginLeft: 'auto', fontSize: 11, color: '#4F34D6' }}>default</b>}</button>)}</div>)}
+          <div className={s.mgrid}>{list.map((m) => <button type="button" key={m} className={`${s.mchip} ${d.models.includes(m) ? s.on : ''}`} aria-pressed={d.models.includes(m)} onClick={() => toggle(m)} title={m}><input type="checkbox" readOnly tabIndex={-1} checked={d.models.includes(m)} style={{ accentColor: '#2F6BFF' }} /><span className="mono">{m}</span>{saved && d.models.includes(m) && st.model === modelKey(saved.id, m) && <b style={{ marginLeft: 'auto', fontSize: 11, color: '#1F55E6' }}>default</b>}</button>)}</div>)}
         <form onSubmit={(e) => { e.preventDefault(); const m = manual.trim(); if (m && !d.models.includes(m)) setD({ ...d, models: [...d.models, m] }); setManual(''); }} style={{ display: 'flex', gap: 8, marginTop: 10 }}>
           <input className={s.inp} style={{ flex: 1, height: 38 }} value={manual} onChange={(e) => setManual(e.target.value)} placeholder="Add a model ID by hand" aria-label="Add a model ID" /><Btn type="submit" disabled={!manual.trim()}>Add</Btn>
           {avail && <Btn type="button" onClick={() => setD({ ...d, models: avail })}>Select all</Btn>}{d.models.length > 0 && <Btn type="button" onClick={() => setD({ ...d, models: [] })}>Clear</Btn>}
         </form>
       </div>
 
-      <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', borderTop: '1px solid rgba(31,26,23,.08)', paddingTop: 16 }}>
+      <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', borderTop: '1px solid rgba(15,23,42,.08)', paddingTop: 16 }}>
         {onRemove && <Btn variant="danger" onClick={() => confirmThen(`Remove ${saved?.name}? Mates using its models fall back to the default.`, () => void onRemove())}>Remove</Btn>}
         {saved && d.models.length > 0 && <select className={s.inp} style={{ height: 40, maxWidth: 260 }} aria-label="Use as default model" value="" onChange={(e) => { if (e.target.value) { void set({ model: modelKey(saved.id, e.target.value) }); toast('Default model set'); } }}><option value="">Use as default model…</option>{saved.models.map((m) => <option key={m}>{m}</option>)}</select>}
         <span style={{ flex: 1 }} />

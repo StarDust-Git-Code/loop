@@ -1,10 +1,11 @@
-// Discord bot over HTTP interactions (slash commands), so it works on a sleeping free web service: Discord wakes the
-// service by POSTing the command. Outgoing notifications use the bot token. Linking mirrors Telegram: code -> /link.
+// Discord bot: slash commands and buttons arrive over the Gateway (an outgoing WebSocket, no public URL needed), or over
+// HTTP interactions when an endpoint URL is set. Outgoing notifications use the bot token. Linking mirrors Telegram: code -> /link.
 import { randomBytes, createPublicKey, verify } from 'node:crypto';
 import { env, now } from '../lib/env.js';
 import { db, userCol } from './db.js';
 import { askMate } from './bridge.js';
-import { MATE, MATE_DEFS } from './mates.js';
+
+import { loadRoster } from './roster.js';
 
 const API = 'https://discord.com/api/v10';
 export const discordReady = () => !!(env('DISCORD_BOT_TOKEN') && env('DISCORD_PUBLIC_KEY') && env('DISCORD_APP_ID'));
@@ -20,9 +21,10 @@ export function verifySignature(rawBody, sig, ts) {
 
 const chunks = (t) => { const out = []; let s = String(t); while (s.length > 1900) { let i = s.lastIndexOf('\n', 1900); if (i < 800) i = 1900; out.push(s.slice(0, i)); s = s.slice(i).trimStart(); } out.push(s); return out; };
 
-export async function sendChannel(channelId, text) {
-  for (const part of chunks(text)) {
-    const r = await bot(`/channels/${channelId}/messages`, { method: 'POST', body: JSON.stringify({ content: part, allowed_mentions: { parse: [] } }) });
+export async function sendChannel(channelId, text, components) {
+  const parts = chunks(text);
+  for (const [i, part] of parts.entries()) {
+    const r = await bot(`/channels/${channelId}/messages`, { method: 'POST', body: JSON.stringify({ content: part, allowed_mentions: { parse: [] }, ...(components && i === parts.length - 1 ? { components } : {}) }) });
     if (!r.ok) throw new Error(`Discord: ${r.status}`);
   }
 }
@@ -30,10 +32,14 @@ async function linkedChannels(uid) {
   const snap = await userCol(uid, 'connections').where('provider', '==', 'discord').get();
   return snap.docs.map((d) => d.data().config?.channelId).filter(Boolean);
 }
-export async function notify(uid, text) {
+/** opts.buttons = [{ label, data }] adds a row of buttons (custom_id = data); clicks arrive as component interactions. */
+export async function notify(uid, text, opts = {}) {
   if (!env('DISCORD_BOT_TOKEN')) return 0;
   let n = 0;
-  for (const id of await linkedChannels(uid)) { try { await sendChannel(id, text); n++; } catch { /* channel may be gone */ } }
+  const components = opts.buttons?.length ? [{ type: 1, components: opts.buttons.slice(0, 5).map((b, i) => ({ type: 2, style: i === 0 ? 1 : 2, label: String(b.label).slice(0, 80), custom_id: String(b.data).slice(0, 100) })) }] : undefined;
+  const link = opts.url && /^https:\/\//.test(opts.url) ? `
+${opts.url}` : '';
+  for (const id of await linkedChannels(uid)) { try { await sendChannel(id, text + link, components); n++; } catch { /* channel may be gone */ } }
   return n;
 }
 
@@ -46,10 +52,9 @@ export async function linkCode(uid, connectionId) {
 /** Register slash commands globally (idempotent). */
 export async function registerCommands() {
   if (!discordReady()) return { ok: false, error: 'Discord is not configured' };
-  const mateChoices = MATE_DEFS.slice(0, 25).map((m) => ({ name: m.name, value: m.key }));
   const body = [
     { name: 'link', description: 'Link this chat to your Loopmates account', type: 1, options: [{ type: 3, name: 'code', description: 'Code from Loopmates > Connections', required: true }], integration_types: [0, 1], contexts: [0, 1, 2] },
-    { name: 'ask', description: 'Ask one of your Mates (full tools and memory)', type: 1, options: [{ type: 3, name: 'message', description: 'What do you need?', required: true }, { type: 3, name: 'mate', description: 'Which Mate (default Mimo)', required: false, choices: mateChoices }], integration_types: [0, 1], contexts: [0, 1, 2] },
+    { name: 'ask', description: 'Ask one of your Mates (full tools and memory)', type: 1, options: [{ type: 3, name: 'message', description: 'What do you need?', required: true }, { type: 3, name: 'mate', description: 'Which Mate (default: your leader)', required: false }], integration_types: [0, 1], contexts: [0, 1, 2] },
     { name: 'run', description: 'Start a multi-step run', type: 1, options: [{ type: 3, name: 'task', description: 'What should the team do?', required: true }], integration_types: [0, 1], contexts: [0, 1, 2] },
     { name: 'status', description: 'See your active and recent runs', type: 1, integration_types: [0, 1], contexts: [0, 1, 2] },
   ];
@@ -97,8 +102,8 @@ export async function handleLinked(i, deps) {
   const follow = (content) => fetch(`${API}/webhooks/${env('DISCORD_APP_ID')}/${i.token}`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ content, allowed_mentions: { parse: [] } }) }).catch(() => {});
   const work = (fn) => { void (async () => { try { const parts = chunks(await fn()); await finish(parts[0]); for (const p of parts.slice(1)) await follow(p); } catch (e) { await finish(`Something went wrong: ${String(e.message).slice(0, 300)}`); } })(); return { type: 5 }; };
   if (name === 'ask') {
-    const mate = MATE[opt(i, 'mate')] ? opt(i, 'mate') : 'mimo'; const text = String(opt(i, 'message') ?? '').slice(0, 4000);
-    return work(async () => { const r = await askMate(uid, { key: `discord-${duid}`, text, mate }); return `**${MATE[r.mate].name}**\n${r.text}`; });
+    const mate = String(opt(i, 'mate') ?? ''); const text = String(opt(i, 'message') ?? '').slice(0, 4000);
+    return work(async () => { const r = await askMate(uid, { key: `discord-${duid}`, text, mate }); return `**${(await loadRoster(uid)).name(r.mate)}**\n${r.text}`; });
   }
   if (name === 'run') {
     const task = String(opt(i, 'task') ?? '').slice(0, 4000);
@@ -113,3 +118,44 @@ export async function handleLinked(i, deps) {
   }
   return say('Unknown command.');
 }
+
+/* ------------------------------------------------------------------ Gateway (no public URL needed)
+   The bot keeps one outgoing WebSocket to Discord. Slash commands and button clicks arrive as INTERACTION_CREATE
+   events (as long as no Interactions Endpoint URL is set in the developer portal) and are answered over REST. */
+import WebSocket from 'ws';
+let gw = null;
+export function startGateway(deps) {
+  if (gw || !discordReady()) return;
+  gw = { ws: null, seq: null, hb: null, stop: false };
+  const respond = async (i, body) => { if (body) await fetch(`${API}/interactions/${i.id}/${i.token}/callback`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body), signal: AbortSignal.timeout(10_000) }).catch(() => {}); };
+  const onInteraction = async (i) => {
+    if (i.type === 3 && deps.onComponent) return respond(i, await deps.onComponent(i).catch(() => say('That did not work.')));
+    const first = handleInteraction(i);
+    return respond(i, first ?? await handleLinked(i, deps).catch((e) => say(`Something went wrong: ${String(e.message).slice(0, 200)}`)));
+  };
+  const connect = () => {
+    if (gw.stop || !discordReady()) { gw = null; return; }
+    const ws = new WebSocket('wss://gateway.discord.gg/?v=10&encoding=json'); gw.ws = ws;
+    ws.on('message', (raw) => {
+      let p; try { p = JSON.parse(raw.toString()); } catch { return; }
+      if (p.s != null) gw.seq = p.s;
+      if (p.op === 10) {
+        clearInterval(gw.hb);
+        gw.hb = setInterval(() => { if (ws.readyState === 1) ws.send(JSON.stringify({ op: 1, d: gw.seq })); }, p.d.heartbeat_interval);
+        ws.send(JSON.stringify({ op: 2, d: { token: env('DISCORD_BOT_TOKEN'), intents: 0, properties: { os: process.platform, browser: 'loopmates', device: 'loopmates' } } }));
+      } else if (p.op === 0 && p.t === 'READY') deps.log?.info?.('discord gateway: connected');
+      else if (p.op === 0 && p.t === 'INTERACTION_CREATE') void onInteraction(p.d);
+      else if (p.op === 7 || p.op === 9) ws.close();
+    });
+    ws.on('close', (code) => {
+      clearInterval(gw?.hb);
+      if (!gw || gw.stop) { gw = null; return; }
+      if (code === 4004) { deps.log?.warn?.('discord gateway: the bot token was rejected'); gw = null; return; }
+      setTimeout(connect, 5000).unref();
+    });
+    ws.on('error', () => {});
+  };
+  connect();
+}
+export function stopGateway() { if (gw) { gw.stop = true; try { gw.ws?.close(); } catch { /* closed */ } gw = null; } }
+export const gatewayStatus = () => (gw?.ws?.readyState === 1 ? 'connected' : gw ? 'connecting' : 'off');

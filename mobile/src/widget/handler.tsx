@@ -2,7 +2,7 @@ import React from 'react';
 import { FlexWidget, TextWidget } from 'react-native-android-widget';
 import type { WidgetTaskHandlerProps } from 'react-native-android-widget';
 
-const BRAND = '#6A4DF4';
+const BRAND = '#2F6BFF';
 const Btn = ({ label, uri }: { label: string; uri: string }) => (
   <FlexWidget clickAction="OPEN_URI" clickActionData={{ uri }} style={{ flex: 1, height: 'match_parent', backgroundColor: '#FFFFFF', borderRadius: 16, alignItems: 'center', justifyContent: 'center', marginHorizontal: 4 }}>
     <TextWidget text={label} style={{ fontSize: 14, fontWeight: '700', color: BRAND }} />

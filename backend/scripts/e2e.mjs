@@ -1,14 +1,18 @@
-// End-to-end smoke test with fakes: in-memory Firestore, fake LLM, fake Drive (artifacts contract). Run: node scripts/e2e.mjs
+// End-to-end smoke test of the single server (src/server.js) with fakes: in-memory Firestore, fake LLM, in-memory Drive.
+// Run: node scripts/e2e.mjs
 import { spawn } from 'node:child_process';
 import http from 'node:http';
 import assert from 'node:assert/strict';
 import { setTimeout as wait } from 'node:timers/promises';
+import { mkdtempSync, rmSync, mkdirSync, writeFileSync, copyFileSync, chmodSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 
-const env = { SERVICE_SECRET: 'test-secret-test-secret', MASTER_KEY: Buffer.alloc(32, 7).toString('base64'), CRON_SECRET: 'cron', NODE_ENV: 'test', MEMORY_DB: '1', ALLOWED_ORIGINS: 'http://localhost:3000', ALLOWED_EMAILS: 'alice@dev.local,bob@dev.local', LOG_LEVEL: 'warn' };
+const dataDir = mkdtempSync(join(tmpdir(), 'loopmates-e2e-'));
+const env = { LOOPMATES_DATA: dataDir, DRIVE_FAKE: '1', TEST_HOOKS: '1', SANDBOX: 'process', PORT: '4100', HOST: '127.0.0.1', MASTER_KEY: Buffer.alloc(32, 7).toString('base64'), CRON_SECRET: 'cron', NODE_ENV: 'test', MEMORY_DB: '1', ALLOWED_ORIGINS: 'http://localhost:3000', ALLOWED_EMAILS: 'alice@dev.local,bob@dev.local', LOG_LEVEL: 'warn' };
 Object.assign(process.env, env);
 const { seal, open } = await import('../src/lib/crypto.js');
 const { nextRun } = await import('../src/lib/cron.js');
-const { verifyHeader } = await import('../src/lib/svc.js');
 let pass = 0; const ok = (name) => { pass++; console.log('  ✓', name); };
 
 /* ---- unit: crypto + cron ---- */
@@ -33,8 +37,15 @@ const llm = http.createServer(async (req, res) => {
   if (req.url.endsWith('/models')) return send({ data: [{ id: 'fake-1' }, { id: 'fake-2' }] });
   const b = JSON.parse((await body(req)).toString()); const sys = b.messages[0].content; llmCalls.push(sys.slice(0, 30)); llmSys.push(sys); llmTools.push(b.tools ?? null); llmMsgs.push(b.messages); llmMax.push(b.max_tokens);
   let text = 'LLM says hello';
+  if (sys.startsWith('You are the Code Mate supervising')) text = JSON.stringify({ criteria: ['out/hello.txt contains "hello from codex"'], test: 'node --version', notes: 'One file.' });
+  if (sys.startsWith('You review a coding agent')) { const u = b.messages.at(-1).content; text = /oops/.test(u) && !/Round 2/.test(u) ? '{"ok":false,"issues":["out/hello.txt says oops instead of hello from codex"]}' : '{"ok":true,"issues":[]}'; }
+  if (sys.startsWith('You maintain a long-term memory')) {
+    const said = b.messages.at(-1).content.split('Owner said:')[1] ?? '';
+    text = said.includes('Priya reports to Arun') ? JSON.stringify({ ops: [{ op: 'add', text: 'Priya reports to Arun in the design team', kind: 'fact', scope: 'shared' }], entities: [{ name: 'Priya', type: 'person' }, { name: 'Arun', type: 'person' }, { name: 'Design team', type: 'team' }], relations: [{ from: 'Priya', rel: 'reports_to', to: 'Arun' }, { from: 'Priya', rel: 'member_of', to: 'Design team' }] })
+      : said.includes('Priya now reports to Meena') ? JSON.stringify({ ops: [], entities: [{ name: 'Meena', type: 'person' }], relations: [{ from: 'Priya', rel: 'reports to', to: 'Meena' }] }) : '{"ops":[]}';
+  }
   if (sys.includes('You are the Planner')) text = JSON.stringify({ steps: [{ mate: 'research', label: 'Gather facts', kind: 'think' }, { mate: 'code', label: 'Make hello file', kind: 'code' }, { mate: 'writer', label: 'Write summary', kind: 'file' }] });
-  else if (sys.includes('coding agent')) {
+  else if (sys.includes('coding agent') && !sys.startsWith('You are the Code Mate') && !sys.startsWith('You review')) {
     const n = b.messages.filter((m) => m.role === 'assistant').length;
     text = n === 0 ? '{"tool":"write_file","args":{"path":"out/hello.txt","content":"hi from coder"}}' : n === 1 ? '```json\n{"tool":"run","args":{"cmd":"ls","args":["out"]}}\n```' : '{"tool":"finish","args":{"summary":"Created out/hello.txt"}}';
   }
@@ -54,6 +65,13 @@ const llm = http.createServer(async (req, res) => {
     else if (ask.includes('look back')) want.push(['chat_history', { which: 'start', n: 2 }]);
     else if (ask.includes('check both')) want.push(['runs_failed', {}], ['runs_active', {}]);
     else if (ask.includes('math')) want.push(['calculate', { expression: '(12.5*4)/2' }]);
+    else if (ask.includes('tea skill')) want.push(['skill_load', { name: 'Tea etiquette' }]);
+    else if (ask.includes('give arun the launch deck')) want.push(['assign_task', { title: 'Launch deck', assignee: 'arun', due: '2030-01-10' }]);
+    else if (ask.includes('check in with arun')) want.push(['checkin_send', { person: 'Arun Kumar', question: 'How is the launch deck going?' }]);
+    else if (ask.includes('keep an eye on acme')) want.push(['watch_add', { kind: 'topic', query: 'Acme Corp funding', label: 'Acme news' }]);
+    else if (ask.includes('ask the graph')) want.push(['graph_query', { entity: 'Priya' }]);
+    else if (ask.includes('use stdio mcp')) want.push(['mcp_call', { server: 'echo', tool: 'echo', args: { text: 'ping' } }]);
+    else if (ask.includes('use http mcp')) want.push(['mcp_call', { server: 'webecho', tool: 'shout', args: { text: 'hey' } }]);
     const gotResult = native ? lastMsg.role === 'tool' : lastUser.startsWith('Tool result');
     const noTools = !b.tools && !sys.includes('You can use tools'); // the forced final turn
     if (want.length && ask.includes('loop forever') && !noTools) calls = want;
@@ -77,24 +95,16 @@ const llm = http.createServer(async (req, res) => {
   }
   send({ choices: [{ message: { content: text } }] });
 }).listen(4101);
-const drive = new Map();
-const art = http.createServer(async (req, res) => {
-  const path = req.url.split('?')[0];
-  if (!verifyHeader(req.headers['x-svc'], req.method, path)) { res.statusCode = 401; return res.end('{"error":"svc"}'); }
-  res.setHeader('content-type', 'application/json');
-  if (req.method === 'PUT') { const buf = await body(req); const id = `d${drive.size + 1}`; drive.set(id, buf); return res.end(JSON.stringify({ driveId: id, size: buf.length })); }
-  if (req.method === 'GET' && path.startsWith('/v1/files/')) { const b = drive.get(path.split('/').pop()); if (!b) { res.statusCode = 404; return res.end('{}'); } res.setHeader('content-type', 'application/octet-stream'); return res.end(b); }
-  if (req.method === 'DELETE') { drive.delete(path.split('/').pop()); return res.end('{"ok":true}'); }
-  if (path === '/v1/health') return res.end('{"ok":true}');
-  res.statusCode = 404; res.end('{}');
-}).listen(4102);
-
 const procs = [];
-const start = (file, port, extra = {}) => { const p = spawn('node', [file], { env: { ...process.env, ...env, PORT: String(port), API_URL: 'http://127.0.0.1:4100', ARTIFACTS_URL: 'http://127.0.0.1:4102', CODER_URL: 'http://127.0.0.1:4103', PUBLIC_URL: '', ...extra }, stdio: ['ignore', 'inherit', 'inherit'] }); procs.push(p); return p; };
-start('src/api/index.js', 4100); start('src/coder/index.js', 4103);
-const cleanup = () => { procs.forEach((p) => p.kill()); llm.close(); art.close(); };
+const fakeBin = join(dataDir, 'fakebin'); mkdirSync(fakeBin, { recursive: true });
+const fakeCodex = join(process.cwd(), 'scripts', 'fixtures', 'fake-codex.mjs');
+if (process.platform === 'win32') { copyFileSync(fakeCodex, join(fakeBin, 'fake-codex.mjs')); writeFileSync(join(fakeBin, 'codex.cmd'), '@ECHO off\r\n"%dp0%\\fake-codex.mjs" %*\r\n'); }
+else { writeFileSync(join(fakeBin, 'codex'), `#!/bin/sh\nexec "${process.execPath}" "${fakeCodex}" "$@"\n`); chmodSync(join(fakeBin, 'codex'), 0o755); }
+const PATHKEY = Object.keys(process.env).find((k) => k.toUpperCase() === 'PATH') ?? 'PATH';
+const p = spawn(process.execPath, ['src/server.js'], { env: { ...process.env, ...env, PUBLIC_URL: '', [PATHKEY]: `${fakeBin}${process.platform === 'win32' ? ';' : ':'}${process.env[PATHKEY]}`, CODEX_FAKE_WRONG_FIRST: '1' }, stdio: ['ignore', 'inherit', 'inherit'] }); procs.push(p);
+const cleanup = () => { procs.forEach((x) => x.kill()); llm.close(); try { rmSync(dataDir, { recursive: true, force: true }); } catch { /* still in use */ } };
 process.on('exit', cleanup);
-for (let i = 0; i < 40; i++) { try { if ((await fetch('http://127.0.0.1:4100/healthz')).ok && (await fetch('http://127.0.0.1:4103/healthz')).ok) break; } catch { /* booting */ } await wait(250); }
+for (let i = 0; i < 80; i++) { try { if ((await fetch('http://127.0.0.1:4100/healthz')).ok) break; } catch { /* booting */ } await wait(250); }
 
 /* ---- http helpers ---- */
 const A = 'http://127.0.0.1:4100';
@@ -110,8 +120,9 @@ try {
   assert.equal((await fetch(`${A}/v1/settings`)).status, 401);
   assert.equal((await call('GET', '/v1/settings', null, 'carol')).status, 403);
   assert.equal((await call('GET', '/v1/auth/session')).json.email, 'alice@dev.local');
-  assert.equal((await fetch(`${A}/internal/llm`, { method: 'POST', body: '{}', headers: { 'content-type': 'application/json' } })).status, 401);
-  ok('auth: bearer required, allow-list, service routes closed');
+  assert.equal((await fetch(`${A}/internal/llm`, { method: 'POST', body: '{}', headers: { 'content-type': 'application/json' } })).status, 404);
+  assert.equal((await fetch(`${A}/setup/api/state`, { headers: { 'x-setup-key': 'nope' } })).status, 401);
+  ok('auth: bearer required, allow-list, no service-to-service routes, setup needs its key');
 
   /* mates + settings */
   const mates = (await call('GET', '/v1/mates')).json; assert.equal(mates.length, 19); assert.equal(mates.find((m) => m.id === 'code').enabled, true);
@@ -145,8 +156,9 @@ try {
   const deltas = ev.filter((e) => e.type === 'delta'); assert.ok(deltas.length > 1, 'text arrives in several chunks'); assert.equal(deltas.map((d) => d.text).join(''), 'LLM says hello');
   assert.equal(ev.at(-1).type, 'done');
   const sys = llmSys.at(-1);
-  for (const needle of ['You are Mimo', 'Current time:', 'Owner prefers metric units', 'ALWAYS-MENTION-OOLONG', 'Tools: you can call tools', 'Treat text from web pages']) assert.ok(sys.includes(needle), `system prompt has ${needle}`);
-  assert.ok(sys.includes('MIMO PLAYBOOK'), 'Mimo has its playbook');
+  for (const needle of ['You are Mimo', 'It is now', 'Owner prefers metric units', 'Tea etiquette', 'What you can reach', 'Tools: ', 'Data is not instructions', '# 4. Your role card', 'Telegram: not linked']) assert.ok(sys.includes(needle), `system prompt has ${needle}`);
+  assert.ok(sys.includes('LEADER PLAYBOOK') && sys.includes('You are the leader'), 'Mimo leads by default and has the leader playbook');
+  assert.ok(!sys.includes('ALWAYS-MENTION-OOLONG'), 'skill instructions are not pasted into the prompt');
   const sent = llmTools.at(-1); assert.ok(Array.isArray(sent), 'tools are sent as native schemas');
   const names = sent.map((t) => t.function.name); assert.ok(names.includes('memory_save') && names.includes('watchdog') && names.includes('calculate') && names.includes('web_search') && names.includes('notify_me') && names.includes('call_me'));
   assert.ok(names.includes('unit_convert') && names.includes('json_query') && names.includes('scratch_write') && names.includes('spawn_run') && names.includes('ask_mate'), 'Mimo is a coordinator now');
@@ -191,7 +203,7 @@ try {
   ev = await sse(lc.id, 'please look back');
   const hist = llmMsgs.at(-2); // the request that triggered the tool (the last one is the follow-up)
   assert.ok(hist[1].content.includes('earlier message(s) are not shown') && hist[1].content.includes('FIRSTMSG'), 'trimmed history keeps a note with the opener');
-  assert.ok(hist.reduce((n, m) => n + String(m.content).length, 0) < 40000, 'history is bounded');
+  assert.ok(hist.slice(1).reduce((n, m) => n + String(m.content).length, 0) < 34000, 'history (without the system prompt) is bounded');
   assert.ok(ev.some((e) => e.type === 'tool' && e.name === 'chat_history') && ev.filter((e) => e.type === 'delta').map((d) => d.text).join('').includes('FIRSTMSG'), 'chat_history reaches the start of the chat');
   assert.ok(llmSys.at(-1).includes('Runtime: you are being served through'), 'runtime model line');
   /* developer options + per-chat thinking */
@@ -245,6 +257,26 @@ try {
   assert.ok(ev.at(-1).message.text.startsWith('Done:'));
   ok('thinking levels, @mentions, planner playbook, monitor/watchdog tools, native tool calls, parallel calls, loop guard, text-protocol fallback');
 
+  /* custom agents, removal, leader */
+  const hira = (await call('POST', '/v1/mates', { name: 'Hira', description: 'Hiring coordinator: screens candidates and books interviews.', tools: ['Memory', 'Calendar'], card: '**Hira** owns hiring. HIRA-CARD-MARKER' })).json;
+  assert.equal(hira.id, 'hira'); assert.equal(hira.custom, true);
+  assert.equal((await call('POST', '/v1/mates', { name: 'Hira' })).json.id, 'hira2', 'keys stay unique');
+  let ros = (await call('GET', '/v1/mates/roster')).json; assert.equal(ros.leader, 'mimo'); assert.ok(ros.agents.some((a) => a.key === 'hira' && a.custom && a.enabled));
+  assert.equal((await call('DELETE', '/v1/mates/mimo')).status, 409, 'the leader cannot be removed');
+  assert.equal((await call('PATCH', '/v1/mates/mimo', { enabled: false })).status, 409, 'the leader cannot be switched off');
+  assert.equal((await call('DELETE', '/v1/mates/chef')).status, 204); ros = (await call('GET', '/v1/mates/roster')).json;
+  assert.ok(!ros.agents.some((a) => a.key === 'chef') && ros.removed.some((a) => a.key === 'chef'), 'built-ins are hidden, not deleted');
+  assert.equal((await call('POST', '/v1/mates/chef/restore')).status, 204); assert.ok((await call('GET', '/v1/mates/roster')).json.agents.some((a) => a.key === 'chef'));
+  assert.equal((await call('DELETE', '/v1/mates/hira2')).status, 204); assert.ok(!(await call('GET', '/v1/mates')).json.some((m) => m.id === 'hira2'), 'custom agents are deleted');
+  assert.equal((await call('PATCH', '/v1/settings', { leader: 'nobody' })).status, 400);
+  assert.equal((await call('PATCH', '/v1/settings', { leader: 'hira' })).json.leader, 'hira');
+  const hc = (await call('POST', '/v1/conversations', { title: 'hiring', messages: [] })).json;
+  await sse(hc.id, 'who are you, @hira');
+  const hi = llmSys.findLastIndex((x) => x.includes('You are Hira')); const hs = llmSys[hi] ?? ''; assert.ok(hs.includes('You are Hira') && hs.includes('HIRA-CARD-MARKER') && hs.includes('LEADER PLAYBOOK') && hs.includes('hira (LEADER)'), 'custom agent leads with its own card');
+  assert.ok(hs.includes('spawn_run') && hs.includes('ask_mate'), 'the leader gets delegation tools');
+  await call('PATCH', '/v1/settings', { leader: 'mimo' });
+  ok('custom agents: create, unique keys, remove/restore, leader rules, custom leader prompt and tools');
+
   /* run end to end with SSE */
   const events = []; const ctl = new AbortController();
   const run = (await call('POST', '/v1/runs', { prompt: 'Make a hello file', askFirst: false, fileIds: [] })).json; assert.equal(run.status, 'queued');
@@ -276,15 +308,79 @@ try {
   const fd = new FormData(); fd.append('file', new Blob(['hello bytes']), 'a.txt');
   const up = await call('POST', '/v1/files', fd); assert.equal(up.status, 201);
   assert.equal((await call('GET', `/v1/files/${up.json.id}/content`)).text, 'hello bytes');
-  assert.equal((await call('DELETE', `/v1/files/${up.json.id}`)).status, 204); assert.ok(![...drive.values()].some((b) => b.toString() === 'hello bytes'));
+  assert.equal((await call('DELETE', `/v1/files/${up.json.id}`)).status, 204); assert.equal((await call('GET', `/v1/files/${up.json.id}/content`)).status, 404);
   ok('files: upload, download, delete removes Drive copy');
 
   /* knowledge + mcp */
   await call('POST', '/v1/knowledge', { kind: 'note', name: 'Plan', text: 'The launch is on Friday.\n\nBudget is small.', status: 'pending' });
   const hit = await until(async () => { const h = (await call('GET', '/v1/knowledge/search?q=launch%20friday')).json; return h.length ? h : null; }); assert.equal(hit[0].name, 'Plan');
-  const m = (await call('POST', '/v1/mcp-servers', { name: 'x', transport: 'stdio', url: '', command: 'npx x', description: '', enabled: true, status: 'unverified', tools: [] })).json;
-  assert.equal((await call('POST', `/v1/mcp-servers/${m.id}/verify`)).json.status, 'error');
-  ok('knowledge indexed + searched, stdio MCP rejected honestly');
+  const brk = (await call('POST', '/v1/mcp-servers', { name: 'broken', transport: 'stdio', url: '', command: 'definitely-not-a-command-xyz', description: '', enabled: true, status: 'unverified', tools: [] })).json;
+  assert.equal((await call('POST', `/v1/mcp-servers/${brk.id}/verify`)).json.status, 'error'); await call('DELETE', `/v1/mcp-servers/${brk.id}`);
+  ok('knowledge indexed + searched, a broken MCP server reports an error');
+
+  /* MCP: a stdio server (env secret sealed) and an HTTP server (header secret sealed), called by an agent */
+  const echoCmd = `"${process.execPath}" "${join(process.cwd(), 'scripts', 'fixtures', 'mcp-echo.mjs')}"`;
+  const em = (await call('POST', '/v1/mcp-servers', { name: 'echo', transport: 'stdio', url: '', command: echoCmd, description: 'Echoes text', enabled: true, status: 'unverified', tools: [], config: { ECHO_TOKEN: 'tok-123' } })).json;
+  assert.notEqual(em.config.ECHO_TOKEN, 'tok-123', 'MCP env secrets are masked');
+  const ev2 = (await call('POST', `/v1/mcp-servers/${em.id}/verify`)).json; assert.equal(ev2.status, 'connected', JSON.stringify(ev2)); assert.deepEqual(ev2.tools, ['echo']);
+  const webMcp = http.createServer(async (req, res) => {
+    const m = JSON.parse((await body(req)).toString() || '{}');
+    if (req.headers['x-api-key'] !== 'sekret') { res.statusCode = 401; return res.end('{}'); }
+    res.setHeader('content-type', 'application/json');
+    if (m.method === 'initialize') return res.end(JSON.stringify({ jsonrpc: '2.0', id: m.id, result: { protocolVersion: '2025-03-26', capabilities: {} } }));
+    if (m.method === 'tools/list') return res.end(JSON.stringify({ jsonrpc: '2.0', id: m.id, result: { tools: [{ name: 'shout', description: 'Upper-cases text', inputSchema: { type: 'object' } }] } }));
+    if (m.method === 'tools/call') return res.end(JSON.stringify({ jsonrpc: '2.0', id: m.id, result: { content: [{ type: 'text', text: String(m.params.arguments.text).toUpperCase() }] } }));
+    res.end('');
+  }).listen(4103);
+  const wm = (await call('POST', '/v1/mcp-servers', { name: 'webecho', transport: 'http', url: 'http://127.0.0.1:4103/mcp', command: '', description: 'Shouts', enabled: true, status: 'unverified', tools: [], config: { 'x-api-key': 'sekret' } })).json;
+  assert.equal((await call('POST', `/v1/mcp-servers/${wm.id}/verify`)).json.status, 'connected');
+  const mc = (await call('POST', '/v1/conversations', { title: 'mcp', mate: 'mimo', messages: [] })).json;
+  let me = await sse(mc.id, 'use stdio mcp please');
+  assert.ok(me.some((e) => e.type === 'tool_result' && e.name === 'mcp_call' && e.ok), 'stdio MCP tool ran'); assert.match(me.at(-1).message.text, /echo: ping \(env tok-123\)/);
+  assert.ok(llmSys.findLast((x) => x.includes('You are Mimo')).includes('- echo: Echoes text (1 tools)'), 'the prompt lists MCP servers by name only');
+  me = await sse(mc.id, 'use http mcp please'); assert.match(me.at(-1).message.text, /HEY/);
+  ok('MCP: stdio and HTTP servers verified and called by an agent, secrets sealed and passed as env/headers');
+
+  /* access: an agent can be cut off from MCP, the graph and shared memory */
+  await call('PATCH', '/v1/mates/mimo', { access: { mcp: 'none', graph: 'none', memory: { personal: true, shared: 'none' } } });
+  me = await sse(mc.id, 'use stdio mcp again');
+  const cut = llmSys.findLast((x) => x.includes('You are Mimo'));
+  assert.ok(!cut.includes('**MCP servers**') && !cut.includes('knowledge graph: ') && !cut.includes('Owner prefers metric units'), 'no MCP, graph or shared memories in the prompt');
+  assert.ok(!me.some((e) => e.type === 'tool_result' && e.name === 'mcp_call' && e.ok), 'mcp_call is refused or absent');
+  await call('PATCH', '/v1/mates/mimo', { access: { mcp: 'all', graph: 'write', memory: { personal: true, shared: 'write' } } });
+  webMcp.close();
+  ok('access: per-agent MCP, graph and memory limits are enforced and hidden from the prompt');
+
+  /* learning into the knowledge graph, with one-value relations replaced */
+  const gc = (await call('POST', '/v1/conversations', { title: 'team', mate: 'research', messages: [] })).json;
+  await sse(gc.id, 'FYI: Priya reports to Arun in the design team');
+  const g1 = await until(async () => { const g = (await call('GET', '/v1/graph')).json; return g.edges.length >= 2 ? g : null; });
+  const id = (n) => g1.nodes.find((x) => x.name === n)?.id;
+  assert.ok(id('Priya') && id('Arun') && g1.edges.some((e) => e.from === id('Priya') && e.rel === 'reports_to' && e.to === id('Arun')), 'graph learned Priya reports_to Arun');
+  assert.ok((await call('GET', '/v1/memories')).json.some((m) => m.text.includes('Priya reports to Arun') && m.scope === 'shared'));
+  await sse(gc.id, 'update: Priya now reports to Meena');
+  const g2 = await until(async () => { const g = (await call('GET', '/v1/graph?history=1')).json; return g.nodes.some((x) => x.name === 'Meena') && g.edges.some((e) => e.endedAt) ? g : null; });
+  const gid = (n) => g2.nodes.find((x) => x.name === n)?.id;
+  assert.ok(g2.edges.some((e) => e.rel === 'reports_to' && e.to === gid('Meena') && !e.endedAt) && g2.edges.some((e) => e.rel === 'reports_to' && e.to === gid('Arun') && e.endedAt), 'reports_to moved to Meena, the old value is history');
+  me = await sse(mc.id, 'ask the graph about Priya');
+  assert.match(me.at(-1).message.text, /Done: Priya \[person\]/);
+  me = await sse(mc.id, 'use the tea skill'); assert.ok(me.some((e) => e.type === 'tool_result' && e.name === 'skill_load' && e.ok), 'skill_load works');
+  assert.ok(llmMsgs.at(-1).some((m) => String(m.content).includes('ALWAYS-MENTION-OOLONG')), 'the skill text arrives through the tool');
+  ok('knowledge graph: learned from chat, one-value relations replaced with history, graph_query and skill_load tools');
+
+  /* coding harness: detection, and a supervised job that needs a second round */
+  const hz = (await call('GET', '/v1/coder/harnesses?fresh=1')).json;
+  assert.equal(hz.codex.ok, true, JSON.stringify(hz.codex)); assert.match(hz.codex.version, /fake/); assert.equal(hz.builtin.ok, true);
+  const ht = (await call('POST', '/v1/coder/test', { harness: 'codex', sandbox: 'host' })).json;
+  assert.equal(ht.ok, true, JSON.stringify(ht)); assert.deepEqual(ht.files, ['hello.txt']);
+  assert.ok(ht.logs.some((l) => /Review round 1: .*oops/.test(l)) && ht.logs.some((l) => /Review round 2: accepted/.test(l)), 'the supervisor sent it back once, then accepted');
+  assert.ok(ht.logs.some((l) => /resumed thread-fake-1/.test(l)), 'round 2 resumed the same Codex session');
+  assert.ok(ht.logs.some((l) => /check: node --version → exit 0/.test(l)), 'the brief\'s test command ran');
+  assert.equal((await call('POST', '/v1/coder/test', { harness: 'nope' })).status, 400);
+  { const rr = await call('PATCH', '/v1/settings', { coderHarness: 'codex', coderSandbox: 'host' }); assert.equal(rr.json.coderHarness, 'codex', rr.text.slice(0, 400)); }
+  assert.ok((await call('GET', '/v1/server/status')).json.features.some((i) => i.key === 'harness' && /Codex/.test(i.note)), 'Server page shows the harness');
+  await call('PATCH', '/v1/settings', { coderHarness: 'builtin', coderSandbox: 'auto' });
+  ok('coding harness: detected via its npm shim, supervised brief → work → test → review → resume → accepted');
 
   /* scheduler */
   const before = (await call('GET', '/v1/runs')).json.length;
@@ -294,6 +390,84 @@ try {
   const tk = await (await fetch(`${A}/internal/tick`, { headers: { 'x-cron-secret': 'cron' } })).json(); assert.equal(tk.fired, 1);
   await until(async () => (await call('GET', '/v1/runs')).json.length > before, 8000);
   ok('scheduler: due automation fires a run via /internal/tick');
+
+  /* Jarvis mode: default watches, deadline alerts, call reminders, the daily call cap, watch_add by the leader */
+  const tickNow = () => fetch(`${A}/internal/tick`, { headers: { 'x-cron-secret': 'cron' } }).then((r) => r.json());
+  let lead = (await call('GET', '/v1/leader')).json;
+  assert.equal(lead.leader, 'mimo'); assert.deepEqual(lead.watches.map((w) => w.kind).sort(), ['calendar', 'runs'], 'runs and calendar are watched by default');
+  await call('POST', '/v1/tasks', { title: 'Send the invoice', detail: '', status: 'todo', tags: [], dueAt: new Date(Date.now() + 30 * 60_000).toISOString() });
+  const calW = lead.watches.find((w) => w.kind === 'calendar');
+  const raised = (await call('POST', `/v1/watches/${calW.id}/check`)).json.raised;
+  assert.ok(raised.some((a) => a.title === 'Due within the hour: Send the invoice' && a.score === 4), JSON.stringify(raised));
+  assert.equal((await call('POST', `/v1/watches/${calW.id}/check`)).json.raised.length, 0, 'the same alert is not raised twice');
+  const callsBefore = (await call('GET', '/v1/calls?limit=50')).json.length;
+  await call('PATCH', '/v1/settings', { maxCallsPerDay: 1 });
+  await call('POST', '/v1/events', { title: 'Call the bank', start: new Date(Date.now() + 3000).toISOString(), end: new Date(Date.now() + 60_000).toISOString(), kind: 'reminder', notes: 'About the loan', deliver: 'call' });
+  await wait(3500); await tickNow();
+  const rang = await until(async () => { const c = (await call('GET', '/v1/calls?limit=50')).json; return c.length > callsBefore ? c : null; });
+  assert.ok(rang.some((c) => c.reason === 'Reminder: Call the bank' && c.mate === 'mimo' && /About the loan/.test(c.goal)), 'a "call me" reminder rings through the leader');
+  await call('POST', '/v1/events', { title: 'Second call', start: new Date(Date.now() + 3000).toISOString(), end: new Date(Date.now() + 60_000).toISOString(), kind: 'reminder', notes: '', deliver: 'call' });
+  await wait(3500); await tickNow(); await wait(1500);
+  assert.equal((await call('GET', '/v1/calls?limit=50')).json.filter((c) => c.reason === 'Reminder: Second call').length, 0, 'the daily call cap holds the second call');
+  assert.ok((await call('GET', '/v1/inbox')).json.some((n) => /Reminder: Second call/.test(n.text) && /could not call/.test(n.text)), 'a held call becomes a message');
+  await call('PATCH', '/v1/settings', { maxCallsPerDay: 3 });
+  const lc2 = (await call('POST', '/v1/conversations', { title: 'watch', mate: 'mimo', messages: [] })).json;
+  const wv = await sse(lc2.id, 'please keep an eye on acme for me');
+  assert.ok(wv.some((e) => e.type === 'tool_result' && e.name === 'watch_add' && e.ok));
+  lead = (await call('GET', '/v1/leader')).json; assert.ok(lead.watches.some((w) => w.kind === 'topic' && w.config.query === 'Acme Corp funding' && w.everyMinutes >= 60));
+  assert.ok(lead.alerts.some((a) => a.source === 'calendar'));
+  /* company: the directory, work for real people, check-in drafts */
+  const imp = (await call('POST', '/v1/people/import', { csv: 'name,role,team,manager,email\nMeera Rao,CEO,Leadership,,meera@x.co\nArun Kumar,Designer,Design,Meera Rao,arun@x.co\n"Li, Wei",Engineer,Platform,Meera Rao,' })).json;
+  assert.deepEqual([imp.added, imp.teams], [3, 3], JSON.stringify(imp));
+  const ppl = (await call('GET', '/v1/people')).json; const arun = ppl.find((x) => x.name === 'Arun Kumar');
+  assert.equal(arun.managerId, ppl.find((x) => x.name === 'Meera Rao').id); assert.ok(ppl.some((x) => x.name === 'Li, Wei'), 'quoted CSV names');
+  const cc = (await call('POST', '/v1/conversations', { title: 'company', mate: 'mimo', messages: [] })).json;
+  let ce = await sse(cc.id, 'please give arun the launch deck');
+  assert.ok(ce.some((e) => e.type === 'tool_result' && e.name === 'assign_task' && e.ok), 'the leader assigns work to a person');
+  assert.ok((await call('GET', '/v1/assignments')).json.some((x) => x.title === 'Launch deck' && x.assigneeId === arun.id && x.status === 'todo'));
+  ce = await sse(cc.id, 'please check in with arun');
+  const drafts = (await call('GET', '/v1/checkins')).json.filter((x) => x.personId === arun.id); assert.equal(drafts[0]?.status, 'draft');
+  const sentTry = (await call('POST', `/v1/checkins/${drafts[0].id}/send`)).json; assert.equal(sentTry.status, 'draft'); assert.match(sentTry.error, /not joined/);
+  const ov = (await call('GET', '/v1/company/overview')).json; assert.equal(ov.people.find((x) => x.id === arun.id).open, 1);
+  assert.match((await call('POST', `/v1/people/${arun.id}/invite`)).json.command, /^\/join [A-F0-9]{8}$/);
+  ok('company: CSV import with managers, the leader assigns work and drafts a check-in, overview, invites');
+
+  ok('Jarvis mode: default watches, deadline alert scored 4 once, call reminder rings via the leader, daily call cap, watch_add tool');
+
+  /* pairing, owner status, devices, inbox, ask_owner */
+  const st = (await call('GET', '/v1/server/status')).json; assert.ok(st.features.some((f) => f.key === 'tunnel')); assert.equal(st.pairing.paired, false);
+  assert.equal((await call('POST', '/v1/pair', { code: '000000' })).status, 400);
+  const dev = await call('POST', '/v1/devices', { kind: 'expo', token: 'ExponentPushToken[abc123]', label: 'Pixel' }); assert.equal(dev.status, 201);
+  assert.equal((await call('GET', '/v1/devices')).json.length, 1);
+  assert.equal((await call('POST', '/v1/devices', { kind: 'web', subscription: { endpoint: 'http://insecure' } })).status, 400);
+  assert.ok(Array.isArray((await call('GET', '/v1/inbox')).json));
+  assert.equal((await call('GET', '/v1/questions')).json.length, 0);
+  assert.ok((await call('GET', '/v1/push/key')).json.publicKey.length > 40);
+  ok('owner status, pairing rejects a wrong code, devices registered, inbox, push key');
+
+  /* integrations: the registry, link codes, webhooks with their own auth, health ingest, stand-up, voice */
+  const ints = (await call('GET', '/v1/integrations')).json;
+  for (const k of ['obsidian', 'notion', 'google', 'slack', 'wacloud', 'todoist', 'linear', 'spotify', 'feeds', 'health', 'home']) assert.ok(ints.some((i) => i.key === k && i.steps.length && i.what), `integration ${k} is described`);
+  assert.ok(ints.find((i) => i.key === 'slack').manifest.includes('socket_mode_enabled'));
+  assert.ok(ints.find((i) => i.key === 'feeds').ready && !ints.find((i) => i.key === 'home').ready);
+  assert.equal((await call('POST', '/v1/integrations/slack/link-code', {})).status, 503, 'no link code before Slack is set up');
+  assert.equal((await call('POST', '/v1/integrations/obsidian/test', {})).json.ok, false);
+  assert.ok((await call('GET', '/v1/server/status')).json.features.some((f) => f.key === 'home' && !f.ready && /Optional/.test(f.fix)));
+  assert.ok((await call('GET', '/v1/server/config')).json.some((f) => f.key === 'HA_TOKEN' && f.secret), 'integration keys are editable from the dashboard');
+  assert.equal((await fetch(`${A}/whatsapp/webhook`, { method: 'POST', headers: { 'content-type': 'application/json', 'x-hub-signature-256': `sha256=${'0'.repeat(64)}` }, body: '{}' })).status, 401, 'unsigned WhatsApp webhooks are refused');
+  assert.equal((await fetch(`${A}/whatsapp/webhook?hub.mode=subscribe&hub.verify_token=x&hub.challenge=1`)).status, 403);
+  assert.equal((await fetch(`${A}/health/ingest`, { method: 'POST', headers: { 'content-type': 'application/json', authorization: 'Bearer lmh_nopenopenopenopenopenope' }, body: '{"days":[]}' })).status, 401);
+  const hk = (await call('POST', '/v1/health/key', {})).json.key;
+  const today = new Date().toISOString().slice(0, 10);
+  const ing = await fetch(`${A}/health/ingest`, { method: 'POST', headers: { 'content-type': 'application/json', authorization: `Bearer ${hk}` }, body: JSON.stringify({ days: [{ date: today, steps: 9100, sleepMinutes: 440 }] }) });
+  assert.equal((await ing.json()).saved, 1);
+  assert.equal((await call('POST', '/v1/health/import', { csv: `date,steps\n${today},9200` })).json.saved, 1);
+  const su2 = await call('POST', '/v1/leader/standup', {}); assert.equal(su2.status, 200); assert.ok(su2.json.text.length > 10);
+  assert.equal((await call('GET', '/v1/standups')).json.length, 1);
+  assert.equal((await call('PATCH', '/v1/settings', { standupOn: true, standupDay: 9, standupAt: '25:00' })).json.standupDay, 6, 'stand-up day clamped, bad time ignored');
+  const pv = await call('GET', '/v1/voice/preview?mate=research&voice=Kore');
+  assert.ok([200, 501, 502].includes(pv.status), 'voice preview answers (501 without a Gemini key)');
+  ok('integrations: registry, link codes, signed webhooks, health ingest key + CSV, stand-up, settings, voice preview');
   console.log(`\nALL ${pass} CHECKS PASSED`);
 } catch (e) { console.error('\nFAILED:', e.stack || e); process.exitCode = 1; }
 finally { cleanup(); setTimeout(() => process.exit(process.exitCode ?? 0), 200); }

@@ -23,13 +23,18 @@ export const MATE_DEFS = [
 ];
 export const MATE = Object.fromEntries(MATE_DEFS.map((m) => [m.key, m]));
 export const defaultConfig = (m, ts) => ({ createdAt: ts, updatedAt: ts, mate: m.key, enabled: m.core, instructions: '', model: '', tools: m.tools, description: m.blurb, outputFormat: 'Markdown', memoryScope: 'private', thinking: 'default' });
-export const persona = (key, custom = '') => {
-  const m = MATE[key] ?? MATE.planner;
-  return `You are ${m.name}, a Loopmates mate. ${m.blurb} Be concise, concrete and honest. If you are unsure, say so.${custom ? `\n\nOwner instructions:\n${custom}` : ''}`;
-};
 
-/** Roster text for prompts. cfgs = { key: {enabled, tools} } from the owner's mate configs. */
-export const rosterText = (cfgs = {}) => MATE_DEFS.map((d) => {
+/** Gemini Live prebuilt voices. Each built-in Mate has its own; the owner can pick another in Agents → Configure. */
+export const VOICE_NAMES = ['Zephyr', 'Puck', 'Charon', 'Kore', 'Fenrir', 'Leda', 'Orus', 'Aoede', 'Callirrhoe', 'Autonoe', 'Enceladus', 'Iapetus', 'Umbriel', 'Algieba', 'Despina', 'Erinome', 'Algenib', 'Rasalgethi', 'Laomedeia', 'Achernar', 'Alnilam', 'Schedar', 'Gacrux', 'Pulcherrima', 'Achird', 'Zubenelgenubi', 'Vindemiatrix', 'Sadachbia', 'Sadaltager', 'Sulafat'];
+export const MATE_VOICE = { planner: 'Kore', research: 'Charon', code: 'Fenrir', flow: 'Aoede', writer: 'Leda', browser: 'Puck', ops: 'Orus', mimo: 'Zephyr', orbit: 'Achernar', recall: 'Sulafat', spark: 'Callirrhoe', zen: 'Vindemiatrix', luna: 'Despina', scout: 'Algenib', chef: 'Achird', tune: 'Enceladus', data: 'Iapetus', byte: 'Umbriel', halo: 'Gacrux' };
+/** Voices no built-in uses: custom agents get one of these, so they never sound like the Mate whose picture they borrow. */
+export const SPARE_VOICES = VOICE_NAMES.filter((v) => !Object.values(MATE_VOICE).includes(v));
+const hash = (s) => [...String(s)].reduce((a, c) => (a * 31 + c.charCodeAt(0)) >>> 0, 7);
+/** The call voice for an agent: the owner's pick, else the built-in one, else a stable spare voice for a custom agent. */
+export const voiceFor = (key, cfg = {}) => (VOICE_NAMES.includes(cfg?.voice) ? cfg.voice : MATE_VOICE[key] ?? SPARE_VOICES[hash(key) % SPARE_VOICES.length]);
+
+/** Roster text for prompts. Pass a roster from roster.js (custom agents, leader), or the owner's mate configs. */
+export const rosterText = (cfgs = {}) => cfgs.list ? cfgs.list.map((d) => `- ${d.key}${d.key === cfgs.leader ? ' (LEADER)' : ''} [${cfgs.on(d.key) ? 'ON' : 'OFF'}] ${d.custom ? `${d.name}: ` : ''}${d.blurb} Tools: ${(cfgs.cfgs[d.key]?.tools ?? d.tools).join(', ') || 'none'}.`).join('\n') : MATE_DEFS.map((d) => {
   const c = cfgs[d.key]; const on = c ? c.enabled !== false : d.core;
   return `- ${d.key} [${on ? 'ON' : 'OFF'}] ${d.blurb} Tools: ${(c?.tools ?? d.tools).join(', ') || 'none'}.`;
 }).join('\n');
@@ -40,7 +45,7 @@ Your job is to turn a goal into a plan that names exactly which Mates (agents) a
 
 Roster (ON = available now, OFF = exists but switched off):
 ${rosterText(cfgs)}
-Platform capabilities: runs execute steps in order; a step is "think" (reasoning/research with tools), "code" (a coding agent works in a sandbox on a git repo and can open a pull request), "file" (write a deliverable to Drive) or "notify" (Telegram ping). Approvals can gate risky steps. Reminders, tasks and automations are scheduled by the Calendar tools. Not available yet: a live browser (Browser mate has no working tool), stdio MCP servers, WhatsApp writing.
+Platform capabilities: runs execute steps in order; a step is "think" (reasoning/research with tools), "code" (a coding engine, the built-in coder or Claude Code / Codex / OpenCode as the owner chose, works on a git repo under the Code Mate's supervision and can open a pull request), "file" (write a deliverable to Drive) or "notify" (Telegram ping). Approvals can gate risky steps. Reminders, tasks and automations are scheduled by the Calendar tools. The Browser mate drives a real browser with the browser_* tools (open pages, read, click, fill forms; logins and payments need the owner). MCP servers the owner added can be used through mcp_tools and mcp_call by agents that have access. Not available yet: WhatsApp writing.
 
 How to plan, in this order:
 1. GOAL: restate it in one sentence, plus what "done" looks like (a measurable result or deliverable). If the request is too vague to plan, ask at most two short questions instead of guessing.
@@ -68,9 +73,9 @@ ${PLANNER_GUIDE(cfgs)}
 Reply with JSON only, no prose: {"steps":[{"mate":"<key>","label":"<what this step does and what it outputs, <=100 chars>","kind":"think|code|file|notify"}]}
 Rules for the JSON: use only Mates that are ON. kind "code" only when the job needs repository changes (mate code or byte). kind "file" writes a deliverable to Drive. kind "notify" sends a Telegram message. Everything else is "think". Always finish with a "think" step by writer that produces the final answer.`;
 
-/** Mimo's playbook: the owner's personal chief of staff and second brain. */
-export const MIMO_GUIDE = (cfgs) => `MIMO PLAYBOOK
-You are the owner's second brain and first point of contact: the one who remembers, plans the day, chases reminders and gets other Mates working. Be warm, brief and useful, like a sharp chief of staff.
+/** The leader's playbook (Mimo by default, or whichever agent the owner made leader): chief of staff and second brain. */
+export const LEADER_GUIDE = (cfgs, name = 'Mimo') => `LEADER PLAYBOOK
+You are ${name}, the LEADER of the owner's agent team: their second brain and first point of contact, the one who remembers, plans the day, chases reminders, keeps an eye on everything and gets the other agents working. Be warm, brief and useful, like a sharp chief of staff. The owner is the boss; you help them run things.
 
 Roster you can hand work to (ON = available now):
 ${rosterText(cfgs)}
@@ -81,10 +86,14 @@ Working rules:
 3. PLAN THE DAY. For "plan my day", "what's on" or a morning check-in: call calendar_list and task_list, then give (a) a time-ordered schedule, (b) the 3 tasks that matter most, (c) one thing that could slip. Offer to add focus blocks or reminders; add them with calendar_add when the owner agrees.
 4. REMINDERS AND TASKS. "Remind me" means a calendar_add reminder at the right time (state the time you chose, in the owner's timezone). Capture to-dos with task_add; never invent a due date.
 5. HAND OFF. If a job needs real research, coding, writing or a long run, say who is best (use the roster), then use ask_mate for a quick question or spawn_run for a bigger job. Summarise their result for the owner; do not paste long raw output.
-6. REACH THE OWNER. Use notify_me only for something that needs attention away from this chat (a finished run, a deadline, a decision), one short message. Use call_me only for urgent things.
+6. REACH THE OWNER. Use notify_me only for something that needs attention away from this chat (a finished run, a deadline, a decision), one short message. Use call_me only for urgent things, or when the owner asked you to call.
+6b. KEEP WATCH. You already watch runs, approvals, deadlines and the calendar. When the owner says "keep an eye on…", "tell me if…" or "watch news about…", add a watch with watch_add (topic for news and keywords, github for a repo) and confirm in one line. watch_list shows what you watch; watch_remove stops one. Important things reach the owner by themselves: a message for normal news, a call only for urgent ones, capped per day and silent in quiet hours.
+6c. CALL REMINDERS. "Call me at 6 about X" or "remind me by phone" means calendar_add with deliver "call" at that time. "Call me now" means call_me.
+6d. THE COMPANY. The owner runs a company of real people; you help them manage it, you do not replace them. Use people_find, team_overview and assignments_list to know who does what. Give work to people with assign_task, and follow up with checkin_send only when the owner asked or approved it (check-ins become drafts the owner approves unless they allowed them). For standups and weekly reports, call company_digest and write a short report: done, in progress, blocked, overdue, who needs help. Turn meeting notes into assignments with meeting_actions. Never share one employee's personal details with another.
 7. KEEP IT TIDY. Offer to merge duplicate memories, pin the important ones and retire stale ones (memory_update, memory_forget) only when the owner agrees.
 8. END WITH THE NEXT STEP. Finish each answer with the single most useful next action, in one line, when there is one.`;
 /** Flow's playbook: how to turn a goal into a workflow on the canvas. */
+export const MIMO_GUIDE = (cfgs) => LEADER_GUIDE(cfgs, 'Mimo');
 export const FLOW_GUIDE = (cfgs) => `FLOW PLAYBOOK
 You build workflows on the owner's Studio canvas. A workflow is a chain of nodes that a run executes in order. You design it, save it with workflow_save, then explain it.
 
@@ -93,7 +102,7 @@ ${rosterText(cfgs)}
 
 Node types you can use in workflow_save steps:
 - trigger: how it starts (label it, e.g. "Every weekday 9am"). Informational: schedules are set up in Automations.
-- mate: an agent does a step. Needs "mate" (a roster key) and a label saying what it does and outputs. For a Code or Byte step you may add config {"repo": "owner/name", "branch": "optional"}: that step then runs the sandboxed coder and can open a pull request.
+- mate: an agent does a step. Needs "mate" (a roster key) and a label saying what it does and outputs. For a Code or Byte step you may add config {"repo": "https://github.com/owner/name", "branch": "optional", "harness": "optional: builtin|claude|codex|opencode", "sandbox": "optional: auto|docker|host"}: that step then runs the coding engine (the Code Mate supervises it: brief, checks, tests, review rounds) and can open a pull request.
 - tool: a tool or action step, assigned to a Mate (default ops).
 - output: writes the final deliverable file to Drive.
 - knowledge, input, condition, transform, filter: shown on the canvas for documentation, but the engine currently SKIPS them when running. Use sparingly and never rely on them for logic.

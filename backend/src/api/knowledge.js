@@ -41,31 +41,32 @@ async function vectorize(text) {
   return { items, vm: e.vm };
 }
 
-export async function searchKnowledge(uid, q, k = 5) {
-  const sem = await semantic(uid, q, k);
+/** companyOnly: only Knowledge items the owner marked as company knowledge (what employees may be told). */
+export async function searchKnowledge(uid, q, k = 5, { companyOnly = false } = {}) {
+  const sem = await semantic(uid, q, k, companyOnly);
   if (sem.length) return sem;
   const terms = (q.toLowerCase().match(/[\p{L}\p{N}]{3,}/gu) ?? []).slice(0, 12);
   if (!terms.length) return [];
   const snap = await userCol(uid, 'knowledge').where('status', '==', 'indexed').limit(200).get();
   const hits = [];
   for (const d of snap.docs) {
-    const { name, text = '' } = d.data();
+    const { name, text = '', company = false } = d.data(); if (companyOnly && !company) continue;
     for (const para of text.split(/\n{2,}|(?<=[.!?])\s{2,}/)) {
       const low = para.toLowerCase();
       const score = terms.reduce((s, t) => s + (low.includes(t) ? 1 : 0), 0);
-      if (score) hits.push({ id: d.id, name, snippet: para.trim().slice(0, 280), score });
+      if (score) hits.push({ id: d.id, name, snippet: para.trim().slice(0, 280), company: !!company, score });
     }
   }
   return hits.sort((a, b) => b.score - a.score).slice(0, k).map(({ score, ...r }) => r);
 }
 
-async function semantic(uid, q, k) {
+async function semantic(uid, q, k, companyOnly = false) {
   try {
     if (!embedReady()) return [];
     const qe = await embed([q], { query: true }); if (!qe?.vecs[0]) return [];
     const snap = await userCol(uid, 'knowledge').where('status', '==', 'indexed').limit(200).get();
     const items = [];
-    for (const d of snap.docs) { const x = d.data(); if (x.vm !== qe.vm) continue; for (const c of x.chunks ?? []) items.push({ id: d.id, name: x.name, snippet: c.t.slice(0, 280), vec: c.v, vm: x.vm }); }
+    for (const d of snap.docs) { const x = d.data(); if (x.vm !== qe.vm || (companyOnly && !x.company)) continue; for (const c of x.chunks ?? []) items.push({ id: d.id, name: x.name, snippet: c.t.slice(0, 280), company: !!x.company, vec: c.v, vm: x.vm }); }
     return rank(qe.vecs[0], qe.vm, items, k).filter((x) => x.sim > 0.4).map(({ vec, vm, sim, ...r }) => r);
   } catch { return []; }
 }

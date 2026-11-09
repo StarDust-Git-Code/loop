@@ -1,3 +1,5 @@
+import { join } from 'node:path';
+import { existsSync } from 'node:fs';
 // Engine A: Playwright + Chromium (x86_64 / arm64). A pool of browser processes hosts isolated contexts.
 import { env, num } from '../lib/env.js';
 import { SNAP } from './snap.js';
@@ -5,6 +7,15 @@ import { allowedHost, bad, isSecretField, normalizeUrl, urlAllowed } from './gua
 
 const NAV_MS = 30_000, ACT_MS = 10_000;
 export const name = 'playwright';
+
+/** A Chromium-family browser already on this computer (Edge ships with Windows), so nothing has to be downloaded. */
+export function systemBrowser() {
+  const c = process.platform === 'win32'
+    ? [[process.env['ProgramFiles(x86)'], 'Microsoft', 'Edge', 'Application', 'msedge.exe'], [process.env.ProgramFiles, 'Microsoft', 'Edge', 'Application', 'msedge.exe'], [process.env.ProgramFiles, 'Google', 'Chrome', 'Application', 'chrome.exe'], [process.env.LOCALAPPDATA, 'Google', 'Chrome', 'Application', 'chrome.exe']].filter((p) => p[0]).map((p) => join(...p))
+    : process.platform === 'darwin' ? ['/Applications/Google Chrome.app/Contents/MacOS/Google Chrome', '/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge']
+      : ['/usr/bin/chromium', '/usr/bin/chromium-browser', '/usr/bin/google-chrome', '/usr/bin/google-chrome-stable', '/snap/bin/chromium', '/usr/bin/microsoft-edge'];
+  return c.find((p) => { try { return existsSync(p); } catch { return false; } }) || '';
+}
 
 export async function create({ instances, maxSessions }) {
   const { chromium } = await import('playwright-core');
@@ -18,7 +29,7 @@ export async function create({ instances, maxSessions }) {
     if (slot.browser?.isConnected()) return slot.browser;
     if (remoteUrl) return chromium.connectOverCDP(remoteUrl, { timeout: 30_000 });
     slot.launching ??= chromium.launch({
-      headless: true, executablePath: env('BROWSER_EXECUTABLE') || undefined,
+      headless: true, executablePath: env('BROWSER_EXECUTABLE') || systemBrowser() || undefined,
       args: ['--no-sandbox', '--disable-dev-shm-usage', '--disable-gpu', '--disable-background-networking', '--disable-extensions', '--mute-audio', '--no-first-run', '--js-flags=--max-old-space-size=1024'],
     }).then((b) => { slot.browser = b; b.on('disconnected', () => { slot.browser = null; }); return b; }).finally(() => { slot.launching = null; });
     return slot.launching;
@@ -33,7 +44,7 @@ export async function create({ instances, maxSessions }) {
     async open() {
       if (total >= maxSessions) throw bad(`All ${maxSessions} browser sessions are busy. Try again in a minute.`, 429);
       const slot = [...pool].sort((a, b) => a.sessions.size - b.sessions.size)[0];
-      const br = await launch(slot).catch((e) => { throw bad(`Could not start a browser: ${String(e.message).split('\n')[0].slice(0, 140)}`, 502); });
+      const br = await Promise.resolve(launch(slot)).catch((e) => { throw bad(`Could not start a browser: ${String(e.message).split('\n')[0].slice(0, 140)}`, 502); });
       const ctx = await br.newContext({ viewport: { width: 1280, height: 800 }, locale: 'en-US', acceptDownloads: false, serviceWorkers: 'block', permissions: [] });
       await ctx.route('**/*', guard);
       ctx.setDefaultTimeout(ACT_MS); ctx.setDefaultNavigationTimeout(NAV_MS);

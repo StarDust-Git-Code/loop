@@ -1,32 +1,26 @@
-// Browser tools for Mates. They drive the browser service on the owner's Linux VM (BROWSER_URL).
+// Browser tools for Mates. They drive the in-process browser engine (src/browser), started on first use.
 // One browser session per chat/run; it closes itself after a few idle minutes.
-import { env } from '../lib/env.js';
-import { svcFetch } from '../lib/svc.js';
+import { openSession, act as engineAct, closeSession } from '../browser/index.js';
 import { putFile } from './files.js';
 
 const bad = (m) => Object.assign(new Error(m), { tool: true });
 const sessions = new Map(); // "uid:scope" -> session id
 
-const base = () => { const u = env('BROWSER_URL'); if (!u) throw bad('The browser is not set up yet (BROWSER_URL is missing on the API service). Use web_search or fetch_url instead.'); return u; };
 const scope = (c) => `${c.uid}:${c.runId || c.convId || c.mate || 'x'}`;
 
-async function call(c, path, body, { method = 'POST', timeoutMs = 60_000 } = {}) {
-  let res;
-  try { res = await svcFetch(base(), path, { method, body: { ...body, uid: c.uid }, timeoutMs }); }
-  catch (e) { throw bad(`The browser machine is unreachable (${String(e.message).slice(0, 80)}).`); }
-  const j = await res.json().catch(() => ({}));
-  if (!res.ok) { const err = bad(j.error || `Browser service answered ${res.status}`); err.status = res.status; throw err; }
-  return j;
+async function call(c, fn) {
+  try { return await fn(); }
+  catch (e) { const err = bad(e.message || 'The browser failed'); err.status = e.statusCode; throw err; }
 }
 async function session(c, { create = true } = {}) {
   const k = scope(c); let id = sessions.get(k);
   if (id) return id;
   if (!create) throw bad('No page is open. Call browser_open with a URL first.');
-  id = (await call(c, '/v1/sessions', {})).id; sessions.set(k, id); return id;
+  id = (await call(c, () => openSession(c.uid))).id; sessions.set(k, id); return id;
 }
 async function act(c, action, body = {}) {
   const k = scope(c);
-  try { return await call(c, `/v1/sessions/${await session(c, { create: action === 'goto' })}/${action}`, body); }
+  try { const id = await session(c, { create: action === 'goto' }); return await call(c, () => engineAct(id, c.uid, action, body)); }
   catch (e) { if (e.status === 404) { sessions.delete(k); throw bad('The browser session expired. Call browser_open again.'); } throw e; }
 }
 
@@ -58,6 +52,6 @@ export const BROWSER_TOOLS = {
   }),
   browser_close: B('Close the browser session when you are done (it also closes itself after a few idle minutes).', '{}', async (c) => {
     const k = scope(c); const id = sessions.get(k); if (!id) return 'Nothing to close.';
-    sessions.delete(k); await call(c, `/v1/sessions/${id}`, {}, { method: 'DELETE' }).catch(() => {}); return 'Browser closed.';
+    sessions.delete(k); await closeSession(id).catch(() => {}); return 'Browser closed.';
   }),
 };

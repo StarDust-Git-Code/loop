@@ -1,0 +1,46 @@
+// Generated from design/tokens.json by design/build-tokens.mjs. Do not edit by hand.
+export const LIGHT = {
+  "bg": "#FAFBFD",
+  "card": "#FFFFFF",
+  "ink": "#0F172A",
+  "ink2": "#334155",
+  "muted": "#5B6474",
+  "line": "rgba(15,23,42,0.07)",
+  "line2": "rgba(15,23,42,0.12)",
+  "brand": "#2F6BFF",
+  "brandDeep": "#1F55E6",
+  "tint": "#EAF1FF",
+  "tint2": "#F2F6FF",
+  "soft": "#F5F7FA",
+  "field": "#F3F5F9",
+  "pill": "rgba(255,255,255,0.97)",
+  "good": "#16A34A",
+  "goodBg": "#E8F7EE",
+  "bad": "#B3261E",
+  "badBg": "#FEF2F2",
+  "warn": "#92400E",
+  "warnBg": "#FFF7E6"
+};
+export const DARK: typeof LIGHT = {
+  "bg": "#0B1020",
+  "card": "#121A2E",
+  "ink": "#E8EDF7",
+  "ink2": "#C3CCDD",
+  "muted": "#94A0B8",
+  "line": "rgba(232,237,247,0.08)",
+  "line2": "rgba(232,237,247,0.14)",
+  "brand": "#5B8CFF",
+  "brandDeep": "#9DB9FF",
+  "tint": "#1C2B52",
+  "tint2": "#162243",
+  "soft": "#18223A",
+  "field": "#1A2540",
+  "pill": "rgba(18,26,46,0.97)",
+  "good": "#4ADE80",
+  "goodBg": "#123222",
+  "bad": "#FF8A80",
+  "badBg": "#3B1A1A",
+  "warn": "#FCD34D",
+  "warnBg": "#3A2C0E"
+};
+export const RADIUS = {"sm":10,"md":14,"lg":20,"xl":24};

@@ -1,7 +1,9 @@
 import { IMAGES } from './images';
 
-export type MateKey = 'research' | 'flow' | 'code' | 'planner' | 'writer' | 'browser' | 'ops' | 'mimo' | 'orbit' | 'recall' | 'spark' | 'zen' | 'luna' | 'scout' | 'chef' | 'tune' | 'data' | 'byte' | 'halo';
-export type MateDef = { key: MateKey; name: string; blurb: string; core: boolean; tint: string };
+export type BuiltinMateKey = 'research' | 'flow' | 'code' | 'planner' | 'writer' | 'browser' | 'ops' | 'mimo' | 'orbit' | 'recall' | 'spark' | 'zen' | 'luna' | 'scout' | 'chef' | 'tune' | 'data' | 'byte' | 'halo';
+/** Built-ins plus custom agents created in the dashboard. */
+export type MateKey = string;
+export type MateDef = { key: MateKey; name: string; blurb: string; core: boolean; tint: string; custom?: boolean; avatar?: string };
 
 export const MATE_DEFS: MateDef[] = [
   { key: 'research', tint: '#ffe6e3', name: 'Research', core: true, blurb: 'Finds information, analyses sources and keeps notes.' },
@@ -24,6 +26,16 @@ export const MATE_DEFS: MateDef[] = [
   { key: 'byte', tint: '#e1def2', name: 'Byte', core: false, blurb: 'Specialist for long coding jobs with checkpoints.' },
   { key: 'halo', tint: '#ecebfb', name: 'Halo', core: false, blurb: 'Reviews risky actions and asks for your approval.' },
 ];
-export const MATES = Object.fromEntries(MATE_DEFS.map((m) => [m.key, m])) as Record<MateKey, MateDef>;
-export const mateName = (k: string) => (MATES[k as MateKey] ? `${MATES[k as MateKey].name}${MATES[k as MateKey].core ? ' Mate' : ''}` : k);
-export const mateImg = (k: string) => IMAGES[k] ?? IMAGES.planner;
+const BUILTIN = Object.fromEntries(MATE_DEFS.map((m) => [m.key, m])) as Record<string, MateDef>;
+const custom = new Map<string, MateDef>();
+/** The server's roster (GET /v1/mates/roster): registers custom agents so names and pictures resolve everywhere. */
+export type RosterAgent = { key: string; name: string; blurb: string; core: boolean; custom: boolean; avatar: string; enabled: boolean };
+export function registerRoster(agents: RosterAgent[]) {
+  custom.clear();
+  for (const a of agents) if (a.custom && !BUILTIN[a.key]) custom.set(a.key, { key: a.key, name: a.name, blurb: a.blurb, core: false, tint: BUILTIN[a.avatar]?.tint ?? '#e5e9f2', custom: true, avatar: a.avatar });
+}
+const fallback = (k: string): MateDef => ({ key: k, name: k ? k[0].toUpperCase() + k.slice(1) : 'Agent', blurb: 'A custom agent.', core: false, tint: '#e5e9f2', custom: true, avatar: 'orbit' });
+export const mateDef = (k: string): MateDef => BUILTIN[k] ?? custom.get(k) ?? fallback(k);
+export const MATES = new Proxy(BUILTIN, { get: (_t, k) => (typeof k === 'string' ? mateDef(k) : undefined) }) as Record<MateKey, MateDef>;
+export const mateName = (k: string) => `${mateDef(k).name}${mateDef(k).core ? ' Mate' : ''}`;
+export const mateImg = (k: string) => IMAGES[k] ?? IMAGES[mateDef(k).avatar ?? ''] ?? IMAGES.planner;

@@ -5,7 +5,8 @@ const LEVELS = { 10: 'trace', 20: 'debug', 30: 'info', 40: 'warn', 50: 'error', 
 const redact = (s) => s
   .replace(/(authorization|x-api-key|x-svc|token|secret|password|apikey)(["':=\s]+)[^\s",}]{6,}/gi, '$1$2[redacted]')
   .replace(/\b(sk|nvapi|gsk|AIza|ghp|github_pat|xox[a-z])[-_A-Za-z0-9]{12,}/g, '[redacted-key]')
-  .replace(/Bearer\s+[\w.\-]{12,}/g, 'Bearer [redacted]');
+  .replace(/Bearer\s+[\w.\-]{12,}/g, 'Bearer [redacted]')
+  .replace(/([?&]key=)[\w-]{12,}/g, '$1[redacted]');
 
 function push(level, text) {
   const t = String(text).trim(); if (!t) return;

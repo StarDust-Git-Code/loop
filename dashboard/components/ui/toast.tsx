@@ -18,7 +18,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
       {children}
       <div aria-live="polite" style={{ position: 'fixed', bottom: 20, left: '50%', transform: 'translateX(-50%)', display: 'flex', flexDirection: 'column', gap: 8, zIndex: 80, alignItems: 'center' }}>
         {items.map((t) => (
-          <div key={t.id} style={{ background: t.tone === 'ok' ? '#15121a' : '#b3261e', color: '#fff', padding: '10px 16px', borderRadius: 999, fontSize: 13, fontWeight: 600, boxShadow: '0 10px 30px rgba(0,0,0,.25)', animation: 'lm-pop .3s cubic-bezier(.34,1.56,.64,1) both' }}>{t.text}</div>
+          <div key={t.id} style={{ background: t.tone === 'ok' ? '#0F172A' : '#b3261e', color: '#fff', padding: '10px 16px', borderRadius: 999, fontSize: 13, fontWeight: 600, boxShadow: '0 10px 30px rgba(0,0,0,.25)', animation: 'lm-pop .3s cubic-bezier(.34,1.56,.64,1) both' }}>{t.text}</div>
         ))}
       </div>
     </Ctx.Provider>

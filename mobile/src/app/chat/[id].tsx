@@ -12,14 +12,18 @@ import { Avatar, Btn, Chip, ErrorNote, Icon, Press } from '../../components/ui';
 import { api, sendStream, uploadFile } from '../../lib/api';
 import { cacheGet, cacheSet } from '../../lib/cache';
 import { Sheet } from '../../components/kit';
-import { MATE_DEFS, mateName, type MateKey } from '../../lib/mates';
+import { mateDef, mateName, type MateKey } from '../../lib/mates';
+import { useRoster } from '../../lib/roster';
 import { C, R } from '../../lib/theme';
 import type { ChatEvent, Conversation, Message } from '../../lib/types';
 
 type Seg = { key: string; mate: MateKey; text: string; thought: string; tools: string[]; round?: number; summary?: boolean };
 type Row = { key: string; kind: 'msg'; m: Message } | { key: string; kind: 'live'; s: Seg } | { key: string; kind: 'round'; n: number };
 const MODES = ['chat', 'plan', 'ultracode', 'brainstorm'] as const;
-const THINK = ['default', 'low', 'high'];
+const THINK = ['default', 'low', 'medium', 'high', 'xhigh'];
+const THINK_LABEL: Record<string, string> = { default: 'default', low: 'low', medium: 'medium', high: 'high', xhigh: 'extra high' };
+/** Slash commands, as on the dashboard: switch this chat's mode. */
+const SLASH: Record<string, 'plan' | 'brainstorm' | 'ultracode' | 'chat'> = { '/plan': 'plan', '/brainstorm': 'brainstorm', '/ultracode': 'ultracode', '/chat': 'chat' };
 const TOOL_LABEL = (n: string) => n.replace(/_/g, ' ');
 
 const Thought = memo(function Thought({ text, live, answering }: { text: string; live?: boolean; answering?: boolean }) {
@@ -43,9 +47,9 @@ const MateBubble = memo(function MateBubble({ mate, text, thought, tools, live, 
         <Text style={{ fontSize: 12.5, fontWeight: '800', marginBottom: 5, color: C.ink }}>{mateName(mate)}{summary ? ' · Round-table summary' : ''}</Text>
         {thought ? <Thought text={thought} live={live} answering={!!text} /> : null}
         {tools?.length ? <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 6 }}>{tools.map((t, i) => <Text key={i} style={{ fontFamily: 'monospace', fontSize: 11.5, backgroundColor: C.tint, color: C.brandDeep, borderRadius: 7, paddingHorizontal: 8, paddingVertical: 3, overflow: 'hidden' }}>{TOOL_LABEL(t)}</Text>)}</View> : null}
-        <View style={summary ? { marginTop: 6, backgroundColor: C.tint2, borderWidth: 1, borderColor: 'rgba(106,77,244,0.3)', borderRadius: R.lg, padding: 12 } : { marginTop: 6 }}>
+        <View style={summary ? { marginTop: 6, backgroundColor: C.tint2, borderWidth: 1, borderColor: 'rgba(47,107,255,0.3)', borderRadius: R.lg, padding: 12 } : { marginTop: 6 }}>
           {text ? <Markdown text={text} /> : live ? <Text style={{ color: C.muted }}>…</Text> : null}
-          {summary && onSave ? <Press onPress={onSave} style={{ marginTop: 10, alignSelf: 'flex-start', minHeight: 44, borderRadius: 10, borderWidth: 1, borderColor: 'rgba(106,77,244,0.4)', backgroundColor: C.card, paddingHorizontal: 14, justifyContent: 'center' }}><Text style={{ color: C.brandDeep, fontWeight: '800', fontSize: 13 }}>Save to memory</Text></Press> : null}
+          {summary && onSave ? <Press onPress={onSave} style={{ marginTop: 10, alignSelf: 'flex-start', minHeight: 44, borderRadius: 10, borderWidth: 1, borderColor: 'rgba(47,107,255,0.4)', backgroundColor: C.card, paddingHorizontal: 14, justifyContent: 'center' }}><Text style={{ color: C.brandDeep, fontWeight: '800', fontSize: 13 }}>Save to memory</Text></Press> : null}
         </View>
       </View>
     </View>);
@@ -54,7 +58,7 @@ const MateBubble = memo(function MateBubble({ mate, text, thought, tools, live, 
 const UserBubble = memo(function UserBubble({ m }: { m: Message }) {
   return (
     <View style={{ alignSelf: 'flex-end', maxWidth: '84%' }}>
-      <View style={{ backgroundColor: C.tint, borderWidth: 1, borderColor: 'rgba(106,77,244,0.25)', borderTopLeftRadius: 18, borderTopRightRadius: 18, borderBottomLeftRadius: 18, borderBottomRightRadius: 4, paddingHorizontal: 14, paddingVertical: 11 }}>
+      <View style={{ backgroundColor: C.tint, borderWidth: 1, borderColor: 'rgba(47,107,255,0.25)', borderTopLeftRadius: 18, borderTopRightRadius: 18, borderBottomLeftRadius: 18, borderBottomRightRadius: 4, paddingHorizontal: 14, paddingVertical: 11 }}>
         <Text selectable style={{ fontSize: 14.5, lineHeight: 21, color: C.ink }}>{m.text}</Text></View>
       <Text style={{ fontSize: 11.5, color: C.muted, textAlign: 'right', marginTop: 3 }}>{m.state === 'error' ? 'Not sent' : new Date(m.at).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}</Text>
     </View>);
@@ -62,14 +66,18 @@ const UserBubble = memo(function UserBubble({ m }: { m: Message }) {
 
 const RoundMark = ({ n }: { n: number }) => (
   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-    <View style={{ flex: 1, height: 1, backgroundColor: 'rgba(106,77,244,0.25)' }} /><Text style={{ color: C.brandDeep, fontSize: 11, fontWeight: '800', letterSpacing: 1 }}>ROUND {n}</Text><View style={{ flex: 1, height: 1, backgroundColor: 'rgba(106,77,244,0.25)' }} /></View>);
+    <View style={{ flex: 1, height: 1, backgroundColor: 'rgba(47,107,255,0.25)' }} /><Text style={{ color: C.brandDeep, fontSize: 11, fontWeight: '800', letterSpacing: 1 }}>ROUND {n}</Text><View style={{ flex: 1, height: 1, backgroundColor: 'rgba(47,107,255,0.25)' }} /></View>);
 
 export default function Chat() {
+  const roster = useRoster();
   const { id } = useLocalSearchParams<{ id: string }>(); const router = useRouter(); const insets = useSafeAreaInsets();
   const [conv, setConv] = useState<Conversation | null>(null); const [err, setErr] = useState<string | null>(null);
   const [text, setText] = useState(''); const [segs, setSegs] = useState<Seg[] | null>(null); const [toast, setToast] = useState<string | null>(null);
   const abort = useRef<(() => void) | null>(null); const round = useRef<number | undefined>(undefined);
   const flash = (m: string) => { setToast(m); setTimeout(() => setToast(null), 2200); };
+  // Settings → Show thought process (on by default).
+  const [showThought, setShowThought] = useState(true);
+  useEffect(() => { api.settings.get().then((x) => setShowThought(x.showReasoning !== false)).catch(() => undefined); }, []);
 
   const load = useCallback(async () => {
     try { const c = await api.conversations.get(id); setConv(c); setErr(null); cacheSet(`conv:${id}`, c); }
@@ -83,10 +91,12 @@ export default function Chat() {
   const mate = (conv?.mate ?? 'planner') as MateKey;
   const mode = conv?.mode ?? 'chat';
   const mention = /(?:^|\s)@(\w*)$/.exec(text);
-  const suggestions = mention ? MATE_DEFS.filter((m) => m.key.startsWith(mention[1].toLowerCase()) || m.name.toLowerCase().startsWith(mention[1].toLowerCase())).slice(0, 8) : [];
+  const suggestions = mention ? roster.agents.filter((m) => m.key.startsWith(mention[1].toLowerCase()) || m.name.toLowerCase().startsWith(mention[1].toLowerCase())).slice(0, 8) : [];
 
   const send = async () => {
     const t = text.trim(); if (!t || !conv || segs) return;
+    const cmd = SLASH[t.toLowerCase()];
+    if (cmd) { setText(''); await patch({ mode: cmd }); flash(cmd === 'chat' ? 'Back to normal chat' : cmd === 'brainstorm' ? 'Brainstorm on: @ two or more agents' : `${cmd[0].toUpperCase()}${cmd.slice(1)} mode on`); return; }
     setText(''); void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     const optimistic: Message = { id: `tmp${Date.now()}`, role: 'user', text: t, at: new Date().toISOString(), state: 'sent' };
     setConv((c) => c && { ...c, messages: [...c.messages, optimistic] });
@@ -156,7 +166,7 @@ export default function Chat() {
   }, [conv, segs]);
 
   const members = (conv?.members ?? []).filter(Boolean);
-  const subtitle = [members.length ? members.map((k) => MATE_DEFS.find((d) => d.key === k)?.name ?? k).join(', ') : mateName(mate), mode !== 'chat' ? mode[0].toUpperCase() + mode.slice(1) : ''].filter(Boolean).join(' · ');
+  const subtitle = [members.length ? members.map((k) => mateDef(k).name).join(', ') : mateName(mate), mode !== 'chat' ? mode[0].toUpperCase() + mode.slice(1) : ''].filter(Boolean).join(' · ');
 
   return (
     <KeyboardAvoidingView style={{ flex: 1, backgroundColor: C.bg }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
@@ -172,11 +182,11 @@ export default function Chat() {
         ListHeaderComponent={<View>{err ? <ErrorNote message={err} onRetry={load} /> : null}</View>}
         ListEmptyComponent={<View style={{ transform: [{ scaleY: -1 }], alignItems: 'center', padding: 40, gap: 10 }}><Avatar k={mate} size={72} /><Text style={{ color: C.muted, textAlign: 'center' }}>Say hello to {mateName(mate)}.{'\n'}Use @ to bring in more agents.</Text></View>}
         renderItem={({ item }) => item.kind === 'round' ? <RoundMark n={item.n} /> : item.kind === 'live' ? (
-          <MateBubble mate={item.s.mate} text={item.s.text} thought={item.s.thought} tools={item.s.tools} live summary={item.s.summary} />
+          <MateBubble mate={item.s.mate} text={item.s.text} thought={showThought ? item.s.thought : ''} tools={item.s.tools} live summary={item.s.summary} />
         ) : item.m.role === 'user' ? (
           <Animated.View entering={FadeInDown.duration(160)}><UserBubble m={item.m} /></Animated.View>
         ) : (
-          <MateBubble mate={(item.m.mate ?? mate) as MateKey} text={item.m.text} thought={item.m.thought} summary={item.m.summary} onSave={item.m.summary ? () => saveMemory(item.m.text) : undefined} />
+          <MateBubble mate={(item.m.mate ?? mate) as MateKey} text={item.m.text} thought={showThought ? item.m.thought : ''} summary={item.m.summary} onSave={item.m.summary ? () => saveMemory(item.m.text) : undefined} />
         )} />
 
       {toast ? <Animated.View entering={FadeInDown} style={{ position: 'absolute', alignSelf: 'center', bottom: 150, backgroundColor: C.ink, paddingHorizontal: 16, paddingVertical: 10, borderRadius: 999 }}><Text style={{ color: '#fff', fontSize: 13.5 }}>{toast}</Text></Animated.View> : null}
@@ -186,7 +196,7 @@ export default function Chat() {
           renderItem={({ item }) => <Chip label={`@${item.key}`} onPress={() => setText((t) => t.replace(/@\w*$/, `@${item.key} `))} />} /> : null}
         <FlatList horizontal data={[...MODES]} keyExtractor={(m) => m} showsHorizontalScrollIndicator={false} style={{ marginBottom: 8, flexGrow: 0 }} contentContainerStyle={{ gap: 6 }} keyboardShouldPersistTaps="handled"
           renderItem={({ item }) => <Chip label={item[0].toUpperCase() + item.slice(1)} on={mode === item} onPress={() => patch({ mode: item })} />}
-          ListFooterComponent={<View style={{ marginLeft: 6 }}><Chip label={`Thinking: ${conv?.thinking ?? 'default'}`} onPress={() => patch({ thinking: THINK[(THINK.indexOf(conv?.thinking ?? 'default') + 1) % THINK.length] })} /></View>} />
+          ListFooterComponent={<View style={{ marginLeft: 6 }}><Chip label={`Thinking: ${THINK_LABEL[conv?.thinking ?? 'default'] ?? conv?.thinking}`} onPress={() => patch({ thinking: THINK[(THINK.indexOf(conv?.thinking ?? 'default') + 1) % THINK.length] })} /></View>} />
         <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: 8, borderWidth: 1, borderColor: C.line2, borderRadius: 18, padding: 6 }}>
           <Press onPress={() => setPicker(true)} accessibilityLabel="Attach" style={{ width: 44, height: 44, borderRadius: 12, backgroundColor: C.field, borderWidth: 1, borderColor: C.line, alignItems: 'center', justifyContent: 'center' }}><Icon name="plus" size={20} /></Press>
           <TextInput value={text} onChangeText={setText} multiline placeholder={mode === 'brainstorm' ? 'Give the table a topic, and @ two or more agents' : `Message ${mateName(mate)}`} placeholderTextColor={C.muted} style={{ flex: 1, minHeight: 44, maxHeight: 140, fontSize: 15, paddingTop: 10, paddingBottom: 10, color: C.ink }} accessibilityLabel="Message" />

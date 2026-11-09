@@ -11,7 +11,7 @@ export type CallHandle = { hangup(): void; mute(on: boolean): void; level(): num
 
 export async function startCall(mate: string, reason: string, on: (e: CallEvent) => void, conv = '', callId = ''): Promise<CallHandle> {
   const base = await getVoiceUrl();
-  if (!base) throw new Error('Set the voice server address in Settings first.');
+  if (!base) throw new Error('Your Loopmates server is not paired yet. Pair it once in the web dashboard (Server page).');
   let perm = await AudioManager.checkRecordingPermissions();
   if (perm !== 'Granted') perm = await AudioManager.requestRecordingPermissions();
   if (perm !== 'Granted') throw new Error('Microphone permission is needed to call. Allow it in Android settings.');
@@ -29,7 +29,7 @@ export async function startCall(mate: string, reason: string, on: (e: CallEvent)
   out.connect(ctx.destination);
   out.start(0, 0);
   const rec = new AudioRecorder();
-  let muted = false, peak = 0, closed = false;
+  let muted = false, peak = 0, closed = false, ended = false;
 
   rec.onAudioReady({ sampleRate: 16000, bufferLength: 1600, channelCount: 1 }, (ev) => {
     const f = ev.buffer.getChannelData(0);
@@ -50,6 +50,7 @@ export async function startCall(mate: string, reason: string, on: (e: CallEvent)
     if (typeof m.data === 'string') {
       let ev: CallEvent; try { ev = JSON.parse(m.data) as CallEvent; } catch { return; }
       if (ev.type === 'interrupted') { try { out.clearBuffers(); } catch { /* nothing queued */ } }
+      if (ev.type === 'end') ended = true; // keep the server's reason; onclose must not replace it
       on(ev); return;
     }
     const pcm = new Int16Array(m.data as ArrayBuffer); if (!pcm.length) return;
@@ -57,8 +58,8 @@ export async function startCall(mate: string, reason: string, on: (e: CallEvent)
     for (let i = 0; i < pcm.length; i++) f[i] = pcm[i] / 32768;
     buf.copyToChannel(f, 0); out.enqueueBuffer(buf);
   };
-  ws.onclose = () => { cleanup(); on({ type: 'end', why: 'closed' }); };
-  ws.onerror = () => on({ type: 'error', message: 'Could not reach the voice server. It may be waking up; try again in a minute.' });
+  ws.onclose = () => { cleanup(); if (!ended) { ended = true; on({ type: 'end', why: 'closed' }); } };
+  ws.onerror = () => on({ type: 'error', message: 'Could not reach the voice server. Check that your Loopmates server is online, then try again.' });
   const started = await rec.start();
   if (started.status === 'error') { cleanup(); ws.close(); throw new Error('Could not open the microphone.'); }
   return {

@@ -1,5 +1,5 @@
-import { HomeScreen } from '../components/dashboard/HomeScreen';
+import { Home } from '../components/home/Home';
 
 export default function Page() {
-  return <HomeScreen />;
+  return <Home />;
 }

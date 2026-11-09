@@ -1,10 +1,9 @@
 // Tool registry. Each Mate gets only the tools its "tools" setting grants (Web Search, Memory, Calendar...).
 // Tools are called through a JSON protocol (works with any model, no native function-calling needed).
-import { addMemory, recall } from './memory.js';
 import dns from 'node:dns/promises';
 import net from 'node:net';
 import { env, now, uid as rid } from '../lib/env.js';
-import { MATE } from './mates.js';
+import { loadRoster } from './roster.js';
 import { userCol } from './db.js';
 import { searchKnowledge } from './knowledge.js';
 import { putFile, storageReady as artifactsReady } from './files.js';
@@ -14,6 +13,11 @@ import { MONITOR_TOOLS } from './monitor.js';
 import { TOOLKIT, bindWeb } from './toolkit.js';
 import { BROWSER_TOOLS } from './browsertools.js';
 import { DRIVE_TOOLS } from './drivetools.js';
+import { REACH_TOOLS } from './reach.js';
+import { WATCH_TOOLS } from './watch.js';
+import { COMPANY_TOOLS } from './company.js';
+import { INTEGRATION_TOOLS, bindFeedFetch } from '../integrations/index.js';
+import { PYTHON_TOOLS } from './python.js';
 export { setToolHooks };
 
 const cap = (s, n = 4000) => (s.length > n ? `${s.slice(0, n)}\n…[truncated]` : s);
@@ -116,12 +120,12 @@ const WF_TOOLS = {
       let steps = a.steps; if (typeof steps === 'string') { try { steps = JSON.parse(steps); } catch { throw bad('steps must be a JSON array'); } }
       if (!Array.isArray(steps) || !steps.length) throw bad('steps must be a non-empty array'); if (steps.length > 12) throw bad('At most 12 steps');
       const name = String(a.name ?? '').trim().slice(0, 80); if (!name) throw bad('name is required');
-      const cfgs = Object.fromEntries((await userCol(c.uid, 'mates').get()).docs.map((d) => [d.id, d.data()]));
+      const ro = await loadRoster(c.uid);
       const warn = []; const nodes = steps.map((s, i) => {
         const type = NODE_TYPES.includes(s?.type) ? s.type : 'mate'; const label = String(s?.label ?? '').trim().slice(0, 100); if (!label) throw bad(`Step ${i + 1} needs a label`);
-        let mate = s?.mate && MATE[s.mate] ? s.mate : undefined;
+        let mate = s?.mate && ro.has(s.mate) ? s.mate : undefined;
         if ((type === 'mate' || type === 'tool') && !mate) { if (s?.mate) throw bad(`Step ${i + 1}: unknown mate "${s.mate}"`); mate = type === 'tool' ? 'ops' : 'research'; warn.push(`Step ${i + 1} had no mate, using ${mate}.`); }
-        if (mate && cfgs[mate]?.enabled === false) warn.push(`${mate} is switched off; turn it on in Agents or the run will use Ops.`);
+        if (mate && !ro.on(mate)) warn.push(`${mate} is switched off; turn it on in Agents or the run will use Ops.`);
         if (!['mate', 'tool', 'output', 'trigger'].includes(type)) warn.push(`Step ${i + 1} (${type}) is documentation only: the engine skips it.`);
         const config = s?.config && typeof s.config === 'object' ? Object.fromEntries(Object.entries(s.config).slice(0, 6).map(([k, v]) => [k, String(v).slice(0, 200)])) : undefined;
         return { id: rid(), type, label, ...(mate && (type === 'mate' || type === 'tool') ? { mate } : {}), x: 40 + i * 240, y: 80, ...(config && Object.keys(config).length ? { config } : {}) };
@@ -137,6 +141,7 @@ const WF_TOOLS = {
 };
 
 bindWeb({ safeFetch });
+bindFeedFetch(safeFetch);
 
 /** name -> { group, desc, args, run(ctx, args) }  ctx = { uid, settings } */
 export const TOOLS = {
@@ -145,6 +150,11 @@ export const TOOLS = {
   ...BROWSER_TOOLS,
   ...DRIVE_TOOLS,
   ...WF_TOOLS,
+  ...REACH_TOOLS,
+  ...WATCH_TOOLS,
+  ...COMPANY_TOOLS,
+  ...INTEGRATION_TOOLS,
+  ...PYTHON_TOOLS,
   web_search: { group: 'Web Search', net: true, desc: 'Search the web (Google-grounded). Fast: use this for specs, prices, facts and news instead of opening a browser. Returns an answer with source links.', args: '{"query": "text"}', run: async (_c, a) => cap(await search(String(a.query ?? '').slice(0, 200))) },
   fetch_url: { group: 'Web Search', net: true, desc: 'Open a public web page and read its text.', args: '{"url": "https://..."}', run: async (_c, a) => {
     const res = await safeFetch(String(a.url));
@@ -158,20 +168,11 @@ export const TOOLS = {
     const hits = await searchKnowledge(c.uid, String(a.query ?? ''), c.settings?.topK || 5);
     return hits.length ? hits.map((h) => `[${h.name}] ${h.snippet}`).join('\n') : 'No matching knowledge.';
   } },
-  memory_save: { group: 'Memory', write: true, desc: 'Save something worth remembering about the owner or their work.', args: '{"text": "fact", "kind?": "note|idea|decision|fact|journal|link"}', run: async (c, a) => {
-    const text = String(a.text ?? '').trim().slice(0, 2000); if (!text) throw bad('text is required');
-    const r = await addMemory(c.uid, { text, kind: a.kind, by: c.mate ?? 'mimo', scope: c.settings?.memoryScope === 'shared' ? 'shared' : 'private' });
-    return r.dup ? `Already remembered (memory ${r.id}).` : `Saved memory ${r.id}.`;
-  } },
-  memory_recall: { group: 'Memory', desc: 'Look up saved memories by meaning (not just exact words).', args: '{"query": "what to look up"}', run: async (c, a) => {
-    const hits = await recall(c.uid, String(a.query ?? ''), { k: 8, pinned: 0 });
-    return hits.length ? hits.map((h) => `- (${h.kind}) ${h.text}`).join('\n') : 'No matching memories.';
-  } },
-  calendar_add: { group: 'Calendar', write: true, desc: 'Add an event or a reminder to the calendar. Reminders ping the owner on Telegram at that time.', args: '{"title": "text", "start": "ISO date-time with offset", "end": "optional ISO", "kind?": "event|reminder", "notes": "optional"}', run: async (c, a) => {
+  calendar_add: { group: 'Calendar', write: true, desc: 'Add an event or a reminder to the calendar. Reminders message the owner at that time; with deliver "call" the leader phones them instead ("call me at 6 to remind me about X").', args: '{"title": "text", "start": "ISO date-time with offset", "end": "optional ISO", "kind?": "event|reminder", "notes": "optional", "deliver?": "notify|call"}', run: async (c, a) => {
     const start = iso(a.start, 'start'); const end = a.end ? iso(a.end, 'end') : new Date(Date.parse(start) + 30 * 60_000).toISOString();
-    const doc = { title: String(a.title ?? '').slice(0, 200) || 'Untitled', start, end, kind: a.kind === 'event' ? 'event' : 'reminder', notes: String(a.notes ?? '').slice(0, 1000), createdAt: now(), updatedAt: now() };
+    const doc = { title: String(a.title ?? '').slice(0, 200) || 'Untitled', start, end, kind: a.kind === 'event' ? 'event' : 'reminder', notes: String(a.notes ?? '').slice(0, 1000), deliver: a.deliver === 'call' ? 'call' : 'notify', ...(c.mate ? { mate: String(c.mate) } : {}), createdAt: now(), updatedAt: now() };
     const ref = userCol(c.uid, 'events').doc(); await ref.set(doc); await hooks.events?.(c.uid, ref.id, doc, 'set');
-    return `Added ${doc.kind} "${doc.title}" at ${start}.`;
+    return `Added ${doc.kind} "${doc.title}" at ${start}${doc.deliver === 'call' ? ' (I will call)' : ''}.`;
   } },
   calendar_list: { group: 'Calendar', desc: 'List calendar events and reminders (optionally from/to ISO dates).', args: '{"from": "optional ISO", "to": "optional ISO"}', run: async (c, a) => {
     const from = a.from ? Date.parse(a.from) : Date.now() - 86_400_000, to = a.to ? Date.parse(a.to) : Date.now() + 30 * 86_400_000;
@@ -215,10 +216,22 @@ export const TOOLS = {
 /** Which tools a Mate may use, given its configured tool groups and the workspace settings. */
 /** Always-on extras per Mate (on top of what its config lists). */
 const DELEGATORS = ['Delegation', 'Run Control'];
-const EXTRA_GROUPS = { '*': ['Utilities'], mimo: ['Delegation', 'Web Search', 'Vector Search', 'File System', 'Browser'], ops: DELEGATORS, halo: DELEGATORS, planner: DELEGATORS, flow: ['Delegation'], research: ['Delegation'] };
-export function toolsFor(groups = [], settings = {}, mateKey = '') {
-  const g = new Set([...groups, ...EXTRA_GROUPS['*'], ...(EXTRA_GROUPS[mateKey] ?? [])]);
-  return Object.entries(TOOLS).filter(([, t]) => (t.group === '*' || g.has(t.group)) && !(t.net && settings.allowNetwork === false) && !(t.needsApproval && settings.permissionMode !== 'auto')).map(([name, t]) => ({ name, ...t }));
+// Integration groups (Notes, Google, Team Chat, Task Apps, Music, Feeds, Health, Home) go to the Mates whose job fits.
+// Their tools only show up once the integration is set up (each tool's ready()), so an unlinked app costs nothing.
+const EXTRA_GROUPS = {
+  '*': ['Utilities'],
+  mimo: ['Delegation', 'Web Search', 'Vector Search', 'File System', 'Browser', 'Notes', 'Google', 'Task Apps', 'Home'],
+  ops: [...DELEGATORS, 'Home', 'Team Chat'], halo: DELEGATORS, planner: [...DELEGATORS, 'Task Apps', 'Google'], flow: ['Delegation'],
+  research: ['Delegation', 'Feeds', 'Notes'], scout: ['Feeds'], writer: ['Notes', 'Google'], recall: ['Notes'],
+  orbit: ['Google', 'Task Apps'], zen: ['Google', 'Health', 'Home'], luna: ['Health', 'Notes'], chef: ['Task Apps'], tune: ['Music'],
+  data: ['Health'], byte: ['Task Apps'], code: ['Task Apps'],
+};
+const LEAD_GROUPS = ['Delegation', 'Run Control', 'Web Search', 'Vector Search', 'Memory', 'Calendar', 'Company', 'Notes', 'Google', 'Task Apps', 'Home', 'Team Chat'];
+/** leader = the roster's leader key: it always gets the delegation and planning tools. */
+export function toolsFor(groups = [], settings = {}, mateKey = '', leader = '') {
+  const g = new Set([...groups, ...EXTRA_GROUPS['*'], ...(EXTRA_GROUPS[mateKey] ?? []), ...(mateKey && mateKey === leader ? LEAD_GROUPS : [])]);
+  const ready = (t) => { if (!t.ready) return true; try { return !!t.ready(); } catch { return false; } };
+  return Object.entries(TOOLS).filter(([, t]) => (t.group === '*' || g.has(t.group)) && ready(t) && !(t.net && settings.allowNetwork === false) && !(t.needsApproval && settings.permissionMode !== 'auto')).map(([name, t]) => ({ name, ...t }));
 }
 
 export async function runTool(name, args, ctx, allowed) {

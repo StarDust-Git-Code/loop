@@ -10,13 +10,10 @@ Everything must run on free tiers. Do not add paid services.
 |---|---|---|
 | Repo | `github.com/StarDust-Git-Code/loop`, branch `main` | Landing page at the root, dashboard in `dashboard/`, backend in `backend/` |
 | Dashboard | Vercel, `dashboard-loopmates.vercel.app` | Next.js. Auto-deploys on push |
-| API | Render, `https://loopmates-api-82ub.onrender.com` | Fastify. `/healthz` returns `{ok, service, commit, uptime, mem}` |
-| Coder | Render (separate service) | Runs coding jobs in a sandbox |
-| Artifacts | Render (separate service) | Stores files in the owner's Google Drive (not set up yet) |
-| **Voice** | Render, `backend/render.voice.yaml` (new, **must be created by the owner**) | WebSocket relay to Gemini Live. URL goes in `NEXT_PUBLIC_VOICE_URL` |
+| **Server** | The owner's own computer (Windows or Linux), one process: `backend/src/server.js` | API, SSE, voice (`/live`), coder, Drive, browser, Telegram, Discord, scheduler. Reached through a Cloudflare Tunnel. See `backend/README.md` |
 | Auth + DB | Firebase project `loop-mates` (Auth + Firestore) | Email/password and Google sign-in |
 
-Free-tier Render services sleep after inactivity: the first request can take about a minute. Show a "waking up" state and retry. Do not treat it as a failure.
+**Finding the server.** Its address is not fixed (a quick tunnel changes on restart). After sign-in, read `servers/{uid}` from Firestore (`{ url, lastSeen, commit, platform }`; only the owner can read it, see `firestore.rules`). The owner pairs once from the dashboard; every client of the same account then finds the server by itself. If a request fails, read the doc again before giving up. If the server is offline, say so with the last-seen time.
 
 ## 2. Auth
 
@@ -25,7 +22,7 @@ Free-tier Render services sleep after inactivity: the first request can take abo
 - `GET /v1/auth/session` returns the signed-in user. 401 means sign in again.
 - Never put a Firebase service account or any API key in the app. The app holds only the ID token. All model keys live on the servers.
 
-## 3. REST API (base `https://loopmates-api-82ub.onrender.com/v1`, JSON)
+## 3. REST API (base `<server url>/v1`, JSON)
 
 Generic collections follow the same pattern: `GET /<name>`, `POST /<name>`, `GET|PATCH|DELETE /<name>/:id`.
 Collections: `tasks`, `workflows`, `automations`, `knowledge`, `memories`, `skills`, `mcp-servers`, `connections`, `conversations`, `events`, `files` (no create here), `runs` (read only), `mates` (the roster and per-Mate config), `providers`.
@@ -69,9 +66,9 @@ Chat behaviours the app should support:
 
 ## 4. Voice calls (the main new feature)
 
-A separate Render service, **`backend/src/voice/index.js`**, keeps audio load off the other three. It is a WebSocket relay between the phone and Gemini's Live API. The Gemini key stays on the server.
+**`backend/src/voice/index.js`** is mounted on the same server at `/live`. It is a WebSocket relay between the phone and Gemini's Live API. The Gemini key stays on the server.
 
-**Connect:** `wss://<voice-service>/live?token=<Firebase ID token>&mate=<mateKey>&reason=<optional text>&greet=1`
+**Connect:** `wss://<server host>/live?token=<Firebase ID token>&mate=<mateKey>&reason=<optional text>&greet=1`
 - `reason` set: the Mate "called you" and opens by saying why. Otherwise `greet=1` makes it greet briefly.
 - The server picks the newest Live-capable Gemini model for the key (or `VOICE_MODEL` if pinned).
 
@@ -90,7 +87,7 @@ A separate Render service, **`backend/src/voice/index.js`**, keeps audio load of
 Mobile specifics to handle:
 - Microphone permission, echo cancellation on, route to speaker/earpiece, keep the screen awake and the app alive during a call (foreground service on Android, audio background mode on iOS).
 - Handle a dropped network by ending cleanly and offering "Call again".
-- **Mates calling the user:** the backend tool `call_me` sends a Telegram message with a link `<dashboard>/call?mate=<key>&reason=<text>`. In the app, register that link (deep link or universal link) so tapping it opens the Call screen and dials with that `mate` and `reason`. Push notifications (FCM) are an optional upgrade: add a device-token endpoint if you build it.
+- **Mates calling the user:** the backend tool `call_me` rings through app push (web push and Expo push), Telegram and Discord with a link `<dashboard>/call?mate=<key>&call=<id>&reason=<text>`. The app opens the Call screen with those values. Phones register an ExponentPushToken with `POST /v1/devices {kind:'expo', token, label}`.
 
 ## 5. The Mates
 
@@ -129,28 +126,45 @@ Agents use native tool calling (86 tools: web search with Gemini Google groundin
 5. **Home** (what should Loop do today), **Tasks**, **Schedule** (events and reminders), **My Space** (memories), **Runs** (start, live log, approve, steer, stop).
 6. **Settings**: display name, default thinking level, show reasoning, brainstorm rounds, Telegram link code.
 
-Keep the web look: purple accent `#6A4DF4`, tint `#ECE7FF`, deep text `#1B1822`, muted `#6B6572`, white cards with a thin `rgba(31,26,23,.14)` border, rounded 16 px corners, mascot images as avatars.
+Keep the web look (clean multi-agent): white, one blue accent `#2F6BFF`, tint `#EAF1FF`, slate text `#0F172A` / `#5B6474`, thin `rgba(15,23,42,.12)` borders, Plus Jakarta Sans, mascots as avatars. All values come from `design/tokens.json` (`node design/build-tokens.mjs` writes the dashboard CSS and the mobile theme).
 
 ## 7. Known gaps and honest caveats
 
-- **Voice has not been tested against the real Gemini Live API or a real microphone.** It was tested against a fake upstream. The model choice is automatic; the owner can pin `VOICE_MODEL`.
-- **Google Drive (Artifacts) is not set up**, so file upload returns 501 until the owner finishes the OAuth steps. Images cannot be attached yet.
-- **Telegram is not linked**, so reminders and `call_me` messages cannot be delivered until the owner links it.
-- Provider-specific reasoning parameters and native tool calling were written from documentation memory and are untested against every provider.
-- The Vercel `NEXT_PUBLIC_*` variables, the cron-job.org keep-alive pinger and key rotation are still on the owner's to-do list (`HANDOFF.md`).
-- The owner is rewriting the Mates' system prompts by hand. Do not hard-code prompts in the app.
+- **Voice has not been tested against the real Gemini Live API with a real microphone**, in either direction. It was tested against a fake upstream.
+- Google Drive, Telegram, Discord and GitHub each need the owner to follow the steps in Dashboard → Connections once.
+- Phone push needs an EAS project id in `app.json` (`extra.eas.projectId`); without it the app still checks runs every 15 minutes.
+- The dashboard is light-only for now; the dark palette is ready in `design/tokens.json` and used by the phone.
+- Provider-specific reasoning parameters and native tool calling were written from documentation and are untested against every provider.
 
 ## 8. Where to read more
 
-`HANDOFF.md` (setup state), `dashboard/BACKEND.md` (API shapes), `backend/README.md` (services, env vars, tests), `dashboard/lib/types.ts` (all TypeScript types, the best schema reference), `dashboard/lib/api/http.ts` (a working REST and SSE client), `backend/scripts/e2e.mjs` (executable examples of every endpoint, run with `npm test` in `backend/`).
+`HANDOFF.md` (setup state), `dashboard/BACKEND.md` (API shapes), `backend/README.md` (install, setup page, what runs inside, tests), `dashboard/lib/types.ts` (all TypeScript types, the best schema reference), `dashboard/lib/api/http.ts` (a working REST and SSE client), `backend/scripts/e2e.mjs` (executable examples of every endpoint, run with `npm test` in `backend/`).
 
 ## Intelligence layer (added)
 - **Memory**: `backend/src/api/memory.js` + `vec.js`. Chats are mined in the background for durable facts ("User likes Genshin Impact"); recall is semantic (Gemini/NVIDIA embeddings, int8 vectors stored on the doc, keyword fallback). Knowledge chunks are embedded at index time. Toggle: Settings > autoMemory.
 - **Runs**: each step is verified (cheap second opinion) and retried with feedback; a failed run gets a written failure report, per-step errors, a Log tab and a Retry button that resumes from the failed step (`POST /v1/runs/:id/retry`).
 - **Call missions**: `call_me({reason, goal, questions})` creates `users/{uid}/calls/{id}`; the voice service runs a Gemini Live sub-agent with that mission, it files the result via `finish_call`, and `calls.js:wrapUp` writes the report to the chat, Telegram and Discord. Agents read it with `call_report`.
-- **Discord**: `discord.js`, HTTP interactions at `/discord/interactions` (slash commands /link /ask /run /status). Env: DISCORD_BOT_TOKEN, DISCORD_APP_ID, DISCORD_PUBLIC_KEY.
+- **Discord**: `discord.js`, over the Gateway (an outgoing WebSocket; slash commands /link /ask /run /status, and buttons). Set up in Dashboard → Connections → Discord.
 - **Telegram and Discord chat** now run the real Mate (tools + memory) via `bridge.js`.
 - **Files**: work without Drive (small files stored inline, <= 700 KB); connect Drive for larger files.
 
 ## Browser (added)
-`backend/src/browser/` is a browser service (engines: `engine-playwright.js` Chromium for x86_64/arm64, `engine-webdriver.js` Firefox for s390x/IBM LinuxONE; shared `guard.js`, `snap.js`). It is a Playwright-or-WebDriver service for the owner's Linux VM (2 pooled Chromium instances, isolated sessions, SSRF guard, password-field refusal). `backend/src/api/browsertools.js` exposes it to Mates as `browser_*` tools via `BROWSER_URL`. Setup: `docs/browser-vm.md`.
+`backend/src/browser/` runs inside the server and starts on first use (engines: `engine-playwright.js` for x86_64/arm64, using Edge/Chrome on the computer or Chromium installed from the setup page; `engine-webdriver.js` Firefox for s390x/IBM LinuxONE; shared `guard.js`, `snap.js`). Pooled instances, isolated sessions, SSRF guard, password-field refusal. `backend/src/api/browsertools.js` exposes it to Mates as `browser_*` tools.
+
+## Autonomous team (added, Nov 2026)
+- Custom agents and a leader (`settings.leader`, default `mimo`): `GET /v1/mates/roster`, `POST /v1/mates`, `DELETE /v1/mates/:key` (built-ins are hidden, restorable with `POST /v1/mates/:key/restore`). Agent keys are lowercase letters and digits; treat any key as valid, and fall back to the leader for unknown ones.
+- Memory scopes (`shared` / `personal` + `mate`) and a knowledge graph: `GET /v1/graph`, `DELETE /v1/graph/nodes/:id`, `POST /v1/graph/merge`.
+- Per-agent `access` on the mate config: `{ memory: {personal, shared}, graph, skills, mcp, knowledge }`.
+- Coding harness: `settings.coderHarness`, `settings.coderSandbox`, `GET /v1/coder/harnesses`, `POST /v1/coder/test`.
+- Jarvis mode: `GET /v1/leader`, `/v1/watches` (CRUD), `POST /v1/watches/:id/check`, `POST /v1/leader/briefing`; calendar events accept `deliver: 'call'`.
+- Company: `/v1/people`, `/v1/teams`, `/v1/projects`, `/v1/assignments`, `/v1/checkins` (CRUD), `POST /v1/people/import {csv}`, `POST /v1/people/:id/invite`, `POST /v1/checkins/:id/send`, `GET /v1/company/overview`. Knowledge items with `company: true` are what employees may be told.
+
+## Single server, prompts and asking (added, Nov 2026)
+- One process (`backend/src/server.js`) replaces the five Render services. No service-to-service HMAC; the coder, Drive and browser are function calls.
+- The agents' system prompt is `backend/prompts/agent-system-prompt.md`, filled per turn by `buildSystem()` (`src/api/prompt.js`): only the speaking Mate's role card, plus connections, server, surface and run context. A small context window gets a compact version. Owners can edit each Mate's role card in Agents.
+- **Each Mate sounds like itself.** Every role card has `How you work`, `Voice`, `Ends with` and `In a brainstorm` lines. The shared "Your character" section only holds rules every Mate shares. `cardFor()` in `prompt.js` builds the card: the owner's edited card, else the built-in one, else a starter card for a custom agent, plus an optional owner `personality` line that overrides the Voice. Run files, final reports and failure reports use `briefPersona()`, which carries the same card. Call voices come from `voiceFor()` in `mates.js`: the owner's `voice` pick, else the built-in voice, else a spare voice no built-in uses (custom agents). Telegram replies are signed with the agent's name, and `@name message` on Telegram asks that agent.
+- **Integrations** (`backend/src/integrations/`): `GET /v1/integrations` (descriptors: steps, fields, ready, note, manifest, webhookUrl, oauth, linkCode, ingestUrl), `POST /v1/integrations/:key/test`, `POST /v1/integrations/:key/link-code` (Slack `slack`, WhatsApp `wacloud`: then "link CODE" in the chat), `GET /v1/integrations/spotify/start`, `POST /v1/integrations/obsidian/sync`. Health: `POST /v1/health {days}`, `POST /v1/health/import {csv}`, `POST /v1/health/key`, public `POST /health/ingest` (Bearer ingest key). Public webhooks: `GET|POST /whatsapp/webhook` (Meta signature), `GET /spotify/oauth/callback`. Tool groups: Notes, Google, Team Chat, Task Apps, Music, Feeds, Health, Home. Watch kinds `feed` (config.url) and `home` (config.entity + state/above/below, forMinutes, score).
+- **Team features:** `POST /v1/leader/standup`, `GET /v1/standups`, settings `standupOn/standupDay/standupAt`, `notifySlack`, `notifyWhatsapp`. `GET /v1/voice/preview?mate=&voice=&personality=` returns `audio/wav`. Role cards have `Team:` and `Sign-off:` lines; `notify_me` appends the sign-off.
+- `ask_owner`: a Mate asks a multiple-choice question; it appears in Home → Needs you, as push, and as Telegram/Discord buttons. In a run, the step waits for the answer or uses the default on timeout. API: `GET /v1/questions`, `POST /v1/questions/:id/answer`.
+- Notifications: `notify_me` and `call_me` go to app push + Telegram + Discord as the owner chose, always land in `GET /v1/inbox`, and respect quiet hours (Settings).
+

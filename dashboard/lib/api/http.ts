@@ -1,14 +1,17 @@
 import type { Api, Repo } from './contract';
 import type { CallReport, ChatEvent, ID, RunEvent } from '../types';
 import { idToken } from '../auth';
+import { resolveServer } from '../serverUrl';
 
-/** REST + SSE adapter. Set NEXT_PUBLIC_API_URL to switch the dashboard to it. Endpoints: see BACKEND.md. */
-export function createHttpApi(base: string): Api {
+/** REST + SSE adapter for the owner's Loopmates server. `server` returns its current base URL. Endpoints: see BACKEND.md. */
+export function createHttpApi(server: () => string): Api {
   const subs = new Set<() => void>();
   const emit = () => subs.forEach((s) => s());
 
   async function request(method: string, path: string, body?: unknown): Promise<Response> {
     const isForm = body instanceof FormData;
+    const base = server();
+    if (!base) throw new Error('Your Loopmates server is not paired yet.');
     for (let attempt = 0; ; attempt++) {
       const tok = await idToken();
       try {
@@ -18,9 +21,10 @@ export function createHttpApi(base: string): Api {
           body: body === undefined ? undefined : isForm ? body : JSON.stringify(body),
         });
       } catch {
-        // Network error: a sleeping free-tier server takes ~1 min to wake. Retry reads a few times before giving up.
-        if (method !== 'GET' || attempt >= 3) throw new Error('Cannot reach the server. It may be waking up; try again in a minute.');
-        await new Promise((r) => setTimeout(r, 4000 * (attempt + 1)));
+        // Network error: retry reads once (flaky network), and look up the server's address again in case it moved.
+        if (method !== 'GET' || attempt >= 1) throw new Error('Cannot reach your Loopmates server. Check that it is running on your computer.');
+        void resolveServer(true);
+        await new Promise((r) => setTimeout(r, 1500));
       }
     }
   }
@@ -62,7 +66,7 @@ export function createHttpApi(base: string): Api {
     const ctl = new AbortController();
     (async () => {
       const tok = await idToken();
-      const res = await fetch(`${base}/v1/runs/${id}/events`, { headers: tok ? { authorization: `Bearer ${tok}` } : {}, signal: ctl.signal });
+      const res = await fetch(`${server()}/v1/runs/${id}/events`, { headers: tok ? { authorization: `Bearer ${tok}` } : {}, signal: ctl.signal });
       if (!res.ok || !res.body) return;
       const reader = res.body.getReader(); const dec = new TextDecoder(); let buf = '';
       for (;;) {
@@ -106,12 +110,12 @@ export function createHttpApi(base: string): Api {
   const connections = repo('/connections') as Api['connections'];
   connections.chats = (id) => call("GET", `/connections/${id}/chats`);
   connections.test = (id) => act(`/connections/${id}/test`);
-  const callsApi = { get: (id: ID) => call<CallReport>('GET', `/calls/${id}`).catch(() => undefined) };
+  const callsApi = { get: (id: ID) => call<CallReport>('GET', `/calls/${id}`).catch(() => undefined), list: () => call<CallReport[]>('GET', '/calls?limit=30'), now: (mate: string, convId = '') => call<{ id: ID; mate: string; reason: string }>('POST', '/calls/now', { mate, convId }), cancel: (id: ID) => call<{ ok: boolean }>('POST', `/calls/${id}/cancel`, {}) };
   connections.discordLinkCode = () => call('POST', '/discord/link-code', {});
   connections.telegramLinkCode = () => call('POST', '/telegram/link-code', {});
   const files = repo('/files') as Api['files'];
   files.upload = async (file) => { const fd = new FormData(); fd.append('file', file); return act('/files', fd); };
-  files.downloadUrl = (id) => `${base}/v1/files/${id}/content`;
+  files.downloadUrl = (id) => `${server()}/v1/files/${id}/content`;
   files.download = async (id, name) => {
     const res = await request('GET', `/files/${id}/content`);
     if (!res.ok) throw new Error(`Download failed (${res.status})`);
@@ -127,9 +131,52 @@ export function createHttpApi(base: string): Api {
     capabilities: { backend: true },
     auth: { session: async () => ({ signedIn: true }), signOut: async () => {} },
     tasks: repo('/tasks'), workflows: repo('/workflows'), automations: repo('/automations'), knowledge: repo('/knowledge'),
-    memories: repo('/memories'), skills: repo('/skills'), mcp, connections, calls: callsApi, conversations, events: repo('/events'), files,
+    memories: repo('/memories'), watches: repo('/watches'), people: repo('/people'), teams: repo('/teams'), assignments: repo('/assignments'), checkins: repo('/checkins'),
+    company: { importCsv: (csv) => call('POST', '/people/import', { csv }), invite: (id) => call('POST', `/people/${id}/invite`, {}), sendCheckin: (id) => call('POST', `/checkins/${id}/send`, {}) },
+    leader: { get: () => call('GET', '/leader'), check: (id) => call('POST', `/watches/${id}/check`, {}), briefing: () => call('POST', '/leader/briefing', {}), standup: () => act('/leader/standup', {}), standups: () => call('GET', '/standups') },
+    integrations: {
+      list: () => call('GET', '/integrations'),
+      test: (key) => call('POST', `/integrations/${key}/test`, {}),
+      linkCode: (key) => call('POST', `/integrations/${key}/link-code`, {}),
+      spotifyStart: (local = false) => call('GET', `/integrations/spotify/start${local ? '?local=1' : ''}`),
+      obsidianSync: () => call('POST', '/integrations/obsidian/sync', {}),
+      healthKey: () => call('POST', '/health/key', {}),
+      healthImport: (csv) => call('POST', '/health/import', { csv }),
+    },
+    voicePreview: async (mate, voice = '', personality = '') => {
+      const res = await request('GET', `/voice/preview?${new URLSearchParams({ mate, ...(voice ? { voice } : {}), ...(personality ? { personality } : {}) })}`);
+      if (!res.ok) { let msg = `Preview failed (${res.status})`; try { msg = (await res.json()).error ?? msg; } catch { /* keep */ } throw new Error(msg); }
+      return URL.createObjectURL(await res.blob());
+    },
+    graph: {
+      get: (history = false) => call('GET', `/graph${history ? '?history=1' : ''}`),
+      removeNode: async (id) => { await call('DELETE', `/graph/nodes/${id}`); },
+      merge: async (from, into) => { await call('POST', '/graph/merge', { from, into }); },
+    }, skills: repo('/skills'), mcp, connections, calls: callsApi, conversations, events: repo('/events'), files,
     mateConfigs: repo('/mates'), runs, providers,
     search: { knowledge: (q) => call('GET', `/knowledge/search?q=${encodeURIComponent(q)}`) },
+    server: {
+      status: () => call('GET', '/server/status'),
+      config: () => call('GET', '/server/config'),
+      saveConfig: (p) => call('PATCH', '/server/config', p),
+      driveStart: () => call('GET', '/drive/oauth/start'),
+      driveFolders: (parent = '') => call('GET', `/drive/folders?parent=${encodeURIComponent(parent)}`),
+      driveFolder: (id, name) => call('POST', '/drive/folder', { id, name }),
+      mateCards: () => call('GET', '/mates/cards'),
+      restoreAgent: async (key) => { await call('POST', `/mates/${key}/restore`, {}); },
+      harnesses: (fresh = false) => call('GET', `/coder/harnesses${fresh ? '?fresh=1' : ''}`),
+      testHarness: (harness, sandbox) => call('POST', '/coder/test', { harness, sandbox }),
+    },
+    inbox: {
+      questions: () => call('GET', '/questions'),
+      answer: async (id, answer) => { const r = await call<{ ok: boolean; text: string }>('POST', `/questions/${id}/answer`, { answer }); emit(); return r; },
+      list: () => call('GET', '/inbox'),
+      markRead: async () => { await call('POST', '/inbox/read', {}); },
+      pushKey: async () => (await call<{ publicKey: string }>('GET', '/push/key')).publicKey,
+      devices: () => call('GET', '/devices'),
+      addDevice: (d) => call('POST', '/devices', d),
+      removeDevice: (id) => call('DELETE', `/devices/${id}`),
+    },
     settings: {
       get: () => call('GET', '/settings'),
       update: async (p) => { const r = await call<never>('PATCH', '/settings', p); emit(); return r; },

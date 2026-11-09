@@ -6,6 +6,8 @@
 //  - providers without native tool calling get the same loop through a tolerant text protocol
 import { chatStream, effortOf } from './llm.js';
 import { toolsFor, runTool } from './tools.js';
+import { loadRoster } from './roster.js';
+import { accessOf, filterByAccess, reachable } from './reach.js';
 import { buildSystem } from './prompt.js';
 import { toOpenAI, parseTextCalls, protocolBlock, toTextMessages } from './toolcalls.js';
 
@@ -24,14 +26,17 @@ export async function converse({ uid, mateKey, cfg = {}, settings, mode = 'chat'
   // thinking level: this chat's choice, else the Mate's own, else the workspace default (high)
   const pick = [thinking, cfg.thinking].find((v) => v && v !== 'default');
   const effort = effortOf(pick ?? settings.defaultThinking);
-  const allowed = mode === 'plan' || noTools ? [] : toolsFor(cfg.tools ?? [], settings, mateKey).filter((t) => !readOnly || !t.write);
+  const ro = await loadRoster(uid);
+  const access = accessOf(cfg);
+  const reach = mode === 'plan' || noTools ? { skills: [], mcp: [] } : await reachable(uid, mateKey, access);
+  const allowed = mode === 'plan' || noTools ? [] : filterByAccess(toolsFor(cfg.tools ?? ro.byKey[mateKey]?.tools ?? [], settings, mateKey, ro.leader).filter((t) => !readOnly || !t.write), access, { mcpCount: reach.mcp.length, skillCount: reach.skills.length });
   const known = new Set(allowed.map((t) => t.name));
   const last = [...history].reverse().find((m) => m.role === 'user')?.content ?? '';
-  const system = await buildSystem({ uid, mateKey, cfg, mode, query: last, settings, tools: allowed, others, effort });
+  const system = await buildSystem({ uid, mateKey, cfg, mode, query: last, settings, tools: allowed, others, effort, surface: ctx.surface ?? (ctx.runId ? 'run' : 'chat'), run: ctx.run ?? '', access });
   const schemas = toOpenAI(allowed);
   const msgs = [...history]; // canonical (native) conversation, without the system message
   const used = []; const gathered = []; const cache = new Map(); let thought = ''; const showThought = settings.showReasoning !== false;
-  const toolCtx = { uid, settings, mate: mateKey, ...ctx };
+  const toolCtx = { uid, settings, mate: mateKey, signal, access, readOnly, ...ctx };
   const maxTurns = allowed.length ? (mode === 'brainstorm' ? Math.min(2, TOOL_TURNS[effort]) : TOOL_TURNS[effort]) : 0;
   const fixedMax = settings.maxOutputTokens > 0; // developer option: an exact output cap, no automatic scaling
   const maxTokens = fixedMax ? settings.maxOutputTokens : maxTok ?? (mode === 'ultracode' ? 3000 : 1500);

@@ -5,7 +5,8 @@ import { router } from 'expo-router';
 import * as TaskManager from 'expo-task-manager';
 import { useEffect } from 'react';
 import { PermissionsAndroid, Platform } from 'react-native';
-import { api } from './api';
+import Constants from 'expo-constants';
+import { api, registerDevice } from './api';
 import { firebaseAuth } from './auth';
 import type { Run } from './types';
 
@@ -42,8 +43,22 @@ TaskManager.defineTask(TASK, async () => {
 });
 
 function open(data: Record<string, unknown> | undefined, action: string) {
-  if (action === 'call') router.navigate({ pathname: '/', params: { tab: 'call', mate: String(data?.mate ?? 'mimo') } });
+  const url = String(data?.url ?? '');
+  // Server push: url is a dashboard link (/call?mate=..&call=..&reason=.., /run?id=.., /chat?c=..).
+  const q = url.includes('?') ? Object.fromEntries(new URLSearchParams(url.split('?')[1])) : {};
+  if (/\/call\b/.test(url)) router.navigate({ pathname: '/', params: { tab: 'call', mate: q.mate ?? '', call: q.call, reason: q.reason } });
+  else if (/\/run\b/.test(url) && q.id) router.push(`/runs/${q.id}`);
+  else if (/\/chat\b/.test(url) && q.c) router.push(`/chat/${q.c}`);
+  else if (action === 'call') router.navigate({ pathname: '/', params: { tab: 'call', mate: String(data?.mate ?? '') } });
   else if (data?.runId) router.push(`/runs/${String(data.runId)}`);
+}
+
+/** Register this phone for server push (Expo's free push service). Needs an EAS project id; without one the 15-minute check still works. */
+async function registerPush() {
+  const projectId = (Constants.expoConfig?.extra as { eas?: { projectId?: string } } | undefined)?.eas?.projectId ?? Constants.easConfig?.projectId;
+  if (!projectId) return;
+  const { data } = await Notifications.getExpoPushTokenAsync({ projectId });
+  await registerDevice(data, `${Constants.deviceName ?? 'Phone'}`);
 }
 
 export function useNotificationSetup(signedIn: boolean) {
@@ -53,12 +68,14 @@ export function useNotificationSetup(signedIn: boolean) {
     (async () => {
       try {
         await Notifications.setNotificationChannelAsync('default', { name: 'Runs and approvals', importance: Notifications.AndroidImportance.HIGH, vibrationPattern: [0, 200, 100, 200] });
+        await Notifications.setNotificationChannelAsync('calls', { name: 'Calls from your Mates', importance: Notifications.AndroidImportance.MAX, vibrationPattern: [0, 400, 200, 400, 200, 400], sound: 'default' });
         await Notifications.setNotificationCategoryAsync('run', [
           { identifier: 'open', buttonTitle: 'Open', options: { opensAppToForeground: true } },
           { identifier: 'call', buttonTitle: 'Call', options: { opensAppToForeground: true } },
         ]);
         if (Platform.Version >= 33) await PermissionsAndroid.request('android.permission.POST_NOTIFICATIONS' as never);
         await BackgroundTask.registerTaskAsync(TASK, { minimumInterval: 15 });
+        if (await getNotifyEnabled()) await registerPush().catch(() => undefined);
       } catch { /* notifications are optional */ }
       if (!alive) return;
       void checkRuns().catch(() => undefined);

@@ -1,7 +1,9 @@
 // Browser side of a voice call: mic -> 16 kHz PCM16 over a WebSocket, and 24 kHz PCM16 back out of the speakers.
 import { idToken } from './auth';
+import { serverUrl } from './serverUrl';
 
-export const VOICE_URL = process.env.NEXT_PUBLIC_VOICE_URL ?? '';
+/** Voice runs on the same server as everything else (the /live WebSocket). */
+export const voiceUrl = () => process.env.NEXT_PUBLIC_VOICE_URL || serverUrl();
 export type CallEvent = { type: 'ready'; name: string } | { type: 'transcript'; who: 'you' | 'mate'; text: string } | { type: 'interrupted' | 'turn' } | { type: 'tool'; name: string } | { type: 'error'; message: string } | { type: 'end'; why: string };
 
 const WORKLET = `class Cap extends AudioWorkletProcessor {
@@ -19,7 +21,8 @@ registerProcessor('cap', Cap);`;
 export type CallHandle = { hangup(): void; mute(on: boolean): void; level(): number };
 
 export async function startCall(mate: string, reason: string, on: (e: CallEvent) => void, conv = '', callId = ''): Promise<CallHandle> {
-  if (!VOICE_URL) throw new Error('Voice is not set up yet (NEXT_PUBLIC_VOICE_URL is missing).');
+  const VOICE_URL = voiceUrl();
+  if (!VOICE_URL) throw new Error('Your Loopmates server is not paired yet, so calls cannot connect.');
   const token = await idToken();
   const media = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } });
   const ac = new AudioContext(); await ac.resume();

@@ -1,17 +1,16 @@
 import type { Metadata, Viewport } from 'next';
 import '@fontsource-variable/plus-jakarta-sans';
-import '@fontsource/inter/400.css';
-import '@fontsource/inter/500.css';
-import '@fontsource/inter/600.css';
-import '@fontsource/inter/700.css';
 import '@fontsource/jetbrains-mono/400.css';
 import '@fontsource/jetbrains-mono/500.css';
 import { AuthProvider } from '../lib/auth';
 import { AuthGate } from '../components/auth/SignIn';
-import { Sidebar } from '../components/dashboard/Sidebar';
+import { TopNav } from '../components/shell/TopNav';
+import { ServerGate } from '../components/shell/ServerGate';
+import { AgentsSync } from '../lib/agents';
 import s from '../components/dashboard/dashboard.module.css';
 import { CommandPalette } from '../components/ui/CommandPalette';
 import { ToastProvider } from '../components/ui/toast';
+import './tokens.css';
 import './globals.css';
 
 export const metadata: Metadata = {
@@ -29,9 +28,10 @@ export default function Root({ children }: { children: React.ReactNode }) {
         <AuthGate>
         <ToastProvider>
         <CommandPalette />
+        <div className="lm-blur" aria-hidden="true"><i /><i /><i /></div>
         <div className={s.shell}>
-          <Sidebar />
-          <div className={s.content}>{children}</div>
+          <TopNav />
+          <div className={s.content}><ServerGate><AgentsSync />{children}</ServerGate></div>
         </div>
         </ToastProvider>
         </AuthGate>

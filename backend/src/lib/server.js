@@ -1,20 +1,27 @@
 import Fastify from 'fastify';
 import cors from '@fastify/cors';
+import { execFileSync } from 'node:child_process';
 import { env, num } from './env.js';
-import { verifyHeader } from './svc.js';
 
-/** Common fastify setup. `name` shows up in /healthz so we can tell the three services apart. */
+/** The commit this server runs (shown in /healthz and the status page). */
+export const commit = (() => { try { return execFileSync('git', ['rev-parse', '--short', 'HEAD'], { cwd: new URL('../..', import.meta.url), stdio: ['ignore', 'pipe', 'ignore'], timeout: 5000 }).toString().trim(); } catch { return ''; } })();
+
+/** Browsers may call from the dashboard origin(s) in ALLOWED_ORIGINS or from localhost. Native apps send no Origin. */
+export function originAllowed(origin) {
+  if (!origin) return true;
+  if (/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)) return true;
+  return env('ALLOWED_ORIGINS').split(',').map((s) => s.trim()).filter(Boolean).includes(origin);
+}
+
 export async function createServer(name, { bodyLimit = 2 * 1024 * 1024 } = {}) {
-  const app = Fastify({ logger: { level: env('LOG_LEVEL', 'info'), redact: ['req.headers.authorization', 'req.headers["x-svc"]'] }, bodyLimit, trustProxy: true });
-  const origins = env('ALLOWED_ORIGINS').split(',').map((s) => s.trim()).filter(Boolean);
+  const app = Fastify({ logger: { level: env('LOG_LEVEL', 'info'), redact: ['req.headers.authorization', 'req.headers["x-setup-key"]'] }, bodyLimit, trustProxy: true });
   await app.register(cors, {
-    origin: origins.length ? origins : false,
+    origin: (origin, cb) => cb(null, originAllowed(origin)),
     methods: ['GET', 'POST', 'PATCH', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['authorization', 'content-type'],
     maxAge: 86400,
   });
-  app.get('/healthz', async () => ({ ok: true, service: name, commit: (process.env.RENDER_GIT_COMMIT || '').slice(0, 7), uptime: Math.round(process.uptime()), mem: Math.round(process.memoryUsage().rss / 1048576) }));
-  app.get('/', async () => ({ service: name, ok: true }));
+  app.get('/healthz', async () => ({ ok: true, service: name, commit, uptime: Math.round(process.uptime()), mem: Math.round(process.memoryUsage().rss / 1048576) }));
   app.setErrorHandler((err, req, reply) => {
     const status = err.statusCode && err.statusCode >= 400 ? err.statusCode : 500;
     if (status >= 500) req.log.error(err);
@@ -23,16 +30,10 @@ export async function createServer(name, { bodyLimit = 2 * 1024 * 1024 } = {}) {
   return app;
 }
 
-/** preHandler: only another Loopmates service may call. */
-export function svcOnly(req, reply, done) {
-  const path = req.url.split('?')[0];
-  if (!verifyHeader(req.headers['x-svc'], req.method, path)) { reply.code(401).send({ error: 'service auth failed' }); return; }
-  done();
-}
-
+/** Listen on HOST (default 127.0.0.1: the tunnel reaches the server locally, so nothing on the home network can). */
 export async function listen(app) {
-  const port = num('PORT', 10000);
-  await app.listen({ port, host: env('HOST') || '0.0.0.0' });
+  const port = num('PORT', 8787);
+  await app.listen({ port, host: env('HOST') || '127.0.0.1' });
   const shutdown = async (sig) => { app.log.info(`${sig}: shutting down`); try { await app.close(); } finally { process.exit(0); } };
   process.on('SIGTERM', () => shutdown('SIGTERM'));
   process.on('SIGINT', () => shutdown('SIGINT'));

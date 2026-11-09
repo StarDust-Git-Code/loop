@@ -36,7 +36,7 @@ export default function RunView() {
               <Text style={{ color: C.muted, fontSize: 12.5 }}>Finished steps are kept. Retry continues from here. The full write-up is in Report.</Text>
             </View>) : null}
           {pending ? (
-            <Animated.View entering={FadeInDown.duration(260)} style={{ backgroundColor: C.tint2, borderWidth: 1, borderColor: 'rgba(106,77,244,0.4)', borderRadius: R.lg, padding: 14, gap: 10 }}>
+            <Animated.View entering={FadeInDown.duration(260)} style={{ backgroundColor: C.tint2, borderWidth: 1, borderColor: 'rgba(47,107,255,0.4)', borderRadius: R.lg, padding: 14, gap: 10 }}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}><Avatar k={pending.mate} size={36} /><View style={{ flex: 1 }}><Text style={{ fontWeight: '800', color: C.ink }}>Approval needed</Text><Text style={{ color: C.ink2, fontSize: 13.5 }}>{pending.text}</Text></View></View>
               {pending.paths.length ? <Text style={{ fontFamily: 'monospace', fontSize: 12, color: C.muted }}>{pending.paths.join('\n')}</Text> : null}
               <View style={{ flexDirection: 'row', gap: 10 }}><Btn label="Deny" kind="ghost" style={{ flex: 1 }} onPress={() => act(() => api.runs.decide(run.id, pending.id, 'denied'))} /><Btn label="Approve" style={{ flex: 1 }} onPress={() => act(() => api.runs.decide(run.id, pending.id, 'approved'))} /></View>
@@ -58,7 +58,7 @@ export default function RunView() {
                     <Pill label={s.status === 'done' ? 'Done' : s.status === 'running' ? 'Working' : s.status === 'failed' ? 'Failed' : 'Waiting'} tone={s.status === 'done' ? 'ok' : s.status === 'running' ? 'live' : s.status === 'failed' ? 'bad' : 'muted'} /></View>
                   {s.status === 'failed' && s.error ? <Text style={{ marginTop: 10, color: C.bad, fontSize: 13, lineHeight: 18 }}>{s.error}{(s.attempt ?? 1) > 1 ? ` (after ${s.attempt} attempts)` : ''}</Text> : null}
                   {s.status === 'running' && (s.attempt ?? 1) > 1 ? <Text style={{ marginTop: 8, color: C.muted, fontSize: 12.5 }}>Attempt {s.attempt}</Text> : null}
-                  {s.status === 'running' && lines.length ? <View style={{ backgroundColor: '#15121A', borderRadius: 12, padding: 12, marginTop: 10 }}>{lines.map((l, i) => <Text key={i} style={{ fontFamily: 'monospace', fontSize: 12, color: '#E9E4F5', lineHeight: 18 }}>{l.text}</Text>)}</View> : null}
+                  {s.status === 'running' && lines.length ? <View style={{ backgroundColor: '#0F172A', borderRadius: 12, padding: 12, marginTop: 10 }}>{lines.map((l, i) => <Text key={i} style={{ fontFamily: 'monospace', fontSize: 12, color: '#E9E4F5', lineHeight: 18 }}>{l.text}</Text>)}</View> : null}
                 </Card>);
             })) : null}
           {tab === 'report' ? (run.report ? <Card style={{ padding: 14 }}><Markdown text={run.report} /></Card> : <Text style={{ color: C.muted }}>The report appears here as the run writes it.</Text>) : null}

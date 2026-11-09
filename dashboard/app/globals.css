@@ -1,31 +1,40 @@
 *, *::before, *::after { box-sizing: border-box; }
 html { -webkit-text-size-adjust: 100%; }
-body { margin: 0; background: #fff; color: #15121a; font-family: 'Inter', system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
+/* Design tokens live in app/tokens.css (generated from design/tokens.json). */
+body { margin: 0; background: #fff; color: var(--ink); font-family: var(--font), system-ui, sans-serif; font-size: 15px; line-height: 1.5; -webkit-font-smoothing: antialiased; }
+/* Soft blue blur behind the top of every page. Fixed, so it never scrolls into the content. */
+.lm-blur { position: fixed; inset: 0; z-index: 0; pointer-events: none; overflow: hidden; }
+.lm-blur i { position: absolute; border-radius: 50%; filter: blur(36px); }
+.lm-blur i:nth-child(1) { top: -260px; left: 50%; margin-left: -520px; width: 1040px; height: 620px; background: radial-gradient(closest-side, rgba(var(--accent-rgb), 0.30), rgba(var(--accent-rgb), 0)); }
+.lm-blur i:nth-child(2) { top: 420px; right: -260px; width: 640px; height: 640px; background: radial-gradient(closest-side, rgba(var(--accent-rgb), 0.16), rgba(var(--accent-rgb), 0)); }
+.lm-blur i:nth-child(3) { top: 520px; left: -300px; width: 560px; height: 560px; background: radial-gradient(closest-side, rgba(var(--accent-rgb), 0.10), rgba(var(--accent-rgb), 0)); }
 a { color: inherit; }
 button { font-family: inherit; cursor: pointer; color: inherit; }
 img { display: block; }
-.logo-word em { color: #6a4df4; font-style: normal; }
+.logo-word em { color: #2F6BFF; font-style: normal; }
 
 /* ---------- motion ---------- */
 @keyframes lm-up { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
 @keyframes lm-in { from { opacity: 0; } to { opacity: 1; } }
 @keyframes lm-pop { from { opacity: 0; transform: translateY(10px) scale(0.96); } to { opacity: 1; transform: none; } }
 @keyframes lm-slide { from { opacity: 0; transform: translateX(18px); } to { opacity: 1; transform: none; } }
-@keyframes lm-bob { 0%, 100% { transform: translateY(0) rotate(-1.5deg); } 50% { transform: translateY(-7px) rotate(1.5deg); } }
-@keyframes lm-pulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(106, 77, 244, 0.45); } 50% { box-shadow: 0 0 0 6px rgba(106, 77, 244, 0); } }
-@keyframes lm-wiggle { 0%, 100% { transform: rotate(0); } 25% { transform: rotate(-9deg) scale(1.08); } 75% { transform: rotate(9deg) scale(1.08); } }
-@keyframes lm-shine { from { background-position: -200% 0; } to { background-position: 200% 0; } }
-.lm-page { animation: lm-up 0.42s cubic-bezier(0.22, 1, 0.36, 1) both; }
+@keyframes lm-bob { from, to { transform: none; } }
+@keyframes lm-pulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(47, 107, 255, 0.45); } 50% { box-shadow: 0 0 0 6px rgba(47, 107, 255, 0); } }
+@keyframes lm-wiggle { from, to { transform: none; } }
+@keyframes lm-shine { from, to { transform: none; } }
+/* page arrival only (a state change), short and small */
+.lm-page { position: relative; z-index: 1; animation: lm-in 0.2s ease-out both; }
+.lm-page-old { animation: lm-up 0.42s cubic-bezier(0.22, 1, 0.36, 1) both; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 0.001ms !important; animation-iteration-count: 1 !important; animation-delay: 0s !important; transition-duration: 0.001ms !important; }
 }
 @keyframes lm-draw { from { stroke-dashoffset: 1; } to { stroke-dashoffset: 0; } }
 
 /* ---------- custom scrollbars (every scrollable area) ---------- */
-* { scrollbar-width: thin; scrollbar-color: rgba(106, 77, 244, 0.32) transparent; }
+* { scrollbar-width: thin; scrollbar-color: rgba(47, 107, 255, 0.32) transparent; }
 *::-webkit-scrollbar { width: 10px; height: 10px; }
 *::-webkit-scrollbar-track { background: transparent; }
 *::-webkit-scrollbar-corner { background: transparent; }
-*::-webkit-scrollbar-thumb { background: rgba(106, 77, 244, 0.28); border-radius: 999px; border: 3px solid transparent; background-clip: content-box; transition: background 0.2s; }
-*::-webkit-scrollbar-thumb:hover { background: rgba(106, 77, 244, 0.55); border: 3px solid transparent; background-clip: content-box; }
-*::-webkit-scrollbar-thumb:active { background: rgba(79, 52, 214, 0.75); border: 3px solid transparent; background-clip: content-box; }
+*::-webkit-scrollbar-thumb { background: rgba(47, 107, 255, 0.28); border-radius: 999px; border: 3px solid transparent; background-clip: content-box; transition: background 0.2s; }
+*::-webkit-scrollbar-thumb:hover { background: rgba(47, 107, 255, 0.55); border: 3px solid transparent; background-clip: content-box; }
+*::-webkit-scrollbar-thumb:active { background: rgba(31, 85, 230, 0.75); border: 3px solid transparent; background-clip: content-box; }

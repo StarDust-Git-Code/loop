@@ -1,10 +1,14 @@
 // Run engine: plan -> steps -> (approval) -> execute -> report. Live events go over SSE from memory;
 // Firestore only gets checkpoints (run creation, each step, approvals, final) to respect the free write quota.
 import { env, now, uid as rid, sleep } from '../lib/env.js';
-import { svcJson } from '../lib/svc.js';
+import { createCoder } from '../coder/index.js';
+import { HARNESS_NAMES } from '../coder/harness.js';
+import { githubTokenFor } from './github.js';
 import { db, userCol } from './db.js';
 import { chat, extractJson, effortOf } from './llm.js';
-import { MATE_DEFS, persona, PLAN_JSON_PROMPT } from './mates.js';
+import { PLAN_JSON_PROMPT } from './mates.js';
+import { briefPersona } from './prompt.js';
+import { loadRoster } from './roster.js';
 import { converse } from './agent.js';
 import { getSettings } from './settings.js';
 import { putFile, storageReady as artifactsReady } from './files.js';
@@ -13,6 +17,8 @@ import { learnFromTurn } from './memory.js';
 
 const live = new Map();      // runId -> state
 const jobWaiters = new Map(); // jobId -> resolve(result)
+// The coder runs in this process; its log lines and result come back through jobEvent.
+const coder = createCoder({ llm: (req) => chat(req.uid, req), onEvent: (runId, body) => jobEvent(runId, body) });
 const LOG_CAP = 300;
 const NOTES_CAP = 12000;
 
@@ -38,7 +44,6 @@ const save = (st) => runRef(st.uid, st.run.id).set(withoutId(st.run)).catch((e) 
 const withoutId = ({ id, ...rest }) => rest;
 
 /* ------------------------------------------------------------------ planning */
-const MATE_LIST = MATE_DEFS.map((m) => `${m.key} (${m.blurb})`).join('; ');
 
 async function makePlan(st, wf) {
   if (wf?.nodes?.length) { // follow the workflow canvas: mate nodes ordered by edges from the first node
@@ -49,7 +54,7 @@ async function makePlan(st, wf) {
     const seen = new Set(); const out = [];
     while (cur && !seen.has(cur.id)) {
       seen.add(cur.id);
-      if (cur.type === 'mate' || cur.type === 'tool' || cur.type === 'output') out.push({ mate: cur.mate ?? 'ops', label: cur.label || 'Step', kind: cur.type === 'output' ? 'file' : cur.mate === 'code' || cur.mate === 'byte' ? 'code' : 'think', repo: cur.config?.repo, branch: cur.config?.branch });
+      if (cur.type === 'mate' || cur.type === 'tool' || cur.type === 'output') out.push({ mate: cur.mate ?? 'ops', label: cur.label || 'Step', kind: cur.type === 'output' ? 'file' : cur.mate === 'code' || cur.mate === 'byte' ? 'code' : 'think', repo: cur.config?.repo, branch: cur.config?.branch, harness: cur.config?.harness, sandbox: cur.config?.sandbox });
       cur = byId.get(next.get(cur.id));
     }
     if (out.length) return out.slice(0, st.settings.maxSteps);
@@ -58,13 +63,13 @@ async function makePlan(st, wf) {
     const r = await chat(st.uid, {
       model: st.settings.model, json: true, maxTokens: 900, temperature: 0.2, effort: effortOf(st.mates.planner?.thinking),
       messages: [
-        { role: 'system', content: PLAN_JSON_PROMPT(st.mates, Math.min(st.settings.maxSteps, 8)) },
+        { role: 'system', content: PLAN_JSON_PROMPT(st.ro, Math.min(st.settings.maxSteps, 8)) },
         { role: 'user', content: st.run.prompt },
       ],
     });
     const j = extractJson(r.text);
     const steps = (j?.steps ?? []).filter((s) => s && typeof s.label === 'string').slice(0, st.settings.maxSteps)
-      .map((s) => ({ mate: MATE_DEFS.some((m) => m.key === s.mate) && st.mates[s.mate]?.enabled !== false ? s.mate : 'ops', label: s.label.slice(0, 120), kind: ['think', 'code', 'file', 'notify'].includes(s.kind) ? s.kind : 'think' }));
+      .map((s) => ({ mate: st.ro.on(s.mate) ? s.mate : st.ro.on('ops') ? 'ops' : st.ro.leader, label: s.label.slice(0, 120), kind: ['think', 'code', 'file', 'notify'].includes(s.kind) ? s.kind : 'think' }));
     if (steps.length) return steps;
   } catch (e) { log(st, 'planner', `Planning failed (${e.message.slice(0, 160)}). Using a simple plan.`); }
   return [{ mate: 'research', label: 'Work on the request', kind: 'think' }, { mate: 'writer', label: 'Write the final answer', kind: 'think' }];
@@ -88,11 +93,12 @@ function ask(st, step, text) {
 const needsApproval = (st, kind) => kind !== 'think' && (st.run.askFirst || (st.settings.askBeforeRisky && st.settings.permissionMode !== 'auto'));
 
 /* ------------------------------------------------------------------ steps */
+const runLine = (st, step) => `Run "${st.run.title}". Your step: ${step.label}. Steps: ${st.run.steps.map((x) => `${x.label} (${x.mate}, ${x.status})`).join('; ').slice(0, 900)}`;
 async function stepThink(st, step, feedback = '') {
   const cfg = st.mates[step.mate];
   const steer = st.steer.splice(0).join('\n');
   const r = await converse({
-    uid: st.uid, mateKey: step.mate, cfg: cfg ?? {}, settings: st.settings, ctx: { runId: st.run.id },
+    uid: st.uid, mateKey: step.mate, cfg: cfg ?? {}, settings: st.settings, ctx: { runId: st.run.id, surface: 'run', run: runLine(st, step) },
     history: [{ role: 'user', content: `Overall job:\n${st.run.prompt}\n\nNotes so far:\n${st.run.notes || '(none)'}\n\n${steer ? `Owner steering: ${steer}\n\n` : ''}${feedback ? `Your previous attempt was rejected: ${feedback}\nFix that this time.\n\n` : ''}Your step: ${step.label}\nAnswer with the result of this step only.` }],
     emit: (ev) => { if (ev.type === 'tool') log(st, step.mate, `Using tool: ${ev.name}`); },
   });
@@ -117,22 +123,22 @@ async function failureReport(st, failedStep, err, attempts) {
   const base = `## What went wrong\n\nStep **${failedStep?.label ?? 'unknown'}** failed after ${attempts} attempt(s).\n\n> ${String(err).slice(0, 400)}\n\n## Finished before it stopped\n\n${done}\n`;
   try {
     const r = await chat(st.uid, { model: st.settings.fastModel || st.settings.model, maxTokens: 450, temperature: 0.2, effort: 'low', messages: [
-      { role: 'system', content: `${persona('ops')} Write a short plain-language failure report in Markdown with two sections: "Likely cause" and "What to try next" (2-4 concrete bullets). No preface.` },
+      { role: 'system', content: `${briefPersona('ops', st.mates?.ops ?? {})}\n\nWrite a short plain-language failure report in Markdown with two sections: "Likely cause" and "What to try next" (2-4 concrete bullets). No preface.` },
       { role: 'user', content: `Job: ${st.run.prompt.slice(0, 500)}\nFailed step: ${failedStep?.label}\nError: ${String(err).slice(0, 500)}\nRecent log:\n${st.run.log.slice(-8).map((l) => `${l.source}: ${l.text}`).join('\n').slice(0, 1500)}` }] });
     return `${base}\n${r.text}`;
   } catch { return `${base}\n## What to try next\n\n- Press Retry to resume from the failed step.\n- Check the log for details.`; }
 }
 
 async function stepCode(st, step, idx) {
-  if (!env('CODER_URL')) throw new Error('Coder service is not configured (CODER_URL).');
   const jobId = `${st.run.id}-${idx}`;
   const done = new Promise((resolve) => jobWaiters.set(jobId, resolve));
-  await svcJson(env('CODER_URL'), '/v1/jobs', { method: 'POST', body: { jobId, runId: st.run.id, uid: st.uid, goal: `${step.label}\n\nContext:\n${st.run.prompt}\n\n${st.run.notes.slice(-3000)}`, repo: step.repo || env('DEFAULT_REPO'), branch: step.branch, model: st.settings.model, maxSteps: Math.min(st.settings.maxSteps, 20) } });
-  log(st, 'code', 'Coding agent started.');
+  const goal = `${step.label}\n\nContext:\n${st.run.prompt}\n\n${st.run.notes.slice(-3000)}`;
+  coder.start({ jobId, runId: st.run.id, uid: st.uid, goal, repo: step.repo || env('DEFAULT_REPO'), branch: step.branch, model: st.settings.model, maxSteps: Math.min(st.settings.maxSteps, 20), githubToken: await githubTokenFor(st.uid), harness: step.harness || st.settings.coderHarness || 'builtin', sandbox: step.sandbox || st.settings.coderSandbox || 'auto', harnessModel: step.harnessModel || '', timeoutMs: Math.max(5, st.settings.stopAfterMinutes - 2) * 60_000 });
+  log(st, 'code', `Coding agent started (${HARNESS_NAMES[step.harness || st.settings.coderHarness || 'builtin'] ?? 'built-in'}).`);
   const timeout = sleep(st.settings.stopAfterMinutes * 60_000).then(() => ({ ok: false, summary: 'Timed out waiting for the coding agent.' }));
   const result = await Promise.race([done, timeout, st.stopSignal]);
   jobWaiters.delete(jobId);
-  if (st.stopped) { svcJson(env('CODER_URL'), `/v1/jobs/${jobId}/cancel`, { method: 'POST', body: {} }).catch(() => {}); throw new Stopped(); }
+  if (st.stopped) { coder.cancel(jobId); throw new Stopped(); }
   if (!result.ok) throw new Error(result.summary || 'Coding agent failed.');
   for (const f of artifactsReady() ? result.files ?? [] : []) { // small deliverables from a repo-less job go to Drive
     const name = String(f.name).split(/[\\/]/).pop();
@@ -145,7 +151,7 @@ async function stepCode(st, step, idx) {
 
 async function stepFile(st, step) {
   if (!artifactsReady()) throw new Error('Storage is unavailable.');
-  const r = await chat(st.uid, { model: st.settings.model, maxTokens: 3000, messages: [{ role: 'system', content: persona(step.mate) }, { role: 'user', content: `Write the deliverable for this step as Markdown. No preface.\n\nJob:\n${st.run.prompt}\n\nNotes:\n${st.run.notes}\n\nStep: ${step.label}` }] });
+  const r = await chat(st.uid, { model: st.settings.model, maxTokens: 3000, messages: [{ role: 'system', content: briefPersona(step.mate, st.mates?.[step.mate] ?? {}, st.ro.byKey[step.mate]) }, { role: 'user', content: `Write the deliverable for this step as Markdown. No preface.\n\nJob:\n${st.run.prompt}\n\nNotes:\n${st.run.notes}\n\nStep: ${step.label}` }] });
   const name = `${step.label.replace(/[^\w\- ]+/g, '').trim().replace(/\s+/g, '-').slice(0, 50) || 'output'}.md`;
   const f = await putFile(st.uid, { name, mime: 'text/markdown', buf: Buffer.from(r.text, 'utf8'), source: 'run', runId: st.run.id });
   emit(st, { type: 'file', fileId: f.id });
@@ -213,7 +219,7 @@ async function execute(st) {
       await save(st);
     }
 
-    const fin = await chat(st.uid, { model: st.settings.model, maxTokens: 1500, effort: effortOf(st.mates.writer?.thinking), messages: [{ role: 'system', content: persona('writer') }, { role: 'user', content: `Write the final report (Markdown, brief, with the answer first) for this job.\n\nJob:\n${st.run.prompt}\n\nNotes:\n${st.run.notes}` }] }).catch(() => null);
+    const fin = await chat(st.uid, { model: st.settings.model, maxTokens: 1500, effort: effortOf(st.mates.writer?.thinking), messages: [{ role: 'system', content: briefPersona('writer', st.mates?.writer ?? {}) }, { role: 'user', content: `Write the final report (Markdown, brief, with the answer first) for this job.\n\nJob:\n${st.run.prompt}\n\nNotes:\n${st.run.notes}` }] }).catch(() => null);
     st.run.report = fin?.text ?? st.run.notes;
     emit(st, { type: 'status', status: 'done' });
     if (st.settings.notifyTelegram) void notify(st.uid, `Done: ${st.run.title}\n\n${st.run.report.slice(0, 700)}`);
@@ -239,7 +245,7 @@ async function execute(st) {
 export async function startRun(uid, { prompt, workflowId, askFirst = false, fileIds = [], title, unattended = false } = {}) {
   if (typeof prompt !== 'string' || !prompt.trim()) throw Object.assign(new Error('prompt is required'), { statusCode: 400 });
   const settings = await getSettings(uid);
-  const mates = Object.fromEntries((await userCol(uid, 'mates').get()).docs.map((d) => [d.id, d.data()]));
+  const mates = (await loadRoster(uid)).cfgs;
   const ref = userCol(uid, 'runs').doc();
   const ts = now();
   const run = { id: ref.id, createdAt: ts, updatedAt: ts, title: (title || prompt.trim().split('\n')[0]).slice(0, 80), prompt: prompt.trim().slice(0, 8000), workflowId, askFirst: !!askFirst, status: 'queued', steps: [], log: [], approvals: [], fileIds, sources: [], report: '', notes: '' };
@@ -248,13 +254,12 @@ export async function startRun(uid, { prompt, workflowId, askFirst = false, file
 
 async function launch(uid, run, settings, mates, unattended, fresh) {
   let stop; const stopSignal = new Promise((r) => { stop = r; });
-  const st = { uid, run, settings, mates, unattended, subs: new Set(), steer: [], approvals: new Map(), paused: false, stopped: false, stopSignal, stop: () => stop({ ok: false, summary: 'Stopped.' }) };
+  const st = { uid, run, settings, mates, ro: await loadRoster(uid), unattended, subs: new Set(), steer: [], approvals: new Map(), paused: false, stopped: false, stopSignal, stop: () => stop({ ok: false, summary: 'Stopped.' }) };
   live.set(run.id, st);
   await runRef(uid, run.id).set(withoutId(run));
   await activeRef(run.id).set({ uid, at: now() });
   const snapshot = structuredClone(run);
   void execute(st);
-  keepAlive();
   return snapshot;
 }
 
@@ -265,7 +270,7 @@ export async function retryRun(uid, id) {
   const run = { id, ...d.data() };
   if (!['failed', 'stopped'].includes(run.status)) throw Object.assign(new Error('Only failed or stopped runs can be retried'), { statusCode: 409 });
   const settings = await getSettings(uid);
-  const mates = Object.fromEntries((await userCol(uid, 'mates').get()).docs.map((x) => [x.id, x.data()]));
+  const mates = (await loadRoster(uid)).cfgs;
   run.status = 'queued'; run.error = ''; run.failure = null; run.report = ''; run.steps = (run.steps ?? []).map((x) => (x.status === 'done' ? x : { ...x, status: 'waiting', error: undefined }));
   run.log = [...(run.log ?? []), { at: now(), source: 'you', text: 'Retry requested.' }].slice(-LOG_CAP);
   return launch(uid, run, settings, mates, false, false);
@@ -311,7 +316,10 @@ export function subscribe(uid, id, send) {
 }
 
 /** Coder callback: progress lines and the final result of a job. */
+const testSinks = new Map(); // runId -> { logs } for harness test jobs (no run doc)
 export function jobEvent(runId, body) {
+  const sink = testSinks.get(runId);
+  if (sink) { sink.logs.push(...(body.logs ?? []).slice(0, 50)); if (body.done) jobWaiters.get(body.jobId)?.(body.done); return true; }
   const st = live.get(runId);
   if (!st) return false;
   for (const l of (body.logs ?? []).slice(0, 50)) log(st, 'code', l);
@@ -319,13 +327,21 @@ export function jobEvent(runId, body) {
   return true;
 }
 
-/* ------------------------------------------------------------------ housekeeping */
-let timer;
-function keepAlive() { // active runs do not count as inbound traffic, so ping ourselves to stop Render sleeping mid-run
-  if (timer || !env('PUBLIC_URL')) return;
-  timer = setInterval(() => { if (!live.size) { clearInterval(timer); timer = undefined; return; } fetch(`${env('PUBLIC_URL')}/healthz`).catch(() => {}); }, 4 * 60_000);
-  timer.unref();
+/** Connections → Coding harness → Test: a tiny repo-less job through the chosen harness. */
+export async function testHarness(uid, harness, sandbox = 'auto') {
+  const runId = `test-${Date.now().toString(36)}`; const jobId = `${runId}-0`; const sink = { logs: [] };
+  testSinks.set(runId, sink);
+  const done = new Promise((resolve) => jobWaiters.set(jobId, resolve));
+  try {
+    const settings = await getSettings(uid);
+    coder.start({ jobId, runId, uid, goal: `Create the file out/hello.txt containing exactly this line: hello from ${harness}`, model: settings.model, harness, sandbox, timeoutMs: 8 * 60_000, maxSteps: 6 });
+    const r = await Promise.race([done, sleep(9 * 60_000).then(() => ({ ok: false, summary: 'Timed out after 9 minutes.' }))]);
+    const file = (r.files ?? []).find((f) => f.name === 'hello.txt');
+    return { ok: !!r.ok && !!file && Buffer.from(file.b64, 'base64').toString('utf8').includes(`hello from ${harness}`), summary: r.summary, files: (r.files ?? []).map((f) => f.name), logs: sink.logs.slice(-40) };
+  } finally { testSinks.delete(runId); jobWaiters.delete(jobId); }
 }
+
+/* ------------------------------------------------------------------ housekeeping */
 
 /** Runs that were mid-flight when the service restarted cannot resume: mark them failed so the UI is honest. */
 export async function recoverRuns() {
@@ -338,3 +354,6 @@ export async function recoverRuns() {
   return snap.size;
 }
 export const activeCount = () => live.size;
+
+/** A line in a live run's log from outside the engine (for example, waiting for the owner's answer). */
+export function runLog(runId, text) { const st = live.get(runId); if (st) log(st, 'owner', text); }

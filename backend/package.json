@@ -3,17 +3,16 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Loopmates backend: api (Render 3), coder (Render 1), artifacts (Render 2). One codebase, three start commands.",
+  "description": "Loopmates server: the whole backend in one process on the owner's computer (Windows or Linux).",
   "engines": {
-    "node": ">=20"
+    "node": ">=22"
   },
   "scripts": {
-    "start:api": "node src/api/index.js",
-    "start:coder": "node src/coder/index.js",
-    "start:voice": "node src/voice/index.js",
-    "start:browser": "node src/browser/index.js",
-    "start:artifacts": "node src/artifacts/index.js",
-    "test": "node scripts/e2e.mjs"
+    "start": "node bin/loopmates.js run",
+    "server": "node src/server.js",
+    "setup": "node bin/loopmates.js setup",
+    "test": "node scripts/unit.mjs && node scripts/e2e.mjs",
+    "test:browser": "node scripts/browser-test.mjs"
   },
   "dependencies": {
     "@fastify/cors": "^10.0.0",
@@ -21,11 +20,15 @@
     "@google-cloud/firestore": "^7.11.6",
     "fastify": "^5.0.0",
     "firebase-admin": "^13.0.0",
+    "web-push": "^3.6.7",
     "ws": "^8.18.0"
   },
   "optionalDependencies": {
     "@whiskeysockets/baileys": "^6.7.0",
     "playwright-core": "^1.49.1",
     "selenium-webdriver": "^4.27.0"
+  },
+  "bin": {
+    "loopmates": "bin/loopmates.js"
   }
 }

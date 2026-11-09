@@ -1,9 +1,9 @@
 'use client';
+import { useAgentDefs } from '../../lib/agents';
 import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { api } from '../../lib/api';
 import { useRepo } from '../../lib/hooks';
-import { MATE_DEFS } from '../../lib/mates';
 import { mateImg } from '../../lib/mates';
 import u from './ui.module.css';
 
@@ -12,6 +12,7 @@ type Cmd = { id: string; label: string; hint: string; img?: string; run: () => v
 const PAGES: [string, string][] = [['Home', '/'], ['My Space', '/my-space'], ['Chat', '/chat'], ['Agents', '/agents'], ['Workflows', '/workflows'], ['Knowledge', '/knowledge'], ['Files', '/files'], ['Tasks', '/tasks'], ['Skills & MCP', '/skills'], ['Connections', '/connections'], ['Automations', '/automations'], ['Schedule', '/schedule'], ['Runs', '/run'], ['Settings', '/settings']];
 
 export function CommandPalette() {
+  const AGENTS = useAgentDefs();
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [q, setQ] = useState('');
@@ -32,9 +33,9 @@ export function CommandPalette() {
     { id: 'new-chat', label: 'New chat', hint: 'Action', run: () => router.push('/chat?new=1') },
     { id: 'new-wf', label: 'New workflow', hint: 'Action', run: () => router.push('/workflows?id=new') },
     ...PAGES.map(([l, h]) => ({ id: h, label: l, hint: 'Go to', run: () => router.push(h) })),
-    ...MATE_DEFS.map((m) => ({ id: `m-${m.key}`, label: `${m.name} Mate`, hint: 'Agent', img: mateImg(m.key), run: () => router.push(`/agents?mate=${m.key}`) })),
+    ...AGENTS.map((m) => ({ id: `m-${m.key}`, label: `${m.name}${m.custom ? '' : ' Mate'}`, hint: 'Agent', img: mateImg(m.key), run: () => router.push(`/agents?mate=${m.key}`) })),
     ...runs.items.slice(0, 6).map((r) => ({ id: r.id, label: r.title, hint: 'Run', run: () => router.push(`/run?id=${r.id}`) })),
-  ], [router, runs.items]);
+  ], [router, runs.items, AGENTS]);
   const shown = all.filter((c) => c.label.toLowerCase().includes(q.toLowerCase())).slice(0, 9);
   const go = (c?: Cmd) => { if (c) { setOpen(false); c.run(); } };
 

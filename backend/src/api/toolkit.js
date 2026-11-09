@@ -1,5 +1,6 @@
 // The smart-harness toolkit: pure utilities, web depth, files, memory upkeep, notes and delegation.
 // Utilities are granted to every Mate; Delegation to the coordinating Mates (see EXTRA_GROUPS in tools.js).
+import { loadRoster } from './roster.js';
 import crypto from 'node:crypto';
 import { env, now } from '../lib/env.js';
 import { userCol } from './db.js';
@@ -341,21 +342,65 @@ export const TOOLKIT = {
   run_steer: T('Delegation', 'Send a new instruction to a run that is in progress.', '{"id": "run id", "text": "what to change or focus on"}', async (c, a) => {
     if (!hooks.steer) throw bad('Run control is unavailable'); try { hooks.steer(c.uid, str(a.id, 60), str(a.text, 2000)); } catch (e) { throw bad(e.message); } return `Sent to ${a.id}.`;
   }, { write: true }),
-  notify_me: T('Utilities', 'Send the owner a short Telegram message (needs Telegram linked). Use sparingly, for results or things needing a decision.', '{"text": "message, under 500 characters"}', async (c, a) => {
-    if (!hooks.notify) throw bad('Notifications are unavailable'); const n = await hooks.notify(c.uid, str(a.text, 500)); return n ? `Sent to ${n} chat(s).` : 'Not delivered: Telegram is not linked, so tell the owner in this chat instead.';
+  notify_me: T('Utilities', 'Send the owner a short notification: app push (dashboard and phone) plus Telegram/Discord if linked, as the owner chose in Settings. It always lands in the app inbox. Quiet hours hold it back unless urgent. Use sparingly: results, or things needing a decision.', '{"text": "message, under 500 characters", "urgent?": "true only if it cannot wait until quiet hours end"}', async (c, a) => {
+    if (!hooks.notify) throw bad('Notifications are unavailable');
+    const urgent = a.urgent === true || a.urgent === 'true';
+    const ro = c.mate ? await loadRoster(c.uid) : null;
+    const sign = ro ? (await import('./prompt.js')).signoffFor(c.mate, ro.cfgs[c.mate] ?? {}, ro.byKey[c.mate]) : ''; // each Mate signs its pings its own way
+    const body = str(a.text, 500).replace(/\n*—\s*[^\n]{1,80}$/, ''); // never two sign-offs
+    const n = await hooks.notify(c.uid, sign ? `${body}\n${sign}` : body, { title: ro ? ro.name(c.mate) : 'Loopmates', avatar: ro?.byKey[c.mate]?.avatar ?? c.mate, url: c.runId ? `/run?id=${c.runId}` : c.convId ? `/chat?c=${c.convId}` : '/', urgent, kind: 'note' });
+    return n ? `Delivered to ${n} place(s) and saved in the app inbox.` : 'Saved in the app inbox only (no push device or chat app is linked, or it is quiet hours). If the owner is in this chat, tell them here.';
   }, { write: true }),
-  call_me: T('Utilities', 'Ring the owner for a VOICE CALL. A voice sub-agent (Gemini Live) carries the call: it asks your questions, then writes you a report you can read with call_report. Use for urgent matters or when a quick spoken answer beats typing. Give a clear goal and the exact questions.', '{"reason": "why, one sentence", "goal?": "what the call must achieve", "questions?": ["question 1", "question 2"]}', async (c, a) => {
+  ask_owner: T('Utilities', 'Ask the owner a multiple-choice question when you cannot go on without their decision. Give 2 to 4 short options and the default to use if they do not answer in time. In a run, the step waits for the answer. In a chat, just ask in your reply instead.', '{"question": "one clear question", "options": ["option A", "option B"], "default?": "one of the options", "timeoutMinutes?": "how long to wait, 1-240 (default 30)"}', async (c, a) => {
+    if (!c.runId) return 'You are in a live chat: ask the owner directly in your reply and wait for their next message.';
+    const { askOwner, waitForAnswer } = await import('./ask.js');
+    const options = list(a.options).map((o) => str(o, 60)).filter(Boolean);
+    let q;
+    try { q = await askOwner(c.uid, { mate: c.mate ?? '', question: str(a.question, 400), options, fallback: a.default ? str(a.default, 60) : undefined, runId: c.runId, timeoutMinutes: Math.min(240, Math.max(1, Number(a.timeoutMinutes) || 30)) }); }
+    catch (e) { throw bad(e.message); }
+    hooks.runLog?.(c.runId, `Waiting for the owner: ${q.question}`);
+    const r = await waitForAnswer(c.uid, q, c.signal);
+    return r.timedOut ? `No answer in time, so use the default: "${r.answer}". Mention in your result that the owner did not answer.` : `The owner answered: "${r.answer}".`;
+  }, { write: true }),
+  call_me: T('Utilities', 'Ring the owner for a VOICE CALL. A voice sub-agent (Gemini Live) carries the call: it asks your questions, then writes you a report you can read with call_report. Use for urgent matters or when a quick spoken answer beats typing. Give a clear goal and the exact questions. Quiet hours block calls unless urgent; the same topic rings at most once an hour. Any Mate may call when it needs a personal opinion from the owner on its own task; inside a run the step waits for the answers. For later, use schedule_call.', '{"reason": "why, one sentence", "goal?": "what the call must achieve", "questions?": ["question 1", "question 2"], "urgent?": "true to ring during quiet hours", "wait?": "in a run: false to not wait for the answers", "waitMinutes?": "in a run: how long to wait, default 20"}', async (c, a) => {
     if (!hooks.notify) throw bad('Notifications are unavailable'); const site = (env('DASHBOARD_URL') || env('ALLOWED_ORIGINS').split(',')[0] || '').trim().replace(/\/$/, '');
     if (!site) throw bad('The dashboard address is not configured (DASHBOARD_URL)');
     const reason = str(a.reason, 300).trim(); if (!reason) throw bad('reason is required');
+    const urgent = a.urgent === true || a.urgent === 'true';
+    const { isQuiet } = await import('./notify.js');
+    if (!urgent && isQuiet(c.settings ?? {})) return 'Not ringing: it is the owner\'s quiet hours. Use notify_me (it waits in the inbox) or ask_owner, or set urgent only if it truly cannot wait.';
+    const topic = reason.toLowerCase().replace(/[^\p{L}\p{N} ]/gu, '').split(/\s+/).slice(0, 8).join(' ');
+    const hourAgo = new Date(Date.now() - 3_600_000).toISOString();
+    if ((await listCalls(c.uid, 30)).some((x) => x.topic === topic && x.createdAt > hourAgo)) return 'Not ringing: you already rang about this in the last hour. Wait for that call, or use notify_me.';
     const questions = list(a.questions).map((q) => str(q, 240)).filter(Boolean).slice(0, 8);
-    const call = await createCall(c.uid, { mate: c.mate ?? 'mimo', goal: str(a.goal, 600), reason, questions, convId: c.convId, runId: c.runId });
-    const link = `${site}/call?mate=${encodeURIComponent(c.mate ?? 'mimo')}&call=${call.id}&reason=${encodeURIComponent(reason)}`;
-    const n = await hooks.notify(c.uid, `${c.mate ?? 'A Mate'} is calling: ${reason}${questions.length ? `\n${questions.length} quick question(s)` : ''}\nTap to answer: ${link}`);
-    return n ? `Ringing (call ${call.id}): the owner got a message with a tap-to-call link. When they answer and finish, read the outcome with call_report.` : `Could not ring: no chat app is linked. Call ${call.id} is waiting; tell the owner in this chat to open ${link}`;
+    const call = await createCall(c.uid, { mate: c.mate ?? '', goal: str(a.goal, 600), reason, questions, convId: c.convId, runId: c.runId, topic });
+    const link = `${site}/call?mate=${encodeURIComponent(call.mate)}&call=${call.id}&reason=${encodeURIComponent(reason)}`;
+    const name = call.mateName;
+    const n = await hooks.notify(c.uid, `${name} is calling: ${reason}${questions.length ? `\n${questions.length} quick question(s)` : ''}\nTap to answer: ${link}`, { title: `${name} is calling`, url: link, tag: 'call', urgent, kind: 'call' });
+    // Inside a run, wait for the owner's answers (like ask_owner), so the step can use their opinion right away.
+    if (c.runId && a.wait !== false && a.wait !== 'false') {
+      hooks.runLog?.(c.runId, `${name} is calling the owner: ${reason}`);
+      const { waitForCall } = await import('./calls.js');
+      const done = await waitForCall(c.uid, call.id, { signal: c.signal, timeoutMs: Math.min(60, Math.max(2, Number(a.waitMinutes) || 20)) * 60_000 });
+      if (!done) return `The owner has not answered call ${call.id} yet. Carry on with the safest choice, say so in your result, and read call_report later.`;
+      if (done.status !== 'done') return `The owner did not take the call (${done.status}). Carry on with the safest choice and say so in your result.`;
+      return `The owner answered. ${done.report?.summary ?? ''}${done.report?.answers?.length ? `\n${done.report.answers.map((x) => `- ${x}`).join('\n')}` : ''}${done.report?.followups?.length ? `\nThey also asked for: ${done.report.followups.join('; ')}` : ''}`;
+    }
+    return n ? `Ringing (call ${call.id}): the owner got a tap-to-answer ring in the app and/or chat. When they answer and finish, read the outcome with call_report.` : `Could not ring: no push device or chat app is linked. Call ${call.id} is waiting; tell the owner in this chat to open ${link}`;
+  }, { write: true }),
+  schedule_call: T('Utilities', 'Set a timer to CALL the owner later, as you, with what you know right now (this chat, the run you are in, the relevant memories) carried into the call. Use for "call me at 6 to go over the plan", "ring me in 30 minutes if I have not replied", or when you will need the owner\'s opinion on your task at a better time. Quiet hours hold the ring unless urgent.', '{"when?": "ISO date-time with offset", "inMinutes?": "or: minutes from now", "reason": "why, one sentence", "goal?": "what the call must achieve", "questions?": ["question 1"], "urgent?": "true to ring during quiet hours"}', async (c, a) => {
+    const { scheduleCall } = await import('./calls.js');
+    const at = a.when ? String(a.when) : Number(a.inMinutes) > 0 ? new Date(Date.now() + Number(a.inMinutes) * 60_000).toISOString() : '';
+    if (!at) throw bad('Give when (ISO time) or inMinutes');
+    const reason = str(a.reason, 300).trim(); if (!reason) throw bad('reason is required');
+    const call = await scheduleCall(c.uid, { mate: c.mate ?? '', at, reason, goal: str(a.goal, 600), questions: list(a.questions).map((q) => str(q, 240)).filter(Boolean).slice(0, 8), convId: c.convId, runId: c.runId, urgent: a.urgent === true || a.urgent === 'true' });
+    return `Scheduled: you (${call.mateName}) will call the owner at ${call.scheduledFor} about "${call.reason}" (call ${call.id}). What you know now is saved with it. The owner can cancel it in Call, or you can with call_cancel.`;
+  }, { write: true }),
+  call_cancel: T('Utilities', 'Cancel a scheduled or waiting call (by id from call_report).', '{"id": "call id"}', async (c, a) => {
+    const { cancelCall } = await import('./calls.js'); await cancelCall(c.uid, str(a.id, 60)); return 'Call cancelled.';
   }, { write: true }),
   call_report: T('Utilities', 'Read the outcome of a call you started with call_me (summary, the owner\'s answers, follow-ups). Without an id, lists recent calls.', '{"id?": "call id"}', async (c, a) => {
     if (a.id) { const x = await getCall(c.uid, str(a.id, 60)); if (!x) throw bad('No such call'); return x.report ? `Call ${x.id} (${x.status}):\n${x.report.summary}\n${(x.report.answers ?? []).map((t) => `- ${t}`).join('\n')}\n${(x.report.followups ?? []).length ? `Follow-ups:\n${x.report.followups.map((t) => `- ${t}`).join('\n')}` : ''}` : `Call ${x.id} is ${x.status}: no report yet (the owner has not finished the call).`; }
-    const rows = await listCalls(c.uid, 8); return rows.length ? rows.map((x) => `${x.id} | ${x.status} | ${x.mate} | ${x.report?.summary?.slice(0, 120) ?? x.reason}`).join('\n') : 'No calls yet.';
+    const rows = await listCalls(c.uid, 8); return rows.length ? rows.map((x) => `${x.id} | ${x.status}${x.scheduledFor ? ` for ${x.scheduledFor}` : ""} | ${x.mate} | ${x.report?.summary?.slice(0, 120) ?? x.reason}`).join('\n') : 'No calls yet.';
   }),
 };

@@ -30,7 +30,7 @@
 .badge { font-size: 11px; font-weight: 700; padding: 3px 9px; border-radius: 999px; background: var(--chip); color: var(--ink-2); white-space: nowrap; }
 .ok { background: #e6f5ec; color: var(--done); }
 .bad { background: #fdeceb; color: var(--failed); }
-.live { background: #ece7ff; color: var(--accent-ink); }
+.live { background: #EAF1FF; color: var(--accent-ink); }
 
 .banner { display: flex; gap: 10px; align-items: center; background: #fff8e6; border: 1px solid #f0dfa8; color: #6b5200; border-radius: 12px; padding: 9px 14px; font-size: 12.5px; margin-bottom: 18px; }
 .err { background: #fdeceb; border-color: #f3c1be; color: var(--failed); }
@@ -49,7 +49,7 @@
 .tab { border: 0; background: transparent; padding: 6px 12px; border-radius: 8px; font-size: 12.5px; font-weight: 600; color: var(--muted); }
 .tabOn { background: #fff; color: var(--ink); box-shadow: 0 1px 3px rgba(0,0,0,.12); }
 
-.overlay { position: fixed; inset: 0; background: rgba(21, 18, 26, 0.42); display: grid; place-items: center; z-index: 50; padding: 20px; }
+.overlay { position: fixed; inset: 0; background: rgba(15, 23, 42, 0.42); display: grid; place-items: center; z-index: 50; padding: 20px; }
 .modal { background: #fff; border-radius: 18px; width: min(520px, 100%); max-height: 90dvh; overflow: auto; padding: 22px; box-shadow: 0 24px 60px rgba(0,0,0,.25); }
 .modal h2 { margin: 0 0 14px; font-size: 18px; letter-spacing: -0.02em; }
 .modalFoot { display: flex; justify-content: flex-end; gap: 8px; margin-top: 18px; }
@@ -70,14 +70,14 @@
 .head { animation: lm-up 0.45s cubic-bezier(0.22, 1, 0.36, 1) both; }
 .banner { animation: lm-in 0.5s ease both; }
 .btn { transition: transform 0.15s ease, border-color 0.15s, background 0.15s, color 0.15s, box-shadow 0.15s; }
-.btn:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(106, 77, 244, 0.18); }
+.btn:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(47, 107, 255, 0.18); }
 .btn:active:not(:disabled) { transform: translateY(0) scale(0.97); box-shadow: none; }
 .card { transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s; animation: lm-pop 0.4s cubic-bezier(0.22, 1, 0.36, 1) both; }
-.card:hover { transform: translateY(-3px); box-shadow: 0 10px 26px rgba(27, 24, 34, 0.09); border-color: rgba(106, 77, 244, 0.35); }
+.card:hover { transform: translateY(-3px); box-shadow: 0 10px 26px rgba(15, 23, 42, 0.09); border-color: rgba(47, 107, 255, 0.35); }
 .grid > .card:nth-child(1) { animation-delay: 0ms; } .grid > .card:nth-child(2) { animation-delay: 50ms; } .grid > .card:nth-child(3) { animation-delay: 100ms; }
 .grid > .card:nth-child(4) { animation-delay: 150ms; } .grid > .card:nth-child(5) { animation-delay: 200ms; } .grid > .card:nth-child(n+6) { animation-delay: 250ms; }
 .item { transition: background 0.15s; animation: lm-up 0.35s cubic-bezier(0.22, 1, 0.36, 1) both; }
-.item:hover { background: #faf9fd; }
+.item:hover { background: #FAFBFD; }
 .list > :nth-child(1) .item, .list > .item:nth-child(1) { animation-delay: 0ms; } .list > :nth-child(2) .item, .list > .item:nth-child(2) { animation-delay: 45ms; }
 .list > :nth-child(3) .item, .list > .item:nth-child(3) { animation-delay: 90ms; } .list > :nth-child(4) .item, .list > .item:nth-child(4) { animation-delay: 135ms; }
 .list > :nth-child(n+5) .item, .list > .item:nth-child(n+5) { animation-delay: 180ms; }
@@ -91,7 +91,7 @@
 .tab { transition: background 0.18s, color 0.18s, box-shadow 0.18s; }
 .chipBtn { transition: background 0.15s, color 0.15s, transform 0.15s; } .chipBtn:hover { transform: translateY(-1px); } .chipBtn:active { transform: scale(0.95); }
 .input, .select, .textarea { transition: box-shadow 0.18s, border-color 0.18s; }
-.input:focus, .select:focus, .textarea:focus { box-shadow: 0 0 0 4px rgba(106, 77, 244, 0.14); }
+.input:focus, .select:focus, .textarea:focus { box-shadow: 0 0 0 4px rgba(47, 107, 255, 0.14); }
 .overlay { animation: lm-in 0.2s ease both; }
 .modal { animation: lm-pop 0.32s cubic-bezier(0.22, 1, 0.36, 1) both; }
 .sheetWrap { place-items: stretch end; padding: 0; backdrop-filter: blur(2px); }
@@ -107,12 +107,12 @@
 .head h1 { font-size: 26px; font-weight: 600; letter-spacing: -0.015em; }
 .head p { font-size: 14px; }
 .crumb { font-size: 12px; color: var(--muted); margin-bottom: 2px; }
-.btn { height: 40px; border-radius: 10px; border-color: rgba(31, 26, 23, 0.14); box-shadow: 0 1px 2px rgba(27, 24, 34, 0.06), 0 8px 22px rgba(106, 77, 244, 0.06); padding: 0 16px; font-weight: 500; }
+.btn { height: 40px; border-radius: 10px; border-color: rgba(15, 23, 42, 0.14); box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06), 0 8px 22px rgba(47, 107, 255, 0.06); padding: 0 16px; font-weight: 500; }
 .primary { box-shadow: none; font-weight: 600; }
 .sm { height: 32px; padding: 0 12px; }
-.card { border-color: rgba(27, 24, 34, 0.17); border-radius: 16px; box-shadow: 0 2px 6px rgba(31, 26, 23, 0.05); }
-.tabs { position: relative; background: #ece9f4; border: 1px solid rgba(31, 26, 23, 0.08); border-radius: 12px; padding: 4px; gap: 0; }
+.card { border-color: rgba(15, 23, 42, 0.17); border-radius: 16px; box-shadow: 0 2px 6px rgba(15, 23, 42, 0.05); }
+.tabs { position: relative; background: #E9EDF3; border: 1px solid rgba(15, 23, 42, 0.08); border-radius: 12px; padding: 4px; gap: 0; }
 .tab { position: relative; z-index: 1; height: 34px; padding: 0 16px; border-radius: 9px; font-weight: 500; color: var(--muted); transition: color 0.2s; }
 .tabOn { background: transparent; box-shadow: none; color: var(--ink); }
 .tabBar { position: absolute; top: 4px; bottom: 4px; left: 0; width: 0; background: #fff; border-radius: 9px; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12); transition: transform 0.38s cubic-bezier(0.34, 1.3, 0.64, 1), width 0.3s; }
-.input, .select, .textarea { border-radius: 10px; border-color: rgba(31, 26, 23, 0.16); background: #fff; }
+.input, .select, .textarea { border-radius: 10px; border-color: rgba(15, 23, 42, 0.16); background: #fff; }

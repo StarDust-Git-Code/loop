@@ -4,8 +4,11 @@ import type { Api } from './contract';
 import { createHttpApi } from './http';
 import { createLocalApi } from './local';
 
-const url = process.env.NEXT_PUBLIC_API_URL;
-const base: Api = url ? createHttpApi(url) : createLocalApi();
+import { serverUrl, usesServer } from '../serverUrl';
+
+// With Firebase sign-in (or a fixed NEXT_PUBLIC_API_URL) the dashboard talks to the owner's paired server;
+// without either it runs as a browser-only demo.
+const base: Api = usesServer() ? createHttpApi(serverUrl) : createLocalApi();
 /** Identity always comes from Firebase Auth when configured, whichever adapter serves the data. */
 export const api: Api = {
   ...base,

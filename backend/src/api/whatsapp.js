@@ -1,5 +1,5 @@
 // WhatsApp bridge (optional, experimental, unofficial). READ-ONLY by design: it lists chats and keeps the latest messages
-// of the chats you tick. It never sends. Session is stored in Firestore (single doc, debounced) because Render has no disk.
+// of the chats you tick. It never sends. Session is stored in Firestore (single doc, debounced) so it survives a reinstall.
 import { env, now } from '../lib/env.js';
 import { db } from './db.js';
 

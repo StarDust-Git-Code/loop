@@ -141,7 +141,7 @@ export function Modal({ title, onClose, onSubmit, submitLabel = 'Save', canSubmi
 export function confirmThen(message: string, fn: () => void) { if (window.confirm(message)) fn(); }
 
 export function Pill({ children, tone }: { children: ReactNode; tone?: 'ok' | 'bad' | 'live' | 'warn' | 'violet' }) {
-  const c = { ok: ['#E6F5EC', '#1E7A46'], bad: ['#FDECEB', '#B3261E'], live: ['#ECE7FF', '#4F34D6'], violet: ['#ECE7FF', '#4F34D6'], warn: ['#FFF1D6', '#8A5A00'] }[tone ?? 'live'];
+  const c = { ok: ['#E6F5EC', '#1E7A46'], bad: ['#FDECEB', '#B3261E'], live: ['#EAF1FF', '#1F55E6'], violet: ['#EAF1FF', '#1F55E6'], warn: ['#FFF1D6', '#8A5A00'] }[tone ?? 'live'];
   return <span style={{ fontSize: 12, fontWeight: 600, color: c[1], background: c[0], borderRadius: 999, padding: '3px 10px', whiteSpace: 'nowrap' }}>{children}</span>;
 }
 

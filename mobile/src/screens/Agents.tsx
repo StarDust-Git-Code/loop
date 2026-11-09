@@ -7,7 +7,8 @@ import { PILL_SPACE } from '../components/PillBar';
 import { Avatar, Chip, ErrorNote, Icon, Press, Title } from '../components/ui';
 import { api } from '../lib/api';
 import { useList } from '../lib/hooks';
-import { MATE_DEFS, mateName } from '../lib/mates';
+import { MATES, mateName } from '../lib/mates';
+import { useRoster } from '../lib/roster';
 import { useTheme } from '../lib/themeContext';
 import { C, R } from '../lib/theme';
 import type { MateConfig } from '../lib/types';
@@ -29,11 +30,12 @@ export default function Agents() {
     catch (e) { setErr(e instanceof Error ? e.message : 'Could not start the chat'); } finally { setStarting(null); }
   };
   const level = async (l: string) => { cfg.setData((p) => p && { ...p, settings: { ...p.settings, defaultThinking: l } }); try { await api.settings.patch({ defaultThinking: l }); } catch { cfg.reload(); } };
-  const sorted = [...MATE_DEFS].sort((a, b) => Number(!!byKey.get(b.key)?.enabled) - Number(!!byKey.get(a.key)?.enabled));
+  const roster = useRoster();
+  const sorted = [...roster.agents].sort((a, b) => Number(b.key === roster.leader) - Number(a.key === roster.leader) || Number(!!byKey.get(b.key)?.enabled) - Number(!!byKey.get(a.key)?.enabled));
   return (
     <View style={{ flex: 1, paddingTop: insets.top + 16 }}>
       <View style={{ paddingHorizontal: 18, gap: 10, paddingBottom: 10 }}>
-        <Title sub="Switch Mates on, chat, or call">Agents</Title>
+        <Title sub={`Led by ${mateName(roster.leader).replace(/ Mate$/, '')}. Create or remove agents in the dashboard.`}>Agents</Title>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
           <Text style={{ fontSize: 13, color: C.muted }}>Reasoning</Text>
           {LEVELS.map((l) => <Chip key={l} label={l} on={(cfg.data?.settings.defaultThinking ?? 'default') === l} onPress={() => level(l)} />)}
@@ -45,7 +47,7 @@ export default function Agents() {
         renderItem={({ item: m, index }) => {
           const on = !!byKey.get(m.key)?.enabled;
           return (
-            <Animated.View entering={FadeInDown.delay(Math.min(index, 8) * 45).duration(260)} layout={LinearTransition}><Press onPress={() => chat(m.key)} style={{ flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: scheme === 'dark' ? C.card : m.tint, borderRadius: R.lg, borderWidth: 1, borderColor: C.line, padding: 12, opacity: on ? 1 : 0.72 }}>
+            <Animated.View entering={FadeInDown.delay(Math.min(index, 8) * 45).duration(260)} layout={LinearTransition}><Press onPress={() => chat(m.key)} style={{ flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: scheme === 'dark' ? C.card : MATES[m.key].tint, borderRadius: R.lg, borderWidth: 1, borderColor: C.line, padding: 12, opacity: on ? 1 : 0.72 }}>
               <Avatar k={m.key} size={52} />
               <View style={{ flex: 1 }}><Text style={{ fontSize: 15.5, fontWeight: '800', color: C.ink }}>{mateName(m.key)}</Text><Text numberOfLines={2} style={{ fontSize: 12.5, color: C.ink2 }}>{m.blurb}</Text></View>
               <Press onPress={() => router.push({ pathname: '/agent/[key]', params: { key: m.key } })} accessibilityLabel={`${mateName(m.key)} settings`} style={{ width: 40, height: 44, alignItems: 'center', justifyContent: 'center' }}><Icon name="settings" size={19} color={C.muted} /></Press>

@@ -1,34 +1,17 @@
-# Browser on your Linux VM
+# Running Loopmates on an IBM LinuxONE (s390x) or other Linux VM
 
-Mates (Browser, Research, Scout, Mimo) get real-browser tools: `browser_open`, `browser_read`, `browser_click`, `browser_type`, `browser_select`, `browser_press`, `browser_scroll`, `browser_back`, `browser_wait`, `browser_tabs`, `browser_screenshot`, `browser_close`.
-They run on **your VM** and sessions close after 5 idle minutes. Two engines, picked automatically by CPU:
+The browser is now part of the single Loopmates server (`backend/src/browser/`), so there is no separate browser service to deploy. Install the whole server on the VM with `backend/install.sh`.
 
-| VM | Engine | Capacity |
-|---|---|---|
-| x86_64 / arm64 | Playwright + Chromium | 2 Chromium processes, up to 4 isolated sessions |
-| **s390x (IBM LinuxONE)** | WebDriver + **Firefox** + geckodriver | 2 Firefox processes, 2 sessions (one per browser) |
+On s390x there is no Chromium build, so the server picks the WebDriver engine (Firefox + geckodriver) automatically:
 
-Chromium is not built for s390x, so LinuxONE uses Firefox. 8 GB is plenty for either.
+```bash
+sudo apt-get install -y firefox-esr   # or your distro's Firefox
+# geckodriver for s390x: build it with cargo, or use your distro package if it has one
+export GECKODRIVER_PATH=/usr/local/bin/geckodriver   # or set it on the setup page environment
+```
 
-## Install (once)
-1. Any Ubuntu/Debian/RHEL-family VM on x86_64, arm64 or s390x (`uname -m`).
-2. On the VM:
-   ```bash
-   curl -fsSL https://raw.githubusercontent.com/StarDust-Git-Code/loop/main/backend/scripts/vm-browser-setup.sh -o setup.sh
-   sudo SERVICE_SECRET='<the SERVICE_SECRET from your Render api service>' bash setup.sh --tunnel
-   ```
-   It installs Node 20, the browser, a `loopmates-browser` systemd service (auto-restart, 6 GB memory cap) and a free public tunnel, then prints an `https://` address. On s390x it installs Firefox from your distro and **builds geckodriver from source** (Mozilla ships no s390x binary; takes 5-15 minutes, about 2 GB RAM), and uses an ssh tunnel (localhost.run) because cloudflared has no s390x build.
-3. On Render, api service: set `BROWSER_URL` to that address and redeploy.
+`backend/scripts/vm-browser-setup.sh` has the tested commands for Firefox and geckodriver on s390x.
 
-A free quick tunnel gets a new address when it restarts. For a permanent one on x86_64/arm64: `cloudflared tunnel login`, `cloudflared tunnel create loopmates-browser`, route a hostname to `http://127.0.0.1:10000`, and run it as a service. Or put Caddy in front with a domain.
+On a headless VM, open the setup page through an SSH tunnel: `ssh -L 8787:127.0.0.1:8787 user@vm`, then browse to the address `install.sh` printed.
 
-## Safety built in
-- Every request is signed with `SERVICE_SECRET`; the service listens on localhost only behind the tunnel.
-- Pages cannot reach private networks, localhost or cloud metadata (DNS is checked too). `BROWSER_ALLOW_PRIVATE=1` turns this off for testing. On the Chromium engine every request is checked; on the Firefox engine every page navigation is checked (a public page could still make background requests to private addresses, but the Mate can only read what the page shows).
-- Password, card and one-time-code fields are refused: the Mate asks you to do that step.
-- Downloads, permissions (camera, location) and service workers are off. Each chat/run gets its own isolated context.
-
-## Check it
-`curl -s localhost:10000/healthz` on the VM, and `node backend/scripts/browser-test.mjs` runs 10 end-to-end checks against either engine (`BROWSER_ENGINE=webdriver BROWSER_BINARY=... GECKODRIVER_PATH=...` for Firefox).
-
-**Tested vs not:** both engines pass the 10 checks here (Playwright with Chromium; the WebDriver engine driven through chromedriver). Firefox + geckodriver on a real s390x machine has not been run yet, so expect to fix small things on first install.
+Settings that still apply: `BROWSER_ENGINE` (auto | playwright | webdriver), `BROWSER_INSTANCES` (2), `BROWSER_MAX_SESSIONS` (4), `BROWSER_IDLE_SECONDS` (300), `BROWSER_BINARY`, `GECKODRIVER_PATH`, `BROWSER_EXECUTABLE`.
