@@ -1,0 +1,404 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Loopmates film</title>
+<meta name="viewport" content="width=1920, height=1080">
+<link rel="stylesheet" href="./runtime/fonts.css">
+<style>
+/* The problem (cold night, no lime): cream = "mine", RED = the bill. Lime arrives with Loopmates and means "Loopmates is on it". */
+@font-face { font-family: "Bricolage"; src: url("fonts/BricolageGrotesque-wght.woff2") format("woff2"); font-weight: 200 800; font-display: block; }
+@font-face { font-family: "JBMono"; src: url("fonts/JetBrainsMono-400.woff2") format("woff2"); font-weight: 400; font-display: block; }
+:root { --ink: #F4F1EA; --night: #07090F; --bill: #D9432C; --bg: #0B0A0D; --surface: #131217; --surface2: #1B1A21; --line: rgba(244, 241, 234, .13); --acc: #D4FF4F; --soft: rgba(244, 241, 234, .66); }
+* { box-sizing: border-box; }
+html, body { margin: 0; width: 1920px; height: 1080px; overflow: hidden; background: #000; }
+#main { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; overflow: hidden; background: var(--night); color: var(--ink);
+  font-family: "Inter", system-ui, sans-serif; --cx: 520; --cy: 2985; --z: 2.05; }
+#main * { position: absolute; }
+#main .mw, #main .inl * { position: static; }
+
+/* ============ the night world (problem, and my desk) ============ */
+#stage1 { inset: 0; }
+#sky { inset: 0; background:
+  radial-gradient(1300px 760px at 80% 6%, rgba(72, 100, 160, .20), transparent 70%),
+  linear-gradient(180deg, #05070C 0%, #090C14 60%, #0C1019 100%); }
+#stars { left: 0; top: -260px; width: 1920px; height: 2700px; transform: translateY(calc((var(--cy) - 600) * -0.22px)); }
+#stars i { border-radius: 50%; background: #CFE0FF; }
+#vig { inset: 0; background: radial-gradient(ellipse at 50% 50%, transparent 52%, rgba(0, 0, 0, .5) 100%); }
+#world { left: 0; top: 0; width: 1920px; height: 3600px; transform-origin: 0 0;
+  transform: translate(calc(960px - var(--z) * var(--cx) * 1px), calc(540px - var(--z) * var(--cy) * 1px)) scale(var(--z)); }
+
+#moon { left: 1440px; top: 292px; width: 88px; height: 88px; border-radius: 50%;
+  background: radial-gradient(circle at 38% 34%, #F7F9FD 0%, #D6DDE9 58%, #B7C1D2 100%);
+  box-shadow: 0 0 60px 18px rgba(170, 195, 255, .22), 0 0 170px 70px rgba(120, 150, 230, .12); }
+.wisp { border-radius: 50%; background: rgba(70, 86, 120, .30); filter: blur(34px); }
+.cloud { left: 0; top: 0; width: 1920px; height: 1200px; }
+.cloud i { border-radius: 50%; }
+#cloudBack i { background: radial-gradient(circle at 64% 24%, #46526C 0%, #2A3346 40%, #171D2A 100%); filter: blur(7px); }
+#cloudFront i { background: radial-gradient(circle at 62% 22%, #505D78 0%, #2E384C 42%, #1A202D 100%); filter: blur(8px); }
+
+#box { left: 660px; top: 440px; width: 600px; height: 360px; border-radius: 34px;
+  background: linear-gradient(180deg, #1C212C 0%, #12161E 100%); border: 2px solid #2C3444; border-top-color: #414C62;
+  box-shadow: inset 0 2px 0 rgba(255, 255, 255, .07), 0 30px 60px rgba(0, 0, 0, .45); }
+#win { left: 30px; top: 34px; width: 380px; height: 250px; border-radius: 22px; overflow: hidden;
+  background: linear-gradient(180deg, #F2F5FA 0%, #D5DCE7 100%); box-shadow: 0 0 0 3px #0B0E14, 0 0 80px rgba(200, 220, 255, .20); }
+#blinds { left: 0; top: 0; width: 380px; height: 64px; background: repeating-linear-gradient(180deg, rgba(110, 126, 152, .26) 0 3px, transparent 3px 12px); }
+#wdesk { left: 0; top: 206px; width: 380px; height: 44px; background: linear-gradient(180deg, #343B4B, #262C39); }
+#blob { left: 115px; top: 58px; width: 150px; height: 138px; border-radius: 50% 50% 47% 47%;
+  background: radial-gradient(circle at 36% 26%, #FAFBFD 0%, #CDD3DD 36%, #969EAD 70%, #747C8C 100%);
+  box-shadow: inset 0 -16px 26px rgba(40, 48, 64, .35); transform-origin: 50% 100%; }
+#blob .eye { top: 50px; width: 14px; height: 19px; border-radius: 50%; background: #1B1F28; }
+#blob .eye::after { content: ""; position: absolute; left: 3px; top: 3px; width: 5px; height: 5px; border-radius: 50%; background: #fff; }
+#blob .eye.l { left: 48px; } #blob .eye.r { left: 88px; }
+#faceglow { left: 0; top: 0; width: 150px; height: 138px; border-radius: inherit; background: radial-gradient(ellipse at 50% 100%, rgba(140, 185, 255, .62), transparent 62%); }
+#lid { left: 124px; top: 126px; width: 132px; height: 88px; border-radius: 11px; background: linear-gradient(180deg, #262C39, #171B24); border: 2px solid #3A4357; }
+#lid::after { content: ""; position: absolute; left: 55px; top: 32px; width: 18px; height: 18px; border-radius: 50%; background: #3A4357; }
+#glass { inset: 0; background: linear-gradient(115deg, rgba(255, 255, 255, .42) 0%, rgba(255, 255, 255, 0) 26%, rgba(255, 255, 255, 0) 62%, rgba(255, 255, 255, .14) 100%); }
+.led { top: 48px; width: 10px; height: 10px; border-radius: 50%; background: #A9C8FF; box-shadow: 0 0 10px rgba(150, 190, 255, .9); }
+.slit { left: 430px; width: 130px; height: 16px; border-radius: 8px; background: #04060A; box-shadow: inset 0 2px 3px rgba(0, 0, 0, .9), 0 1px 0 rgba(255, 255, 255, .07); }
+.pip { left: 568px; width: 10px; height: 10px; border-radius: 50%; background: #262D3B; }
+.pip b { inset: 0; border-radius: 50%; background: var(--ink); box-shadow: 0 0 10px rgba(244, 241, 234, .8); }
+#sel { left: 426px; top: 212px; width: 156px; height: 58px; border-radius: 16px; background: linear-gradient(180deg, #232A37, #1A202B); border: 2px solid #3A4458; box-shadow: inset 0 1px 0 rgba(255, 255, 255, .06); }
+#sel span { left: 18px; top: 15px; font: 600 22px/26px "Inter"; color: #B4BDCC; letter-spacing: -.01em; }
+#lock { left: 112px; top: 14px; width: 26px; height: 30px; transform-origin: 50% 20%; }
+#pslot { left: 80px; top: 344px; width: 440px; height: 14px; border-radius: 7px; background: #04060A; box-shadow: inset 0 2px 3px rgba(0, 0, 0, .9); }
+
+.chip { left: 0; top: 0; width: 300px; height: 76px; margin: -38px 0 0 -150px; border-radius: 22px; background: var(--ink); color: #14161B; box-shadow: 0 16px 32px rgba(0, 0, 0, .5); }
+.chip b { left: 26px; top: 21px; font: 600 27px/34px "Inter"; letter-spacing: -.01em; }
+.chip i { right: 24px; top: 20px; font: 700 25px/34px "Inter"; font-style: normal; letter-spacing: 3px; }
+
+#paperwrap { left: 740px; top: 800px; width: 440px; height: 2300px; filter: drop-shadow(0 18px 28px rgba(0, 0, 0, .55)); transform-origin: 50% 0; }
+#paper { inset: 0; overflow: hidden; }
+#strip { left: 0; top: 0; width: 440px; height: 2200px; background: linear-gradient(90deg, #DCD8CE 0%, #F4F1EA 7%, #F4F1EA 93%, #DCD8CE 100%); }
+.seg { left: 0; width: 440px; height: 200px; }
+.seg u { left: 22px; top: 0; width: 396px; height: 0; border-top: 3px dashed #C9C2B3; }
+.seg b { left: 28px; top: 22px; font: 400 22px/26px "JBMono"; color: #8D867A; letter-spacing: .08em; }
+.seg s { right: 28px; top: 22px; font: 400 22px/26px "JBMono"; color: #8D867A; text-decoration: none; }
+.seg em { left: 0; top: 62px; width: 440px; text-align: center; font: 800 98px/108px "Bricolage"; font-style: normal; letter-spacing: -.04em; color: var(--bill); }
+
+#desk { left: -700px; top: 3090px; width: 3320px; height: 520px; background: linear-gradient(180deg, #1B202B 0%, #11141C 12%, #0A0D13 100%); border-top: 2px solid #3A455C; }
+#clockglow { left: 260px; top: 3092px; width: 520px; height: 150px; background: radial-gradient(ellipse at 50% 0%, rgba(150, 185, 255, .40), transparent 70%); filter: blur(10px); }
+#clock { left: 300px; top: 2890px; width: 440px; height: 200px; border-radius: 40px 40px 26px 26px; background: linear-gradient(180deg, #1C212C, #0D1016);
+  border: 2px solid #2B3345; border-top-color: #414C62; box-shadow: inset 0 2px 0 rgba(255, 255, 255, .06), 0 0 90px rgba(120, 160, 255, .12); }
+#face { left: 20px; top: 20px; width: 396px; height: 152px; border-radius: 24px; background: #04060A; overflow: hidden; }
+.dig { left: 6px; top: 0; width: 300px; text-align: center; font: 800 138px/152px "Bricolage"; letter-spacing: -.03em; color: #E4EDFF; text-shadow: 0 0 26px rgba(140, 180, 255, .7), 0 0 70px rgba(110, 150, 255, .38); }
+#ampm { left: 316px; top: 96px; font: 600 30px/34px "Inter"; color: #9FB6E6; text-shadow: 0 0 16px rgba(120, 160, 255, .5); }
+#mug { left: 884px; top: 2992px; width: 84px; height: 98px; border-radius: 8px 8px 20px 20px; background: linear-gradient(90deg, #262D3B 0%, #3A4458 46%, #1B202B 100%); border-top: 3px solid #56627C; }
+#mughandle { left: 958px; top: 3012px; width: 40px; height: 50px; border-radius: 0 24px 24px 0; border: 9px solid #2A3141; border-left: 0; }
+#laptop { left: 1130px; top: 2790px; width: 500px; height: 300px; }
+#lscreen { left: 35px; top: 0; width: 430px; height: 276px; border-radius: 18px 18px 6px 6px; background: linear-gradient(180deg, #1D222D, #141821); border: 2px solid #2D3547; border-top-color: #465168; }
+#ldisp { left: 14px; top: 14px; width: 398px; height: 240px; border-radius: 6px; background: linear-gradient(118deg, #10141D 0%, #070A0F 34%, #05070B 100%); overflow: hidden; }
+#lsheen { left: 0; top: -40px; width: 150px; height: 330px; background: linear-gradient(90deg, rgba(170, 195, 255, 0) 0%, rgba(170, 195, 255, .17) 50%, rgba(170, 195, 255, 0) 100%); transform: skewX(-22deg); }
+#lon { inset: 0; background: radial-gradient(300px 180px at 50% 46%, #1B1A21 0%, var(--bg) 100%); }
+#lonMark { left: 171px; top: 92px; width: 56px; height: 56px; }
+#lteam { left: 0; top: 8px; width: 1920px; height: 1080px; transform-origin: 0 0; transform: scale(.2073); }
+#lbase { left: 0; top: 276px; width: 500px; height: 22px; border-radius: 4px 4px 14px 14px; background: linear-gradient(180deg, #333B4C, #161A23); }
+#sleep { left: 247px; top: 285px; width: 6px; height: 6px; border-radius: 50%; background: #BFD3FF; box-shadow: 0 0 8px rgba(160, 195, 255, .9); }
+#lspill { left: 930px; top: 2700px; width: 900px; height: 620px; background: radial-gradient(ellipse at 50% 46%, rgba(212, 255, 79, .30), rgba(212, 255, 79, .08) 42%, transparent 70%); filter: blur(22px); }
+.zz { font: 700 54px/54px "Bricolage"; color: #C6D4F2; }
+
+/* ============ words ============ */
+.cap { left: 0; width: 1920px; text-align: center; white-space: pre; font: 700 88px/104px "Bricolage"; letter-spacing: -.035em; color: var(--ink);
+  text-shadow: 0 2px 30px rgba(4, 6, 10, .9), 0 0 90px rgba(4, 6, 10, .7); }
+.cap.l { text-align: left; }
+.lime { color: var(--acc); }
+#cursor, .cur { left: 0; top: 0; width: 46px; height: 62px; overflow: visible; }
+
+/* ============ the Loopmates world: the landing page's ground, type and lime ============ */
+.shot { inset: 0; overflow: hidden; background: radial-gradient(1300px 800px at 50% 40%, #19171F 0%, var(--bg) 72%); }
+.shot .vg { inset: 0; background: radial-gradient(ellipse at 50% 50%, transparent 56%, rgba(0, 0, 0, .55) 100%); }
+.cam { inset: 0; }
+.mate i { inset: 4%; border-radius: 50%; background: radial-gradient(circle, var(--c) 0%, transparent 66%); opacity: .36; filter: blur(34px); transform: scale(1.3); }
+.mate img { inset: 0; width: 100%; height: 100%; }
+.card { border-radius: 30px; background: var(--surface); border: 1.5px solid var(--line); box-shadow: 0 30px 80px rgba(0, 0, 0, .5); }
+.h { font-family: "Bricolage"; font-weight: 700; letter-spacing: -.03em; white-space: pre; }
+.t { font-family: "Inter"; font-weight: 500; letter-spacing: -.01em; white-space: pre; color: var(--soft); }
+.mono { font-family: "JBMono"; white-space: pre; }
+.pill { border-radius: 999px; background: var(--surface2); border: 1.5px solid var(--line); white-space: pre; }
+.btn { border-radius: 999px; text-align: center; font: 600 34px/84px "Inter"; white-space: pre; }
+.btn.acc { background: var(--acc); color: var(--bg); }
+.btn.ghost { border: 2px solid rgba(244, 241, 234, .26); color: var(--ink); }
+.tick { border-radius: 50%; background: #2A2931; }
+.tick b { inset: 0; border-radius: 50%; background: var(--acc); }
+.tick b::after { content: ""; position: absolute; left: 30%; top: 22%; width: 26%; height: 44%; border: solid var(--bg); border-width: 0 5px 5px 0; transform: rotate(42deg); }
+.bubble { border-radius: 40px 40px 10px 40px; background: var(--ink); color: #14161B; font: 600 50px/110px "Inter"; letter-spacing: -.02em; text-align: center; white-space: pre; box-shadow: 0 20px 50px rgba(0, 0, 0, .5); }
+.bubble.them { border-radius: 40px 40px 40px 10px; background: var(--surface2); color: var(--ink); border: 1.5px solid var(--line); }
+.mark { overflow: visible; }
+
+#lmWord { font: 700 176px/200px "Bricolage"; letter-spacing: -.045em; white-space: pre; clip-path: inset(-20% var(--cr, 0%) -20% -5%); }
+#lmWord em, .word em { font-style: normal; color: var(--acc); }
+.word { font: 700 150px/170px "Bricolage"; letter-spacing: -.045em; white-space: pre; }
+</style>
+</head>
+<body>
+<div id="main">
+
+  <!-- ====================== the night world ====================== -->
+  <div id="stage1">
+    <div id="sky"></div>
+    <div id="stars"></div>
+    <div id="world">
+      <div id="moon"></div>
+      <div class="wisp" style="left:140px;top:1330px;width:620px;height:130px"></div>
+      <div class="wisp" style="left:1180px;top:1700px;width:700px;height:150px"></div>
+      <div class="wisp" style="left:360px;top:2110px;width:640px;height:120px"></div>
+      <div class="wisp" style="left:1260px;top:2430px;width:560px;height:110px"></div>
+      <div id="cloudBack" class="cloud"></div>
+      <div id="box">
+        <div id="win"><div id="blinds"></div><div id="blob"><div id="faceglow"></div><i class="eye l"></i><i class="eye r"></i></div><div id="wdesk"></div><div id="lid"></div><div id="glass"></div></div>
+        <i class="led" id="led0" style="left:436px"></i><i class="led" id="led1" style="left:456px"></i><i class="led" id="led2" style="left:476px"></i>
+        <div class="slit" style="top:82px"></div><div class="pip" style="top:85px"><b id="pip0"></b></div>
+        <div class="slit" style="top:118px"></div><div class="pip" style="top:121px"><b id="pip1"></b></div>
+        <div class="slit" style="top:154px"></div><div class="pip" style="top:157px"><b id="pip2"></b></div>
+        <div id="sel" data-ui><span>Model</span>
+          <svg id="lock" viewBox="0 0 26 30"><path d="M7 13V9a6 6 0 0 1 12 0v4" fill="none" stroke="#B4BDCC" stroke-width="3" stroke-linecap="round"/><rect x="3" y="13" width="20" height="15" rx="4" fill="#B4BDCC"/></svg>
+        </div>
+        <div id="pslot"></div>
+      </div>
+      <div id="cloudFront" class="cloud"></div>
+      <div id="paperwrap"><div id="paper"><div id="strip" data-ui></div></div></div>
+      <div class="chip" id="chip0" data-ui><b>GitHub</b><i>••••••••</i></div>
+      <div class="chip" id="chip1" data-ui><b>Gmail</b><i>••••••••</i></div>
+      <div class="chip" id="chip2" data-ui><b>Bank</b><i>••••••••</i></div>
+
+      <div id="lspill"></div>
+      <div id="desk"></div>
+      <div id="clockglow"></div>
+      <div id="clock"><div id="face"><div class="dig" id="dOld">1:59</div><div class="dig" id="dNew">2:00</div><div id="ampm">AM</div></div></div>
+      <div id="mughandle"></div><div id="mug"></div>
+      <div id="laptop"><div id="lscreen"><div id="ldisp"><div id="lsheen"></div><div id="lon"><div id="lonMark"></div><div id="lteam"></div></div></div></div><div id="lbase"></div><i id="sleep"></i></div>
+      <div class="zz" id="z0" style="left:1612px;top:2772px">z</div>
+      <div class="zz" id="z1" style="left:1650px;top:2742px">z</div>
+      <div class="zz" id="z2" style="left:1692px;top:2712px">z</div>
+    </div>
+    <div id="vig"></div>
+
+    <div class="cap" id="capB" style="top:262px">My AI agent is working.</div>
+    <div class="cap" id="capC" style="top:150px">Not on my computer.</div>
+    <div class="cap" id="capD" style="top:912px">Somewhere in the cloud.</div>
+    <div class="cap" id="capE" style="top:912px;left:-90px">With my passwords.</div>
+    <div class="cap l" id="capF" style="left:1056px;top:396px;width:860px;font-size:92px;line-height:106px">On a model
+I don't control.</div>
+    <div class="cap" id="capG1" style="top:640px;width:1004px;text-align:right;font-size:124px;line-height:136px">And the</div>
+    <div class="cap l" id="capG2" style="top:640px;left:1038px;width:880px;font-size:124px;line-height:136px">bill?</div>
+    <div class="cap l" id="capH" style="left:1040px;top:462px;width:880px;font-size:94px;line-height:112px">Every month.</div>
+    <div class="cap l" id="capI" style="left:1016px;top:176px;width:900px">I didn't want
+another assistant.</div>
+    <div class="cap" id="capJ" style="top:118px">I wanted a second brain.</div>
+    <div class="cap" id="capK" style="top:96px">One computer.</div>
+    <div class="cap lime" id="capMine" style="top:60px;font-size:170px;line-height:190px">Mine.</div>
+    <svg id="cursor" viewBox="0 0 46 62"><path d="M3 3v44l12-11 8 19 8-4-8-18h17z" fill="#F4F1EA" stroke="#0B0D12" stroke-width="3.5" stroke-linejoin="round"/></svg>
+  </div>
+
+  <!-- ====================== Loopmates ====================== -->
+  <section class="shot" id="sh_logo">
+    <div class="cam" id="camLogo">
+      <div id="lmMark" style="left:425px;top:445px;width:190px;height:190px"></div>
+      <div id="lmWord" class="inl" style="left:652px;top:438px">loop<em>mates</em></div>
+    </div>
+    <div class="vg"></div>
+  </section>
+
+  <section class="shot" id="sh_team">
+    <div class="cam" id="camTeam"><div id="team" style="inset:0"></div></div>
+    <div class="vg"></div>
+    <div class="cap inl" id="capTeam" style="top:56px;font-size:124px;line-height:140px"><span id="n19">19</span> Mates.</div>
+  </section>
+
+  <section class="shot" id="sh_row">
+    <div class="cam" id="camRow"><div id="row" style="inset:0"></div></div>
+    <div class="vg"></div>
+    <div class="cap" id="capRow" style="top:74px;font-size:92px">Each one a brain of its own.</div>
+  </section>
+
+  <section class="shot" id="sh_say">
+    <div class="cam" id="camSay">
+      <div class="card" id="sayBar" data-ui style="left:250px;top:520px;width:1420px;height:170px;border-radius:85px">
+        <div class="mate" style="left:26px;top:25px;width:120px;height:120px;--c:#F27AA8"><img src="assets/m/mimo.png"></div>
+        <div class="h inl" id="sayText" style="left:176px;top:44px;font-size:66px;line-height:82px;font-weight:600">Add dark mode. Run the tests.</div>
+        <div id="sayCaret" style="left:176px;top:48px;width:5px;height:74px;border-radius:3px;background:var(--acc)"></div>
+        <div id="saySend" style="left:1266px;top:25px;width:120px;height:120px;border-radius:50%;background:var(--acc)">
+          <svg viewBox="0 0 24 24" style="left:30px;top:30px;width:60px;height:60px" fill="none" stroke="#0B0A0D" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
+        </div>
+      </div>
+    </div>
+    <div class="vg"></div>
+    <div class="cap" id="capSay" style="top:300px;font-size:104px;line-height:120px">I say it once.</div>
+  </section>
+
+  <section class="shot" id="sh_pipe">
+    <div id="pipe" style="left:0;top:0;width:7680px;height:1080px">
+      <div style="left:0;top:884px;width:7680px;height:6px;border-radius:3px;background:rgba(212,255,79,.20)"></div>
+      <div id="bead" style="left:0;top:870px;width:34px;height:34px;margin-left:-17px;border-radius:50%;background:var(--acc);box-shadow:0 0 30px 8px rgba(212,255,79,.55)"></div>
+      <div id="stations"></div>
+    </div>
+    <div class="vg"></div>
+  </section>
+
+  <section class="shot" id="sh_tests">
+    <div class="cam" id="camTests">
+      <div class="card" id="testCard" data-ui style="left:430px;top:300px;width:1060px;height:560px"><div id="testRows" style="inset:0"></div></div>
+    </div>
+    <div class="vg"></div>
+    <div class="cap" id="capTests" style="top:110px;font-size:104px;line-height:120px">Tests green.</div>
+    <div class="cap" id="capNice" style="top:370px;font-size:300px;line-height:320px">Nice.</div>
+  </section>
+
+  <section class="shot" id="sh_loop">
+    <div class="cam" id="camLoop">
+      <div style="left:600px;top:270px;width:720px;height:720px;border-radius:50%;border:14px solid rgba(212,255,79,.9);box-shadow:0 0 80px rgba(212,255,79,.25), inset 0 0 80px rgba(212,255,79,.12)"></div>
+      <div id="orbit" style="left:960px;top:630px;width:0;height:0"></div>
+      <div id="orbBead" style="left:960px;top:630px;width:0;height:0"><div style="left:-22px;top:-382px;width:44px;height:44px;border-radius:50%;background:var(--ink);box-shadow:0 0 34px 10px rgba(244,241,234,.55)"></div></div>
+      <svg class="cur" id="curSleep" viewBox="0 0 46 62" style="left:924px;top:590px;width:74px;height:100px;transform:rotate(62deg)"><path d="M3 3v44l12-11 8 19 8-4-8-18h17z" fill="#F4F1EA" stroke="#0B0D12" stroke-width="3.5" stroke-linejoin="round"/></svg>
+      <div class="zz" id="lz0" style="left:1010px;top:560px;font-size:44px">z</div>
+      <div class="zz" id="lz1" style="left:1040px;top:520px;font-size:58px">z</div>
+    </div>
+    <div class="vg"></div>
+    <div class="cap" id="capLoop" style="top:70px">I wasn't even in the loop.</div>
+  </section>
+
+  <section class="shot" id="sh_halo">
+    <div class="cam" id="camHalo">
+      <div class="mate" id="haloMate" style="left:230px;top:300px;width:560px;height:560px;--c:#E3C9F2"><i></i><img src="assets/m/halo.png"></div>
+      <div class="card" id="okCard" data-ui style="left:880px;top:330px;width:820px;height:500px">
+        <div class="h" style="left:54px;top:50px;font-size:58px;line-height:68px">Halo needs your OK</div>
+        <div class="t" style="left:54px;top:146px;font-size:36px;line-height:52px">Push branch dark-mode to origin
+and open a pull request.</div>
+        <div class="btn acc" id="okYes" style="left:54px;top:336px;width:300px;height:84px">Approve</div>
+        <div class="btn ghost" id="okNo" style="left:378px;top:336px;width:190px;height:84px;line-height:80px">Deny</div>
+        <div class="h lime" id="okDone" style="left:596px;top:342px;font-size:54px;line-height:72px;transform-origin:50% 50%">Done ✓</div>
+      </div>
+      <svg class="cur" id="curHalo" viewBox="0 0 46 62"><path d="M3 3v44l12-11 8 19 8-4-8-18h17z" fill="#F4F1EA" stroke="#0B0D12" stroke-width="3.5" stroke-linejoin="round"/></svg>
+    </div>
+    <div class="vg"></div>
+    <div class="cap" id="capRisk" style="top:400px;font-size:190px;line-height:210px">Something risky?</div>
+    <div class="cap" id="capHalo" style="top:110px;font-size:96px">Halo asks first.</div>
+  </section>
+
+  <section class="shot" id="sh_mem">
+    <div class="cam" id="camMem">
+      <svg id="graph" viewBox="0 0 1920 1080" style="inset:0;width:1920px;height:1080px"></svg>
+      <div id="hit" style="left:942px;top:582px;width:36px;height:36px;border-radius:50%;background:var(--acc);box-shadow:0 0 34px 10px rgba(212,255,79,.5)"></div>
+      <div class="mate" id="memMate" style="left:250px;top:330px;width:520px;height:520px;--c:#F27AA8"><i></i><img src="assets/m/mimo.png"></div>
+      <div class="card" id="memCard" data-ui style="left:880px;top:470px;width:800px;height:300px">
+        <div class="t" style="left:50px;top:42px;font-size:30px;line-height:40px">Last Thursday · decision</div>
+        <div class="h" style="left:50px;top:98px;font-size:54px;line-height:68px">Dashboard first,
+phone app as the closer.</div>
+      </div>
+      <div class="bubble" id="askBubble" style="left:820px;top:150px;width:860px;height:110px">What did I decide last week?</div>
+    </div>
+    <div class="vg"></div>
+    <div class="cap" id="capMem" style="top:880px;font-size:96px">Mimo remembers.</div>
+  </section>
+
+  <section class="shot" id="sh_short">
+    <div class="cam" id="camShort">
+      <div class="mate" id="wrMate" style="left:200px;top:330px;width:500px;height:500px;--c:#F3BB3C"><i></i><img src="assets/m/writer.png"></div>
+      <div class="card" id="repCard" data-ui style="left:800px;top:300px;width:880px;height:620px;overflow:hidden">
+        <div class="h" style="left:50px;top:40px;font-size:46px;line-height:56px">Report: dark mode</div>
+        <div class="t" id="repText" style="left:50px;top:120px;width:780px;font-size:30px;line-height:48px;white-space:normal"></div>
+      </div>
+      <div class="bubble" id="shortBubble" style="left:1180px;top:150px;width:520px;height:110px">Shorter, please.</div>
+      <div class="pill" id="journal" data-ui style="left:800px;top:650px;width:640px;height:92px"><div class="t inl" style="left:36px;top:24px;font-size:32px;line-height:44px;color:var(--ink)">Writer's journal: <span class="lime">keeps it short</span></div></div>
+    </div>
+    <div class="vg"></div>
+    <div class="cap" id="capShort" style="top:900px;font-size:96px">Said once. Remembered.</div>
+  </section>
+
+  <section class="shot" id="sh_home" style="background:radial-gradient(1300px 800px at 30% 30%, #1A1820 0%, #09080B 74%)">
+    <div id="lamp" style="left:-200px;top:-260px;width:1500px;height:1100px;background:radial-gradient(ellipse at 40% 40%, rgba(255,205,140,.20), transparent 62%)"></div>
+    <div class="cam" id="camHome">
+      <div id="hClock" data-ui style="left:150px;top:132px;width:880px;height:300px;border-radius:64px 64px 44px 44px;background:linear-gradient(180deg,#24222A,#121116);border:2px solid #37353F;box-shadow:inset 0 2px 0 rgba(255,255,255,.06), 0 0 120px rgba(255,190,110,.10);transform-origin:50% 50%"><div style="left:28px;top:28px;width:820px;height:236px;border-radius:40px;background:#050506"></div><div class="h inl" style="left:70px;top:36px;font-size:214px;line-height:224px;font-weight:800;color:#FFE7C7;text-shadow:0 0 50px rgba(255,190,110,.45)">11:00<span style="font-size:60px;font-weight:600;letter-spacing:0;margin-left:20px;color:#E9C9A0">PM</span></div></div>
+      <div class="card" id="haCard" data-ui style="left:150px;top:470px;width:880px;height:470px">
+        <div class="t" style="left:46px;top:36px;font-size:32px;line-height:42px;color:var(--ink);font-weight:600">Home Assistant</div>
+        <div class="pill" id="haGarage" style="left:40px;top:108px;width:800px;height:96px;border-radius:26px"><div class="t" style="left:34px;top:26px;font-size:36px;line-height:44px;color:var(--ink)">Garage door</div><div class="h" id="gOpen" style="right:34px;top:22px;font-size:40px;line-height:52px;color:#FFB020">Open</div><div class="h lime" id="gClosed" style="right:34px;top:22px;font-size:40px;line-height:52px">Closed</div></div>
+        <div class="pill" id="haLights" style="left:40px;top:222px;width:800px;height:96px;border-radius:26px"><div class="t" style="left:34px;top:26px;font-size:36px;line-height:44px;color:var(--ink)">Living room lights</div><div class="h" id="lOn" style="right:34px;top:22px;font-size:40px;line-height:52px;color:#FFE7C7">On</div><div class="h" id="lOff" style="right:34px;top:22px;font-size:40px;line-height:52px;color:var(--soft)">Off</div></div>
+        <div class="pill" style="left:40px;top:336px;width:800px;height:96px;border-radius:26px"><div class="t" style="left:34px;top:26px;font-size:36px;line-height:44px;color:var(--ink)">Front door</div><div class="h" style="right:34px;top:22px;font-size:40px;line-height:52px;color:var(--soft)">Locked</div></div>
+      </div>
+      <div id="dim" style="left:-200px;top:-200px;width:2320px;height:1480px;background:rgba(3,3,5,.62)"></div>
+      <div id="phone" data-ui style="left:1230px;top:120px;width:460px;height:900px;border-radius:70px;background:#060608;border:3px solid #2C2B33;box-shadow:0 40px 100px rgba(0,0,0,.7), inset 0 0 0 10px #101014;overflow:hidden">
+        <div style="left:165px;top:26px;width:130px;height:34px;border-radius:17px;background:#000"></div>
+        <div id="ringA" style="left:90px;top:150px;width:280px;height:280px;border-radius:50%;border:3px solid rgba(242,122,168,.55)"></div>
+        <div id="ringB" style="left:90px;top:150px;width:280px;height:280px;border-radius:50%;border:3px solid rgba(242,122,168,.55)"></div>
+        <div class="mate" style="left:110px;top:170px;width:240px;height:240px;--c:#F27AA8"><i></i><img src="assets/m/mimo.png"></div>
+        <div class="h" id="callTitle" style="left:0;top:462px;width:460px;text-align:center;font-size:46px;line-height:56px">Mimo is calling</div>
+        <div class="h" id="callLive" style="left:0;top:462px;width:460px;text-align:center;font-size:46px;line-height:56px">Mimo</div>
+        <div class="t" id="callSub" style="left:0;top:526px;width:460px;text-align:center;font-size:27px;line-height:36px">Loopmates voice call</div>
+        <div id="wave" style="left:110px;top:574px;width:240px;height:44px"></div>
+        <div class="bubble them" id="bClose" style="left:34px;top:632px;width:230px;height:74px;font-size:34px;line-height:74px;border-radius:28px 28px 28px 8px">Close it?</div>
+        <div class="bubble" id="bYes" style="left:296px;top:716px;width:130px;height:74px;font-size:34px;line-height:74px;border-radius:28px 28px 8px 28px">Yes.</div>
+        <div class="bubble" id="bLights" style="left:136px;top:800px;width:290px;height:74px;font-size:34px;line-height:74px;border-radius:28px 28px 8px 28px">Lights off, too.</div>
+        <div id="callYes" style="left:270px;top:740px;width:104px;height:104px;border-radius:50%;background:var(--acc)"><svg viewBox="0 0 24 24" style="left:26px;top:26px;width:52px;height:52px" fill="#0B0A0D"><path d="M6.6 10.8a15 15 0 0 0 6.6 6.6l2.2-2.2a1 1 0 0 1 1-.25 11.4 11.4 0 0 0 3.6.6 1 1 0 0 1 1 1V20a1 1 0 0 1-1 1A17 17 0 0 1 3 4a1 1 0 0 1 1-1h3.5a1 1 0 0 1 1 1c0 1.25.2 2.45.6 3.6a1 1 0 0 1-.25 1z"/></svg></div>
+        <div id="callNo" style="left:86px;top:740px;width:104px;height:104px;border-radius:50%;background:#E5484D"><svg viewBox="0 0 24 24" style="left:28px;top:28px;width:48px;height:48px" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></div>
+      </div>
+    </div>
+    <div class="vg"></div>
+    <div class="cap" id="capGarage" style="top:24px;font-size:84px;line-height:100px">The garage is still open.</div>
+  </section>
+
+  <section class="shot" id="sh_models">
+    <div class="cam" id="camModels"><div id="models" style="inset:0"></div></div>
+    <div class="vg"></div>
+    <div class="cap" id="capModels" style="top:190px;font-size:170px;line-height:190px">My models.</div>
+  </section>
+
+  <section class="shot" id="sh_keys">
+    <div class="cam" id="camKeys">
+      <div id="vault" style="left:610px;top:560px;width:700px;height:330px;border-radius:44px;background:var(--surface);border:3px solid var(--acc);box-shadow:0 0 90px rgba(212,255,79,.20)"></div>
+      <div class="chip" id="kchip0" data-ui style="margin:0;left:660px;top:610px"><b>GitHub</b><i>••••••••</i></div>
+      <div class="chip" id="kchip1" data-ui style="margin:0;left:960px;top:650px"><b>Gmail</b><i>••••••••</i></div>
+      <div class="chip" id="kchip2" data-ui style="margin:0;left:780px;top:760px"><b>Bank</b><i>••••••••</i></div>
+      <svg id="vlock" viewBox="0 0 26 30" style="left:1210px;top:500px;width:130px;height:150px;overflow:visible"><path id="vshackle" d="M7 13V9a6 6 0 0 1 12 0v4" fill="none" stroke="#D4FF4F" stroke-width="3.4" stroke-linecap="round"/><rect x="3" y="13" width="20" height="15" rx="4" fill="#D4FF4F"/></svg>
+    </div>
+    <div class="vg"></div>
+    <div class="cap" id="capKeys" style="top:190px;font-size:170px;line-height:190px">My keys.</div>
+  </section>
+
+  <section class="shot" id="sh_machine">
+    <div class="cam" id="camMachine">
+      <div style="left:560px;top:470px;width:800px;height:520px;background:radial-gradient(ellipse at 50% 46%, rgba(212,255,79,.26), transparent 66%);filter:blur(24px)"></div>
+      <div style="left:660px;top:470px;width:600px;height:384px;border-radius:26px 26px 8px 8px;background:linear-gradient(180deg,#24232B,#17161C);border:3px solid #34333C"></div>
+      <div style="left:680px;top:490px;width:560px;height:336px;border-radius:10px;background:radial-gradient(420px 260px at 50% 46%, #1B1A21 0%, var(--bg) 100%);overflow:hidden"><div id="mMark" style="left:215px;top:103px;width:130px;height:130px"></div></div>
+      <div style="left:612px;top:854px;width:696px;height:30px;border-radius:6px 6px 20px 20px;background:linear-gradient(180deg,#3A3942,#1B1A20)"></div>
+    </div>
+    <div class="vg"></div>
+    <div class="cap" id="capMachine" style="top:190px;font-size:170px;line-height:190px">My machine.</div>
+  </section>
+
+  <section class="shot" id="sh_morning" style="background:linear-gradient(180deg,#141B33 0%,#3A3558 38%,#B5627A 70%,#F4A76C 88%,#FFD79A 100%)">
+    <div id="sun" style="left:660px;top:820px;width:600px;height:600px;border-radius:50%;background:radial-gradient(circle,#FFF3C9 0%,#FFD27A 34%,rgba(255,170,90,0) 70%)"></div>
+    <div style="left:0;top:900px;width:1920px;height:180px;background:linear-gradient(180deg,rgba(11,10,13,0),rgba(11,10,13,.55))"></div>
+    <div class="cam" id="camMorning">
+      <div class="mate" id="lunaMate" style="left:210px;top:360px;width:520px;height:520px;--c:#A56BDB"><i></i><img src="assets/m/luna.png"></div>
+      <div class="card" id="sumCard" data-ui style="left:840px;top:380px;width:860px;height:480px;background:rgba(19,18,23,.92)">
+        <div class="h" style="left:54px;top:44px;font-size:52px;line-height:62px">While you slept</div>
+        <div id="sumRows" style="inset:0"></div>
+      </div>
+    </div>
+    <div class="cap" id="capMorning" style="top:110px;font-size:96px;text-shadow:0 2px 40px rgba(10,10,20,.55)">By morning, the work is done.</div>
+  </section>
+
+  <section class="shot" id="sh_end">
+    <div class="cam" id="camEnd">
+      <div id="endLock" style="left:0;top:0;width:1920px;height:1080px;transform-origin:960px 480px">
+        <div id="endMark" style="left:486px;top:372px;width:160px;height:160px"></div>
+        <div class="word inl" id="endWord" style="left:676px;top:366px">loop<em>mates</em></div>
+        <div class="cap" id="capEnd" style="top:590px;font-size:76px;line-height:92px;font-weight:500;color:var(--soft)">Working while I don't.</div>
+      </div>
+      <div id="endBill" data-ui style="left:650px;top:560px;width:620px;height:290px;filter:drop-shadow(0 26px 40px rgba(0,0,0,.6));transform-origin:50% 0">
+        <div id="endPaper" style="inset:0;background:linear-gradient(90deg,#DCD8CE 0%,#F4F1EA 7%,#F4F1EA 93%,#DCD8CE 100%)"></div>
+        <div class="mono" style="left:40px;top:30px;font-size:30px;line-height:36px;color:#8D867A;letter-spacing:.08em">LOOPMATES</div>
+        <div class="mono" style="right:40px;top:30px;font-size:30px;line-height:36px;color:#8D867A">per month</div>
+        <div class="h" id="endAmt" style="left:0;top:92px;width:620px;text-align:center;font-size:150px;line-height:160px;font-weight:800;letter-spacing:-.04em;color:var(--bill)">$200.00</div>
+      </div>
+    </div>
+    <div class="vg"></div>
+  </section>
+</div>
+
+<script src="./runtime/vendor/gsap.min.js"></script>
+<script src="./runtime/motion.js"></script>
+<script src="./audio/vo/words.js"></script>
+<script src="./film.js"></script>
+</body>
+</html>

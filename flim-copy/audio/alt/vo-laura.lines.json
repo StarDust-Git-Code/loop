@@ -1,0 +1,51 @@
+[
+ {
+  "text": "It's 2 AM.",
+  "start": 0.03,
+  "end": 0.834,
+  "raw_start": 0.0,
+  "raw_end": 0.906
+ },
+ {
+  "text": "My AI agent is working.",
+  "start": 1.089,
+  "end": 2.435,
+  "raw_start": 1.08,
+  "raw_end": 2.519
+ },
+ {
+  "text": "Not on my computer.",
+  "start": 2.645,
+  "end": 3.58,
+  "raw_start": 2.635,
+  "raw_end": 3.68
+ },
+ {
+  "text": "Somewhere in the cloud.",
+  "start": 3.831,
+  "end": 4.783,
+  "raw_start": 3.831,
+  "raw_end": 4.83
+ },
+ {
+  "text": "With my passwords. On a model I don't control.",
+  "start": 4.928,
+  "end": 7.887,
+  "raw_start": 4.888,
+  "raw_end": 7.953
+ },
+ {
+  "text": "And the bill?",
+  "start": 8.017,
+  "end": 8.519,
+  "raw_start": 7.976,
+  "raw_end": 8.545
+ },
+ {
+  "text": "Two hundred dollars. Every month.",
+  "start": 8.655,
+  "end": 10.287,
+  "raw_start": 8.626,
+  "raw_end": 10.495
+ }
+]

@@ -1,0 +1,15 @@
+# cuts from events renders/s1-draft.mp4.events.json (time s, frame, timecode, source)
+0.367	frame 11	0:00.37	event hide '#dOld'
+4.267	frame 128	0:04.27	event show '#z0'
+4.600	frame 138	0:04.60	event show '#z1'
+4.933	frame 148	0:04.93	event show '#z2'
+8.633	frame 259	0:08.63	event show '#chip0'
+8.833	frame 265	0:08.83	event show '#chip1'
+9.033	frame 271	0:09.03	event show '#chip2'
+9.833	frame 295	0:09.83	event show '#pip0'
+10.067	frame 302	0:10.07	event show '#pip1'
+10.300	frame 309	0:10.30	event show '#pip2'
+12.633	frame 379	0:12.63	event hide '#cursor'
+14.467	frame 434	0:14.47	event hide '#capG1'
+# detected but not in events:
+15.700	frame 471	0:15.70	scene 0.25 + corr 0.68 spike x1.9

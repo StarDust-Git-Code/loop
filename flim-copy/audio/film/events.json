@@ -1,0 +1,707 @@
+[
+ {
+  "t": 0.3,
+  "sfx": "C:/Users/irsha/Desktop/loopmates-claude/flim-copy/sfx/tick.wav",
+  "gain": -15
+ },
+ {
+  "t": 2.133,
+  "sfx": "C:/Users/irsha/Desktop/loopmates-claude/flim-copy/sfx/tick.wav",
+  "gain": -23
+ },
+ {
+  "t": 2.3,
+  "sfx": "C:/Users/irsha/Desktop/loopmates-claude/flim-copy/sfx/tick.wav",
+  "gain": -23
+ },
+ {
+  "t": 2.433,
+  "sfx": "C:/Users/irsha/Desktop/loopmates-claude/flim-copy/sfx/tick.wav",
+  "gain": -23
+ },
+ {
+  "t": 2.6,
+  "sfx": "C:/Users/irsha/Desktop/loopmates-claude/flim-copy/sfx/tick.wav",
+  "gain": -23
+ },
+ {
+  "t": 2.733,
+  "sfx": "C:/Users/irsha/Desktop/loopmates-claude/flim-copy/sfx/tick.wav",
+  "gain": -23
+ },
+ {
+  "t": 2.9,
+  "sfx": "C:/Users/irsha/Desktop/loopmates-claude/flim-copy/sfx/tick.wav",
+  "gain": -23
+ },
+ {
+  "t": 3.033,
+  "sfx": "C:/Users/irsha/Desktop/loopmates-claude/flim-copy/sfx/tick.wav",
+  "gain": -23
+ },
+ {
+  "t": 3.2,
+  "sfx": "C:/Users/irsha/Desktop/loopmates-claude/flim-copy/sfx/tick.wav",
+  "gain": -23
+ },
+ {
+  "t": 3.333,
+  "sfx": "C:/Users/irsha/Desktop/loopmates-claude/flim-copy/sfx/tick.wav",
+  "gain": -23
+ },
+ {
+  "t": 5.367,
+  "sfx": "C:/Users/irsha/Desktop/loopmates-claude/flim-copy/sfx/tick.wav",
+  "gain": -19
+ },
+ {
+  "t": 5.5,
+  "sfx": "C:/Users/irsha/Desktop/loopmates-claude/flim-copy/sfx/tick.wav",
+  "gain": -19
+ },
+ {
+  "t": 5.633,
+  "sfx": "C:/Users/irsha/Desktop/loopmates-claude/flim-copy/sfx/tick.wav",
+  "gain": -19
+ },
+ {
+  "t": 5.767,
+  "sfx": "C:/Users/irsha/Desktop/loopmates-claude/flim-copy/sfx/tick.wav",
+  "gain": -19
+ },
+ {
+  "t": 5.9,
+  "sfx": "C:/Users/irsha/Desktop/loopmates-claude/flim-copy/sfx/tick.wav",
+  "gain": -19
+ },
+ {
+  "t": 6.033,
+  "sfx": "C:/Users/irsha/Desktop/loopmates-claude/flim-copy/sfx/tick.wav",
+  "gain": -19
+ },
+ {
+  "t": 6.167,
+  "sfx": "C:/Users/irsha/Desktop/loopmates-claude/flim-copy/sfx/tick.wav",
+  "gain": -19
+ },
+ {
+  "t": 6.3,
+  "sfx": "C:/Users/irsha/Desktop/loopmates-claude/flim-copy/sfx/tick.wav",
+  "gain": -19
+ },
+ {
+  "t": 6.433,
+  "sfx": "C:/Users/irsha/Desktop/loopmates-claude/flim-copy/sfx/tick.wav",
+  "gain": -19
+ },
+ {
+  "t": 6.567,
+  "sfx": "C:/Users/irsha/Desktop/loopmates-claude/flim-copy/sfx/tick.wav",
+  "gain": -19
+ },
+ {
+  "t": 6.7,
+  "sfx": "C:/Users/irsha/Desktop/loopmates-claude/flim-copy/sfx/tick.wav",
+  "gain": -19
+ },
+ {
+  "t": 6.833,
+  "sfx": "C:/Users/irsha/Desktop/loopmates-claude/flim-copy/sfx/tick.wav",
+  "gain": -19
+ },
+ {
+  "t": 6.967,
+  "sfx": "C:/Users/irsha/Desktop/loopmates-claude/flim-copy/sfx/tick.wav",
+  "gain": -19
+ },
+ {
+  "t": 7.067,
+  "sfx": "C:/Users/irsha/Desktop/loopmates-claude/flim-copy/sfx/pop.wav",
+  "gain": -12
+ },
+ {
+  "t": 7.1,
+  "sfx": "C:/Users/irsha/Desktop/loopmates-claude/flim-copy/sfx/tick.wav",
+  "gain": -19
+ },
+ {
+  "t": 7.233,
+  "sfx": "C:/Users/irsha/Desktop/loopmates-claude/flim-copy/sfx/tick.wav",
+  "gain": -19
+ },
+ {
+  "t": 7.233,
+  "sfx": "C:/Users/irsha/Desktop/loopmates-claude/flim-copy/sfx/pop.wav",
+  "gain": -12
+ },
+ {
+  "t": 7.367,
+  "sfx": "C:/Users/irsha/Desktop/loopmates-claude/flim-copy/sfx/tick.wav",
+  "gain": -19
+ },
+ {
+  "t": 7.4,
+  "sfx": "C:/Users/irsha/Desktop/loopmates-claude/flim-copy/sfx/pop.wav",
+  "gain": -12
+ },
+ {
+  "t": 7.5,
+  "sfx": "C:/Users/irsha/Desktop/loopmates-claude/flim-copy/sfx/tick.wav",
+  "gain": -19
+ },
+ {
+  "t": 7.633,
+  "sfx": "C:/Users/irsha/Desktop/loopmates-claude/flim-copy/sfx/tick.wav",
+  "gain": -19
+ },
+ {
+  "t": 7.767,
+  "sfx": "C:/Users/irsha/Desktop/loopmates-claude/flim-copy/sfx/tick.wav",
+  "gain": -19
+ },
+ {
+  "t": 7.9,
+  "sfx": "C:/Users/irsha/Desktop/loopmates-claude/flim-copy/sfx/tick.wav",
+  "gain": -19
+ },
+ {
+  "t": 8.033,
+  "sfx": "C:/Users/irsha/Desktop/loopmates-claude/flim-copy/sfx/tick.wav",
+  "gain": -19
+ },
+ {
+  "t": 8.167,
+  "sfx": "C:/Users/irsha/Desktop/loopmates-claude/flim-copy/sfx/tick.wav",
+  "gain": -19
+ },
+ {
+  "t": 8.233,
+  "sfx": "C:/Users/irsha/Desktop/loopmates-claude/flim-copy/sfx/switch.wav",
+  "gain": -12
+ },
+ {
+  "t": 8.3,
+  "sfx": "C:/Users/irsha/Desktop/loopmates-claude/flim-copy/sfx/tick.wav",
+  "gain": -19
+ },
+ {
+  "t": 8.3,
+  "sfx": "C:/Users/irsha/Desktop/loopmates-claude/flim-copy/sfx/snap.wav",
+  "gain": -11
+ },
+ {
+  "t": 8.433,
+  "sfx": "C:/Users/irsha/Desktop/loopmates-claude/flim-copy/sfx/tick.wav",
+  "gain": -19
+ },
+ {
+  "t": 8.567,
+  "sfx": "C:/Users/irsha/Desktop/loopmates-claude/flim-copy/sfx/tick.wav",
+  "gain": -19
+ },
+ {
+  "t": 8.6,
+  "sfx": "C:/Users/irsha/Desktop/loopmates-claude/flim-copy/sfx/switch.wav",
+  "gain": -12
+ },
+ {
+  "t": 8.667,
+  "sfx": "C:/Users/irsha/Desktop/loopmates-claude/flim-copy/sfx/snap.wav",
+  "gain": -11
+ },
+ {
+  "t": 8.7,
+  "sfx": "C:/Users/irsha/Desktop/loopmates-claude/flim-copy/sfx/tick.wav",
+  "gain": -19
+ },
+ {
+  "t": 8.833,
+  "sfx": "C:/Users/irsha/Desktop/loopmates-claude/flim-copy/sfx/tick.wav",
+  "gain": -19
+ },
+ {
+  "t": 8.967,
+  "sfx": "C:/Users/irsha/Desktop/loopmates-claude/flim-copy/sfx/tick.wav",
+  "gain": -19
+ },
+ {
+  "t": 9.1,
+  "sfx": "C:/Users/irsha/Desktop/loopmates-claude/flim-copy/sfx/tick.wav",
+  "gain": -19
+ },
+ {
+  "t": 9.233,
+  "sfx": "C:/Users/irsha/Desktop/loopmates-claude/flim-copy/sfx/tick.wav",
+  "gain": -19
+ },
+ {
+  "t": 9.833,
+  "sfx": "C:/Users/irsha/Desktop/loopmates-claude/flim-copy/sfx/tick.wav",
+  "gain": -15
+ },
+ {
+  "t": 9.933,
+  "sfx": "C:/Users/irsha/Desktop/loopmates-claude/flim-copy/sfx/tick.wav",
+  "gain": -15
+ },
+ {
+  "t": 10.067,
+  "sfx": "C:/Users/irsha/Desktop/loopmates-claude/flim-copy/sfx/tick.wav",
+  "gain": -15
+ },
+ {
+  "t": 10.167,
+  "sfx": "C:/Users/irsha/Desktop/loopmates-claude/flim-copy/sfx/snap.wav",
+  "gain": -11
+ },
+ {
+  "t": 11.367,
+  "sfx": "C:/Users/irsha/Desktop/loopmates-claude/flim-copy/sfx/tick.wav",
+  "gain": -12
+ },
+ {
+  "t": 11.633,
+  "sfx": "C:/Users/irsha/Desktop/loopmates-claude/flim-copy/sfx/tick.wav",
+  "gain": -12
+ },
+ {
+  "t": 11.867,
+  "sfx": "C:/Users/irsha/Desktop/loopmates-claude/flim-copy/sfx/tick.wav",
+  "gain": -12
+ },
+ {
+  "t": 12.067,
+  "sfx": "C:/Users/irsha/Desktop/loopmates-claude/flim-copy/sfx/tick.wav",
+  "gain": -12
+ },
+ {
+  "t": 12.233,
+  "sfx": "C:/Users/irsha/Desktop/loopmates-claude/flim-copy/sfx/tick.wav",
+  "gain": -12
+ },
+ {
+  "t": 12.367,
+  "sfx": "C:/Users/irsha/Desktop/loopmates-claude/flim-copy/sfx/tick.wav",
+  "gain": -12
+ },
+ {
+  "t": 12.5,
+  "sfx": "C:/Users/irsha/Desktop/loopmates-claude/flim-copy/sfx/tick.wav",
+  "gain": -12
+ },
+ {
+  "t": 12.633,
+  "sfx": "C:/Users/irsha/Desktop/loopmates-claude/flim-copy/sfx/tick.wav",
+  "gain": -12
+ },
+ {
+  "t": 12.767,
+  "sfx": "C:/Users/irsha/Desktop/loopmates-claude/flim-copy/sfx/tick.wav",
+  "gain": -12
+ },
+ {
+  "t": 12.9,
+  "sfx": "C:/Users/irsha/Desktop/loopmates-claude/flim-copy/sfx/tick.wav",
+  "gain": -12
+ },
+ {
+  "t": 13.8,
+  "sfx": "C:/Users/irsha/Desktop/loopmates-claude/flim-copy/sfx/snap.wav",
+  "gain": -11
+ },
+ {
+  "t": 14.967,
+  "sfx": "C:/Users/irsha/Desktop/loopmates-claude/flim-copy/sfx/switch.wav",
+  "gain": -12
+ },
+ {
+  "t": 16.933,
+  "sfx": "C:/Users/irsha/Desktop/loopmates-claude/flim-copy/sfx/chime.wav",
+  "gain": -13
+ },
+ {
+  "t": 17.733,
+  "sfx": "C:/Users/irsha/Desktop/loopmates-claude/flim-copy/sfx/pop.wav",
+  "gain": -15
+ },
+ {
+  "t": 17.867,
+  "sfx": "C:/Users/irsha/Desktop/loopmates-claude/flim-copy/sfx/pop.wav",
+  "gain": -15
+ },
+ {
+  "t": 18,
+  "sfx": "C:/Users/irsha/Desktop/loopmates-claude/flim-copy/sfx/pop.wav",
+  "gain": -15
+ },
+ {
+  "t": 18.1,
+  "sfx": "C:/Users/irsha/Desktop/loopmates-claude/flim-copy/sfx/pop.wav",
+  "gain": -15
+ },
+ {
+  "t": 18.233,
+  "sfx": "C:/Users/irsha/Desktop/loopmates-claude/flim-copy/sfx/pop.wav",
+  "gain": -15
+ },
+ {
+  "t": 18.367,
+  "sfx": "C:/Users/irsha/Desktop/loopmates-claude/flim-copy/sfx/pop.wav",
+  "gain": -15
+ },
+ {
+  "t": 18.5,
+  "sfx": "C:/Users/irsha/Desktop/loopmates-claude/flim-copy/sfx/pop.wav",
+  "gain": -15
+ },
+ {
+  "t": 19.633,
+  "sfx": "C:/Users/irsha/Desktop/loopmates-claude/flim-copy/sfx/pop.wav",
+  "gain": -12
+ },
+ {
+  "t": 22.3,
+  "sfx": "C:/Users/irsha/Desktop/loopmates-claude/flim-copy/sfx/tick.wav",
+  "gain": -15
+ },
+ {
+  "t": 22.9,
+  "sfx": "C:/Users/irsha/Desktop/loopmates-claude/flim-copy/sfx/tick.wav",
+  "gain": -15
+ },
+ {
+  "t": 23.667,
+  "sfx": "C:/Users/irsha/Desktop/loopmates-claude/flim-copy/sfx/tick.wav",
+  "gain": -15
+ },
+ {
+  "t": 25.433,
+  "sfx": "C:/Users/irsha/Desktop/loopmates-claude/flim-copy/sfx/tick.wav",
+  "gain": -20
+ },
+ {
+  "t": 25.633,
+  "sfx": "C:/Users/irsha/Desktop/loopmates-claude/flim-copy/sfx/tick.wav",
+  "gain": -20
+ },
+ {
+  "t": 25.733,
+  "sfx": "C:/Users/irsha/Desktop/loopmates-claude/flim-copy/sfx/tick.wav",
+  "gain": -20
+ },
+ {
+  "t": 25.9,
+  "sfx": "C:/Users/irsha/Desktop/loopmates-claude/flim-copy/sfx/tick.wav",
+  "gain": -20
+ },
+ {
+  "t": 26,
+  "sfx": "C:/Users/irsha/Desktop/loopmates-claude/flim-copy/sfx/tick.wav",
+  "gain": -20
+ },
+ {
+  "t": 26.3,
+  "sfx": "C:/Users/irsha/Desktop/loopmates-claude/flim-copy/sfx/tick.wav",
+  "gain": -20
+ },
+ {
+  "t": 26.433,
+  "sfx": "C:/Users/irsha/Desktop/loopmates-claude/flim-copy/sfx/tick.wav",
+  "gain": -20
+ },
+ {
+  "t": 26.533,
+  "sfx": "C:/Users/irsha/Desktop/loopmates-claude/flim-copy/sfx/tick.wav",
+  "gain": -20
+ },
+ {
+  "t": 26.633,
+  "sfx": "C:/Users/irsha/Desktop/loopmates-claude/flim-copy/sfx/tick.wav",
+  "gain": -20
+ },
+ {
+  "t": 26.733,
+  "sfx": "C:/Users/irsha/Desktop/loopmates-claude/flim-copy/sfx/tick.wav",
+  "gain": -20
+ },
+ {
+  "t": 26.933,
+  "sfx": "C:/Users/irsha/Desktop/loopmates-claude/flim-copy/sfx/switch.wav",
+  "gain": -12
+ },
+ {
+  "t": 27.7,
+  "sfx": "C:/Users/irsha/Desktop/loopmates-claude/flim-copy/sfx/tick.wav",
+  "gain": -15
+ },
+ {
+  "t": 27.8,
+  "sfx": "C:/Users/irsha/Desktop/loopmates-claude/flim-copy/sfx/tick.wav",
+  "gain": -15
+ },
+ {
+  "t": 27.9,
+  "sfx": "C:/Users/irsha/Desktop/loopmates-claude/flim-copy/sfx/tick.wav",
+  "gain": -15
+ },
+ {
+  "t": 28,
+  "sfx": "C:/Users/irsha/Desktop/loopmates-claude/flim-copy/sfx/tick.wav",
+  "gain": -15
+ },
+ {
+  "t": 28.267,
+  "sfx": "C:/Users/irsha/Desktop/loopmates-claude/flim-copy/sfx/pop.wav",
+  "gain": -12
+ },
+ {
+  "t": 28.867,
+  "sfx": "C:/Users/irsha/Desktop/loopmates-claude/flim-copy/sfx/tick.wav",
+  "gain": -15
+ },
+ {
+  "t": 29,
+  "sfx": "C:/Users/irsha/Desktop/loopmates-claude/flim-copy/sfx/tick.wav",
+  "gain": -15
+ },
+ {
+  "t": 29.133,
+  "sfx": "C:/Users/irsha/Desktop/loopmates-claude/flim-copy/sfx/tick.wav",
+  "gain": -15
+ },
+ {
+  "t": 29.467,
+  "sfx": "C:/Users/irsha/Desktop/loopmates-claude/flim-copy/sfx/pop.wav",
+  "gain": -12
+ },
+ {
+  "t": 29.933,
+  "sfx": "C:/Users/irsha/Desktop/loopmates-claude/flim-copy/sfx/tick.wav",
+  "gain": -15
+ },
+ {
+  "t": 30.1,
+  "sfx": "C:/Users/irsha/Desktop/loopmates-claude/flim-copy/sfx/tick.wav",
+  "gain": -15
+ },
+ {
+  "t": 30.267,
+  "sfx": "C:/Users/irsha/Desktop/loopmates-claude/flim-copy/sfx/tick.wav",
+  "gain": -15
+ },
+ {
+  "t": 30.8,
+  "sfx": "C:/Users/irsha/Desktop/loopmates-claude/flim-copy/sfx/pop.wav",
+  "gain": -12
+ },
+ {
+  "t": 31.233,
+  "sfx": "C:/Users/irsha/Desktop/loopmates-claude/flim-copy/sfx/tick.wav",
+  "gain": -15
+ },
+ {
+  "t": 31.4,
+  "sfx": "C:/Users/irsha/Desktop/loopmates-claude/flim-copy/sfx/tick.wav",
+  "gain": -15
+ },
+ {
+  "t": 31.567,
+  "sfx": "C:/Users/irsha/Desktop/loopmates-claude/flim-copy/sfx/tick.wav",
+  "gain": -15
+ },
+ {
+  "t": 32.033,
+  "sfx": "C:/Users/irsha/Desktop/loopmates-claude/flim-copy/sfx/tick.wav",
+  "gain": -15
+ },
+ {
+  "t": 32.133,
+  "sfx": "C:/Users/irsha/Desktop/loopmates-claude/flim-copy/sfx/tick.wav",
+  "gain": -15
+ },
+ {
+  "t": 32.233,
+  "sfx": "C:/Users/irsha/Desktop/loopmates-claude/flim-copy/sfx/tick.wav",
+  "gain": -15
+ },
+ {
+  "t": 32.333,
+  "sfx": "C:/Users/irsha/Desktop/loopmates-claude/flim-copy/sfx/tick.wav",
+  "gain": -15
+ },
+ {
+  "t": 32.4,
+  "sfx": "C:/Users/irsha/Desktop/loopmates-claude/flim-copy/sfx/success.wav",
+  "gain": -13
+ },
+ {
+  "t": 32.433,
+  "sfx": "C:/Users/irsha/Desktop/loopmates-claude/flim-copy/sfx/tick.wav",
+  "gain": -15
+ },
+ {
+  "t": 32.767,
+  "sfx": "C:/Users/irsha/Desktop/loopmates-claude/flim-copy/sfx/pop.wav",
+  "gain": -12
+ },
+ {
+  "t": 35.7,
+  "sfx": "C:/Users/irsha/Desktop/loopmates-claude/flim-copy/sfx/pop.wav",
+  "gain": -12
+ },
+ {
+  "t": 37.1,
+  "sfx": "C:/Users/irsha/Desktop/loopmates-claude/flim-copy/sfx/switch.wav",
+  "gain": -12
+ },
+ {
+  "t": 37.567,
+  "sfx": "C:/Users/irsha/Desktop/loopmates-claude/flim-copy/sfx/success.wav",
+  "gain": -13
+ },
+ {
+  "t": 38.167,
+  "sfx": "C:/Users/irsha/Desktop/loopmates-claude/flim-copy/sfx/pop.wav",
+  "gain": -12
+ },
+ {
+  "t": 39.533,
+  "sfx": "C:/Users/irsha/Desktop/loopmates-claude/flim-copy/sfx/chime.wav",
+  "gain": -13
+ },
+ {
+  "t": 40.667,
+  "sfx": "C:/Users/irsha/Desktop/loopmates-claude/flim-copy/sfx/pop.wav",
+  "gain": -12
+ },
+ {
+  "t": 41.233,
+  "sfx": "C:/Users/irsha/Desktop/loopmates-claude/flim-copy/sfx/snap.wav",
+  "gain": -11
+ },
+ {
+  "t": 42.3,
+  "sfx": "C:/Users/irsha/Desktop/loopmates-claude/flim-copy/sfx/tick.wav",
+  "gain": -15
+ },
+ {
+  "t": 43.067,
+  "sfx": "C:/Users/irsha/Desktop/loopmates-claude/flim-copy/sfx/tick.wav",
+  "gain": -15
+ },
+ {
+  "t": 45.767,
+  "sfx": "C:/Users/irsha/Desktop/loopmates-claude/flim-copy/sfx/chime.wav",
+  "gain": -13
+ },
+ {
+  "t": 46.3,
+  "sfx": "C:/Users/irsha/Desktop/loopmates-claude/flim-copy/sfx/switch.wav",
+  "gain": -12
+ },
+ {
+  "t": 46.633,
+  "sfx": "C:/Users/irsha/Desktop/loopmates-claude/flim-copy/sfx/pop.wav",
+  "gain": -12
+ },
+ {
+  "t": 47.167,
+  "sfx": "C:/Users/irsha/Desktop/loopmates-claude/flim-copy/sfx/pop.wav",
+  "gain": -12
+ },
+ {
+  "t": 47.5,
+  "sfx": "C:/Users/irsha/Desktop/loopmates-claude/flim-copy/sfx/switch.wav",
+  "gain": -12
+ },
+ {
+  "t": 47.7,
+  "sfx": "C:/Users/irsha/Desktop/loopmates-claude/flim-copy/sfx/pop.wav",
+  "gain": -12
+ },
+ {
+  "t": 48.367,
+  "sfx": "C:/Users/irsha/Desktop/loopmates-claude/flim-copy/sfx/switch.wav",
+  "gain": -12
+ },
+ {
+  "t": 48.8,
+  "sfx": "C:/Users/irsha/Desktop/loopmates-claude/flim-copy/sfx/pop.wav",
+  "gain": -12
+ },
+ {
+  "t": 48.867,
+  "sfx": "C:/Users/irsha/Desktop/loopmates-claude/flim-copy/sfx/tick.wav",
+  "gain": -17
+ },
+ {
+  "t": 49,
+  "sfx": "C:/Users/irsha/Desktop/loopmates-claude/flim-copy/sfx/tick.wav",
+  "gain": -17
+ },
+ {
+  "t": 49.133,
+  "sfx": "C:/Users/irsha/Desktop/loopmates-claude/flim-copy/sfx/tick.wav",
+  "gain": -17
+ },
+ {
+  "t": 49.267,
+  "sfx": "C:/Users/irsha/Desktop/loopmates-claude/flim-copy/sfx/tick.wav",
+  "gain": -17
+ },
+ {
+  "t": 49.4,
+  "sfx": "C:/Users/irsha/Desktop/loopmates-claude/flim-copy/sfx/tick.wav",
+  "gain": -17
+ },
+ {
+  "t": 49.667,
+  "sfx": "C:/Users/irsha/Desktop/loopmates-claude/flim-copy/sfx/pop.wav",
+  "gain": -12
+ },
+ {
+  "t": 50.167,
+  "sfx": "C:/Users/irsha/Desktop/loopmates-claude/flim-copy/sfx/snap.wav",
+  "gain": -11
+ },
+ {
+  "t": 50.533,
+  "sfx": "C:/Users/irsha/Desktop/loopmates-claude/flim-copy/sfx/pop.wav",
+  "gain": -12
+ },
+ {
+  "t": 53.233,
+  "sfx": "C:/Users/irsha/Desktop/loopmates-claude/flim-copy/sfx/tick.wav",
+  "gain": -15
+ },
+ {
+  "t": 53.433,
+  "sfx": "C:/Users/irsha/Desktop/loopmates-claude/flim-copy/sfx/tick.wav",
+  "gain": -15
+ },
+ {
+  "t": 53.633,
+  "sfx": "C:/Users/irsha/Desktop/loopmates-claude/flim-copy/sfx/tick.wav",
+  "gain": -15
+ },
+ {
+  "t": 54.267,
+  "sfx": "C:/Users/irsha/Desktop/loopmates-claude/flim-copy/sfx/chime.wav",
+  "gain": -13
+ },
+ {
+  "t": 56.9,
+  "sfx": "C:/Users/irsha/Desktop/loopmates-claude/flim-copy/sfx/snap.wav",
+  "gain": -11
+ },
+ {
+  "t": 58.567,
+  "sfx": "C:/Users/irsha/Desktop/loopmates-claude/flim-copy/sfx/counter.wav",
+  "gain": -12
+ },
+ {
+  "t": 59.033,
+  "sfx": "C:/Users/irsha/Desktop/loopmates-claude/flim-copy/sfx/success.wav",
+  "gain": -13
+ }
+]
