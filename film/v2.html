@@ -1,0 +1,221 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Loopmates film v2</title>
+<meta name="viewport" content="width=1920, height=1080">
+<link rel="stylesheet" href="./runtime/fonts.css">
+<style>
+/* The problem (cold night, no lime): cream = "mine", RED = the bill. Lime arrives with Loopmates and means "Loopmates is on it". */
+@font-face { font-family: "Bricolage"; src: url("fonts/BricolageGrotesque-wght.woff2") format("woff2"); font-weight: 200 800; font-display: block; }
+@font-face { font-family: "JBMono"; src: url("fonts/JetBrainsMono-400.woff2") format("woff2"); font-weight: 400; font-display: block; }
+:root { --ink: #F4F1EA; --night: #07090F; --bill: #D9432C; --bg: #0B0A0D; --surface: #131217; --surface2: #1B1A21; --line: rgba(244, 241, 234, .13); --acc: #D4FF4F; --soft: rgba(244, 241, 234, .66); }
+* { box-sizing: border-box; }
+html, body { margin: 0; width: 1920px; height: 1080px; overflow: hidden; background: #000; }
+#main { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; overflow: hidden; background: var(--night); color: var(--ink);
+  font-family: "Inter", system-ui, sans-serif; --cx: 520; --cy: 2985; --z: 2.05; }
+#main * { position: absolute; }
+#main .mw, #main .inl * { position: static; }
+
+/* ============ the night world (problem, and my desk) ============ */
+#stage1 { inset: 0; }
+#sky { inset: 0; background:
+  radial-gradient(1300px 760px at 80% 6%, rgba(72, 100, 160, .20), transparent 70%),
+  linear-gradient(180deg, #05070C 0%, #090C14 60%, #0C1019 100%); }
+#stars { left: 0; top: -260px; width: 1920px; height: 2700px; transform: translateY(calc((var(--cy) - 600) * -0.22px)); }
+#stars i { border-radius: 50%; background: #CFE0FF; }
+#vig { inset: 0; background: radial-gradient(ellipse at 50% 50%, transparent 52%, rgba(0, 0, 0, .5) 100%); }
+#world { left: 0; top: 0; width: 1920px; height: 3600px; transform-origin: 0 0;
+  transform: translate(calc(960px - var(--z) * var(--cx) * 1px), calc(540px - var(--z) * var(--cy) * 1px)) scale(var(--z)); }
+
+#moon { left: 1440px; top: 292px; width: 88px; height: 88px; border-radius: 50%;
+  background: radial-gradient(circle at 38% 34%, #F7F9FD 0%, #D6DDE9 58%, #B7C1D2 100%);
+  box-shadow: 0 0 60px 18px rgba(170, 195, 255, .22), 0 0 170px 70px rgba(120, 150, 230, .12); }
+.wisp { border-radius: 50%; background: rgba(70, 86, 120, .30); filter: blur(34px); }
+.cloud { left: 0; top: 0; width: 1920px; height: 1200px; }
+.cloud i { border-radius: 50%; }
+#cloudBack i { background: radial-gradient(circle at 64% 24%, #46526C 0%, #2A3346 40%, #171D2A 100%); filter: blur(7px); }
+#cloudFront i { background: radial-gradient(circle at 62% 22%, #505D78 0%, #2E384C 42%, #1A202D 100%); filter: blur(8px); }
+
+#box { left: 660px; top: 440px; width: 600px; height: 360px; border-radius: 34px;
+  background: linear-gradient(180deg, #1C212C 0%, #12161E 100%); border: 2px solid #2C3444; border-top-color: #414C62;
+  box-shadow: inset 0 2px 0 rgba(255, 255, 255, .07), 0 30px 60px rgba(0, 0, 0, .45); }
+#win { left: 30px; top: 34px; width: 380px; height: 250px; border-radius: 22px; overflow: hidden;
+  background: linear-gradient(180deg, #F2F5FA 0%, #D5DCE7 100%); box-shadow: 0 0 0 3px #0B0E14, 0 0 80px rgba(200, 220, 255, .20); }
+#blinds { left: 0; top: 0; width: 380px; height: 64px; background: repeating-linear-gradient(180deg, rgba(110, 126, 152, .26) 0 3px, transparent 3px 12px); }
+#wdesk { left: 0; top: 206px; width: 380px; height: 44px; background: linear-gradient(180deg, #343B4B, #262C39); }
+#blob { left: 115px; top: 58px; width: 150px; height: 138px; border-radius: 50% 50% 47% 47%;
+  background: radial-gradient(circle at 36% 26%, #FAFBFD 0%, #CDD3DD 36%, #969EAD 70%, #747C8C 100%);
+  box-shadow: inset 0 -16px 26px rgba(40, 48, 64, .35); transform-origin: 50% 100%; }
+#blob .eye { top: 50px; width: 14px; height: 19px; border-radius: 50%; background: #1B1F28; }
+#blob .eye::after { content: ""; position: absolute; left: 3px; top: 3px; width: 5px; height: 5px; border-radius: 50%; background: #fff; }
+#blob .eye.l { left: 48px; } #blob .eye.r { left: 88px; }
+#faceglow { left: 0; top: 0; width: 150px; height: 138px; border-radius: inherit; background: radial-gradient(ellipse at 50% 100%, rgba(140, 185, 255, .62), transparent 62%); }
+#lid { left: 124px; top: 126px; width: 132px; height: 88px; border-radius: 11px; background: linear-gradient(180deg, #262C39, #171B24); border: 2px solid #3A4357; }
+#lid::after { content: ""; position: absolute; left: 55px; top: 32px; width: 18px; height: 18px; border-radius: 50%; background: #3A4357; }
+#glass { inset: 0; background: linear-gradient(115deg, rgba(255, 255, 255, .42) 0%, rgba(255, 255, 255, 0) 26%, rgba(255, 255, 255, 0) 62%, rgba(255, 255, 255, .14) 100%); }
+.led { top: 48px; width: 10px; height: 10px; border-radius: 50%; background: #A9C8FF; box-shadow: 0 0 10px rgba(150, 190, 255, .9); }
+.slit { left: 430px; width: 130px; height: 16px; border-radius: 8px; background: #04060A; box-shadow: inset 0 2px 3px rgba(0, 0, 0, .9), 0 1px 0 rgba(255, 255, 255, .07); }
+.pip { left: 568px; width: 10px; height: 10px; border-radius: 50%; background: #262D3B; }
+.pip b { inset: 0; border-radius: 50%; background: var(--ink); box-shadow: 0 0 10px rgba(244, 241, 234, .8); }
+#sel { left: 426px; top: 212px; width: 156px; height: 58px; border-radius: 16px; background: linear-gradient(180deg, #232A37, #1A202B); border: 2px solid #3A4458; box-shadow: inset 0 1px 0 rgba(255, 255, 255, .06); }
+#sel span { left: 18px; top: 15px; font: 600 22px/26px "Inter"; color: #B4BDCC; letter-spacing: -.01em; }
+#lock { left: 112px; top: 14px; width: 26px; height: 30px; transform-origin: 50% 20%; }
+#pslot { left: 80px; top: 344px; width: 440px; height: 14px; border-radius: 7px; background: #04060A; box-shadow: inset 0 2px 3px rgba(0, 0, 0, .9); }
+
+.chip { left: 0; top: 0; width: 300px; height: 76px; margin: -38px 0 0 -150px; border-radius: 22px; background: var(--ink); color: #14161B; box-shadow: 0 16px 32px rgba(0, 0, 0, .5); }
+.chip b { left: 26px; top: 21px; font: 600 27px/34px "Inter"; letter-spacing: -.01em; }
+.chip i { right: 24px; top: 20px; font: 700 25px/34px "Inter"; font-style: normal; letter-spacing: 3px; }
+
+#paperwrap { left: 740px; top: 800px; width: 440px; height: 2300px; filter: drop-shadow(0 18px 28px rgba(0, 0, 0, .55)); transform-origin: 50% 0; }
+#paper { inset: 0; overflow: hidden; }
+#strip { left: 0; top: 0; width: 440px; height: 2200px; background: linear-gradient(90deg, #DCD8CE 0%, #F4F1EA 7%, #F4F1EA 93%, #DCD8CE 100%); }
+.seg { left: 0; width: 440px; height: 200px; }
+.seg u { left: 22px; top: 0; width: 396px; height: 0; border-top: 3px dashed #C9C2B3; }
+.seg b { left: 28px; top: 22px; font: 400 22px/26px "JBMono"; color: #8D867A; letter-spacing: .08em; }
+.seg s { right: 28px; top: 22px; font: 400 22px/26px "JBMono"; color: #8D867A; text-decoration: none; }
+.seg em { left: 0; top: 62px; width: 440px; text-align: center; font: 800 98px/108px "Bricolage"; font-style: normal; letter-spacing: -.04em; color: var(--bill); }
+
+#desk { left: -700px; top: 3090px; width: 3320px; height: 520px; background: linear-gradient(180deg, #1B202B 0%, #11141C 12%, #0A0D13 100%); border-top: 2px solid #3A455C; }
+#clockglow { left: 260px; top: 3092px; width: 520px; height: 150px; background: radial-gradient(ellipse at 50% 0%, rgba(150, 185, 255, .40), transparent 70%); filter: blur(10px); }
+#clock { left: 300px; top: 2890px; width: 440px; height: 200px; border-radius: 40px 40px 26px 26px; background: linear-gradient(180deg, #1C212C, #0D1016);
+  border: 2px solid #2B3345; border-top-color: #414C62; box-shadow: inset 0 2px 0 rgba(255, 255, 255, .06), 0 0 90px rgba(120, 160, 255, .12); }
+#face { left: 20px; top: 20px; width: 396px; height: 152px; border-radius: 24px; background: #04060A; overflow: hidden; }
+.dig { left: 6px; top: 0; width: 300px; text-align: center; font: 800 138px/152px "Bricolage"; letter-spacing: -.03em; color: #E4EDFF; text-shadow: 0 0 26px rgba(140, 180, 255, .7), 0 0 70px rgba(110, 150, 255, .38); }
+#ampm { left: 316px; top: 96px; font: 600 30px/34px "Inter"; color: #9FB6E6; text-shadow: 0 0 16px rgba(120, 160, 255, .5); }
+#mug { left: 884px; top: 2992px; width: 84px; height: 98px; border-radius: 8px 8px 20px 20px; background: linear-gradient(90deg, #262D3B 0%, #3A4458 46%, #1B202B 100%); border-top: 3px solid #56627C; }
+#mughandle { left: 958px; top: 3012px; width: 40px; height: 50px; border-radius: 0 24px 24px 0; border: 9px solid #2A3141; border-left: 0; }
+#laptop { left: 1130px; top: 2790px; width: 500px; height: 300px; }
+#lscreen { left: 35px; top: 0; width: 430px; height: 276px; border-radius: 18px 18px 6px 6px; background: linear-gradient(180deg, #1D222D, #141821); border: 2px solid #2D3547; border-top-color: #465168; }
+#ldisp { left: 14px; top: 14px; width: 398px; height: 240px; border-radius: 6px; background: linear-gradient(118deg, #10141D 0%, #070A0F 34%, #05070B 100%); overflow: hidden; }
+#lsheen { left: 0; top: -40px; width: 150px; height: 330px; background: linear-gradient(90deg, rgba(170, 195, 255, 0) 0%, rgba(170, 195, 255, .17) 50%, rgba(170, 195, 255, 0) 100%); transform: skewX(-22deg); }
+#lon { inset: 0; background: #FFFDF5; }
+#lon i { inset: 0; background-image: radial-gradient(circle, rgba(20, 18, 26, .17) .28px, transparent .34px); background-size: 5.1px 5.1px; background-position: 2.55px 2.55px; }
+#lonMark { left: 171px; top: 92px; width: 56px; height: 56px; }
+#lbase { left: 0; top: 276px; width: 500px; height: 22px; border-radius: 4px 4px 14px 14px; background: linear-gradient(180deg, #333B4C, #161A23); }
+#sleep { left: 247px; top: 285px; width: 6px; height: 6px; border-radius: 50%; background: #BFD3FF; box-shadow: 0 0 8px rgba(160, 195, 255, .9); }
+#lspill { left: 930px; top: 2700px; width: 900px; height: 620px; background: radial-gradient(ellipse at 50% 46%, rgba(255, 250, 230, .34), rgba(255, 250, 230, .09) 42%, transparent 70%); filter: blur(22px); }
+.zz { font: 700 54px/54px "Bricolage"; color: #C6D4F2; }
+
+/* ============ words ============ */
+.cap { left: 0; width: 1920px; text-align: center; white-space: pre; font: 700 88px/104px "Bricolage"; letter-spacing: -.035em; color: var(--ink);
+  text-shadow: 0 2px 30px rgba(4, 6, 10, .9), 0 0 90px rgba(4, 6, 10, .7); }
+.cap.l { text-align: left; }
+.lime { color: var(--acc); }
+#cursor, .cur { left: 0; top: 0; width: 46px; height: 62px; overflow: visible; }
+
+/* ============ the Loopmates world (from the reveal on): white paper, vibrant flat colour, thick ink outlines, extruded 3D ============
+   One system: ground = warm white paper with a dot grid that tilts with the camera; every object is an ink-outlined slab extruded 45 deg down-right;
+   Mate colours say WHO; lime #D4FF4F with an ink tick says DONE / a Mate is on it; red says something is wrong. */
+.nbshot { inset: 0; overflow: hidden; background: #FFFDF5; color: #14121A; --cx: 960; --cy: 540; --z: 1; --rx: 0; --ry: 0; --rz: 0; }
+.nbshot.night { background: #191C45; }
+.nbp { inset: 0; perspective: 2300px; perspective-origin: 960px 540px; }
+.nbt { inset: 0; transform-origin: 960px 540px; transform: rotateX(calc(var(--rx) * 1deg)) rotateY(calc(var(--ry) * 1deg)) rotateZ(calc(var(--rz) * 1deg)); }
+.nbw { left: 0; top: 0; width: 1920px; height: 1080px; transform-origin: 0 0;
+  transform: translate(calc(960px - var(--z) * var(--cx) * 1px), calc(540px - var(--z) * var(--cy) * 1px)) scale(var(--z)); }
+.dots { left: -3000px; top: -3000px; width: 11000px; height: 9000px; background-image: radial-gradient(circle, rgba(20, 18, 26, .17) 2.6px, transparent 3.2px); background-size: 48px 48px; }
+.night .dots { background-image: radial-gradient(circle, rgba(170, 180, 255, .20) 2.6px, transparent 3.2px); }
+.nbv { inset: 0; pointer-events: none; background: radial-gradient(ellipse at 50% 46%, transparent 58%, rgba(60, 40, 20, .10) 100%); }
+.night .nbv { background: radial-gradient(ellipse at 50% 46%, transparent 50%, rgba(5, 6, 20, .55) 100%); }
+
+.slab { border: 5px solid #14121A; border-radius: 28px; background: #fff; }
+.tile { border: 5px solid #14121A; border-radius: 34px; }
+.tile img, .av img { left: 5%; top: 5%; width: 90%; height: 90%; }
+.av { border: 4px solid #14121A; border-radius: 22px; }
+.tag { border: 4px solid #14121A; border-radius: 14px; background: #fff; font: 700 30px/40px "Bricolage"; letter-spacing: -.02em; text-align: center; white-space: pre; padding: 0 16px; }
+.hd { font-family: "Bricolage"; font-weight: 800; letter-spacing: -.035em; white-space: pre; color: #14121A; }
+.tx { font-family: "Inter"; font-weight: 600; letter-spacing: -.015em; white-space: pre; color: #14121A; }
+.tl { font-family: "Inter"; font-weight: 600; letter-spacing: -.01em; white-space: pre; color: #5C5866; }
+.cd { font-family: "JBMono"; white-space: pre; }
+.btn3 { border: 5px solid #14121A; border-radius: 20px; text-align: center; font: 700 34px/74px "Bricolage"; letter-spacing: -.02em; white-space: pre; color: #14121A; }
+.fld { border: 4px solid #14121A; border-radius: 16px; background: #fff; }
+.stk { border: 5px solid #14121A; border-radius: 22px; font: 800 64px/92px "Bricolage"; letter-spacing: -.035em; text-align: center; white-space: pre; padding: 0 30px; }
+.ok { border-radius: 50%; border: 4px solid #14121A; background: #D4FF4F; }
+.ok::after { content: ""; position: absolute; left: 31%; top: 17%; width: 26%; height: 46%; border: solid #14121A; border-width: 0 6px 6px 0; transform: rotate(42deg); }
+.no { border-radius: 50%; border: 4px solid #14121A; background: #FF5A4A; }
+.no::before, .no::after { content: ""; position: absolute; left: 47%; top: 20%; width: 9%; height: 60%; background: #14121A; border-radius: 3px; transform: rotate(45deg); }
+.no::after { transform: rotate(-45deg); }
+.wh { left: 0; top: 0; right: 0; height: 74px; border-bottom: 5px solid #14121A; border-radius: 22px 22px 0 0; }
+.wh b { left: 92px; top: 15px; font: 800 34px/42px "Bricolage"; letter-spacing: -.02em; white-space: pre; }
+.wh .mk { left: 24px; top: 13px; width: 50px; height: 50px; }
+.bub { border: 4px solid #14121A; border-radius: 26px; font: 600 36px/48px "Inter"; letter-spacing: -.015em; white-space: pre; padding: 18px 28px; }
+.mark { overflow: visible; }
+.l3 { transform-style: preserve-3d; }
+.l3 > * { backface-visibility: hidden; }
+
+</style>
+</head>
+<body>
+<div id="main">
+
+  <!-- ====================== the night world ====================== -->
+  <div id="stage1">
+    <div id="sky"></div>
+    <div id="stars"></div>
+    <div id="world">
+      <div id="moon"></div>
+      <div class="wisp" style="left:140px;top:1330px;width:620px;height:130px"></div>
+      <div class="wisp" style="left:1180px;top:1700px;width:700px;height:150px"></div>
+      <div class="wisp" style="left:360px;top:2110px;width:640px;height:120px"></div>
+      <div class="wisp" style="left:1260px;top:2430px;width:560px;height:110px"></div>
+      <div id="cloudBack" class="cloud"></div>
+      <div id="box">
+        <div id="win"><div id="blinds"></div><div id="blob"><div id="faceglow"></div><i class="eye l"></i><i class="eye r"></i></div><div id="wdesk"></div><div id="lid"></div><div id="glass"></div></div>
+        <i class="led" id="led0" style="left:436px"></i><i class="led" id="led1" style="left:456px"></i><i class="led" id="led2" style="left:476px"></i>
+        <div class="slit" style="top:82px"></div><div class="pip" style="top:85px"><b id="pip0"></b></div>
+        <div class="slit" style="top:118px"></div><div class="pip" style="top:121px"><b id="pip1"></b></div>
+        <div class="slit" style="top:154px"></div><div class="pip" style="top:157px"><b id="pip2"></b></div>
+        <div id="sel" data-ui><span>Model</span>
+          <svg id="lock" viewBox="0 0 26 30"><path d="M7 13V9a6 6 0 0 1 12 0v4" fill="none" stroke="#B4BDCC" stroke-width="3" stroke-linecap="round"/><rect x="3" y="13" width="20" height="15" rx="4" fill="#B4BDCC"/></svg>
+        </div>
+        <div id="pslot"></div>
+      </div>
+      <div id="cloudFront" class="cloud"></div>
+      <div id="paperwrap"><div id="paper"><div id="strip" data-ui></div></div></div>
+      <div class="chip" id="chip0" data-ui><b>GitHub</b><i>••••••••</i></div>
+      <div class="chip" id="chip1" data-ui><b>Gmail</b><i>••••••••</i></div>
+      <div class="chip" id="chip2" data-ui><b>Bank</b><i>••••••••</i></div>
+
+      <div id="lspill"></div>
+      <div id="desk"></div>
+      <div id="clockglow"></div>
+      <div id="clock"><div id="face"><div class="dig" id="dOld">1:59</div><div class="dig" id="dNew">2:00</div><div id="ampm">AM</div></div></div>
+      <div id="mughandle"></div><div id="mug"></div>
+      <div id="laptop"><div id="lscreen"><div id="ldisp"><div id="lsheen"></div><div id="lon"><i></i><div id="lonMark"></div></div></div></div><div id="lbase"></div><i id="sleep"></i></div>
+      <div class="zz" id="z0" style="left:1612px;top:2772px">z</div>
+      <div class="zz" id="z1" style="left:1650px;top:2742px">z</div>
+      <div class="zz" id="z2" style="left:1692px;top:2712px">z</div>
+    </div>
+    <div id="vig"></div>
+
+    <div class="cap" id="capC" style="top:150px">Somewhere out there,</div>
+    <div class="cap" id="capB" style="top:900px">my AI agent is hard at work.</div>
+    <div class="cap" id="capD" style="top:912px">In someone else's cloud.</div>
+    <div class="cap" id="capE" style="top:912px;left:-90px">Holding my passwords.</div>
+    <div class="cap l" id="capF" style="left:1056px;top:396px;width:860px;font-size:92px;line-height:106px">On a model
+I don't control.</div>
+    <div class="cap" id="capG1" style="top:640px;width:1004px;text-align:right;font-size:124px;line-height:136px">And the</div>
+    <div class="cap l" id="capG2" style="top:640px;left:1062px;width:880px;font-size:124px;line-height:136px">bill?</div>
+    <div class="cap l" id="capH" style="left:1040px;top:462px;width:880px;font-size:94px;line-height:112px">Every single month.</div>
+    <div class="cap" id="capI" style="top:150px">I didn't want another assistant.</div>
+    <div class="cap" id="capJ" style="top:150px">I wanted a second brain!</div>
+    <svg id="cursor" viewBox="0 0 46 62"><path d="M3 3v44l12-11 8 19 8-4-8-18h17z" fill="#F4F1EA" stroke="#0B0D12" stroke-width="3.5" stroke-linejoin="round"/></svg>
+  </div>
+
+  <!-- the white world: shots are built by v2-nb*.js -->
+</div>
+
+<script src="./runtime/vendor/gsap.min.js"></script>
+<script src="./runtime/motion.js"></script>
+<script src="./audio/v2/words.js"></script>
+<script src="./v2.js"></script>
+<script src="./v2-nb.js"></script>
+<script src="./v2-nb-s34.js"></script>
+<script src="./v2-nb-s5.js"></script>
+<script src="./v2-nb-s6.js"></script>
+<script src="./v2-nb-s7.js"></script>
+<script src="./v2-nb-s10.js"></script>
+<script src="./v2-nb-s12.js"></script>
+<script src="./v2-end.js"></script>
+</body>
+</html>

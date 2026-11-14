@@ -1,0 +1,29 @@
+[whispers] It's 2 a.m. [sighs] And somewhere out there, my AI agent is hard at work. In someone else's cloud. [wry] Holding my passwords. Running on a model I don't control. And the bill? [dry] Two hundred dollars. Every. Single. Month.
+
+[thoughtful] I didn't want another assistant. [excited] I wanted a second brain! So, we built Loopmates! [bright] Nineteen Mates. Nineteen little brains. Each with a name, a voice, and one thing they're really good at. [playful] Need a twentieth? I just make one. [proud] And every single one of them lives on one computer. Mine.
+
+[quick] Setup? One command. A free model key. Scan a code. Done. [confident] And if a model goes down mid-sentence? The next one picks it right up. All on free tiers.
+
+[casual] I talk to them like a team. "Hey Research, what's new in solar batteries?" Sources and all. Mimo's the leader. It hands the work to whoever fits. [excited] Stuck on an idea? They argue it out! Everyone picks a side. And when I need real numbers, Data writes actual Python. [smug] No guessing.
+
+[fast paced] Now the fun part. I say it once: "Add dark mode. Run the tests." Planner splits it up. Research finds the way. Code makes the change. Ops checks the build. All inside a sandbox, nowhere near my files. And a second Mate double-checks every step. [firm] Something risky? Halo stops and asks me first. I tap approve. [pleased] Tests green. Pull request, waiting. [laughs] I wasn't even in the loop!
+
+[bright] And they don't just talk. They do things. Eighty-six tools! Search the web, read my files, set a reminder, kick off a run. Browser opens a real browser, reads the page, fills in the form... [playful] and stops dead at the password field. That one's mine. [excited] Same job every week? I describe it in one sentence, and Flow draws the whole pipeline. Drag a step. Swap a Mate. Save. Every Monday, nine sharp, it just runs. Missing a tool? Plug in an MCP server. Same Mates, brand new hands.
+
+[thoughtful] What did I decide last week? Mimo remembers. I said "shorter, please" once. Once! And they remembered. [curious] And when nobody needs them? They go back over their own mistakes... [pleased] so they don't make them twice. No skill for the job? [mischievous] They write one.
+
+[bright] And it's not all work. Chef plans dinner and fills my grocery list. Tune builds a playlist from what I actually listen to. Luna keeps my journal. [gentle] And Zen notices I slept badly, and goes easy on my calendar.
+
+[warm] Here's the part I love. They keep watch, so I don't have to. My deadlines. My repos. The news. Even my house. Then they decide: a morning briefing, a quick message, or a phone call. I can even say, "Call me at six." And at six, it calls. Already caught up.
+
+[whispers] Last night. 11 p.m. I'm already in bed. The garage door? Wide open. I completely forgot. [surprised] But Mimo didn't. It's been watching the house through Home Assistant. My phone rings. [as Mimo] "Hey, your garage is still open. Want me to close it?" [sleepy] Yes, please. [as Mimo] "Lights off too?" [laughs] Yes. Door's shut. House is dark. I never left the bed.
+
+[playful] And every Friday? Team stand-up. Each Mate gives one line, in its own voice.
+
+[bright] They find me anywhere. Telegram. Slack. WhatsApp. My phone. They plug into everything I already use. Got a small team? Everyone gets the bot, and everyone sees only their own work.
+
+[confident] My models. My keys. My machine. They never buy anything. They never type my passwords. [wry] And if some web page tries to boss them around? [scoffs] They don't listen.
+
+[soft] By morning, the work is done. The summary's waiting. [warm] Loopmates. Working while I don't.
+
+[teasing] Oh, and the subscription? [laughs] There isn't one!
