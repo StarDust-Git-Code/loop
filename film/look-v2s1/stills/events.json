@@ -1,0 +1,992 @@
+[
+ {
+  "t": 0,
+  "frame": 0,
+  "type": "hide",
+  "label": "#lon"
+ },
+ {
+  "t": 0.7,
+  "frame": 21,
+  "type": "enter",
+  "label": "#dNew"
+ },
+ {
+  "t": 0.7333,
+  "frame": 22,
+  "type": "sfx",
+  "label": "tick: the minute flips"
+ },
+ {
+  "t": 0.8,
+  "frame": 24,
+  "type": "hide",
+  "label": "#dOld"
+ },
+ {
+  "t": 2.4333,
+  "frame": 73,
+  "type": "show",
+  "label": "#z0"
+ },
+ {
+  "t": 2.6333,
+  "frame": 79,
+  "type": "show",
+  "label": "#z1"
+ },
+ {
+  "t": 2.8333,
+  "frame": 85,
+  "type": "show",
+  "label": "#z2"
+ },
+ {
+  "t": 3.5,
+  "frame": 105,
+  "type": "enter",
+  "label": "Somewhere"
+ },
+ {
+  "t": 3.5,
+  "frame": 105,
+  "type": "word",
+  "label": "Somewhere"
+ },
+ {
+  "t": 3.9667,
+  "frame": 119,
+  "type": "enter",
+  "label": "out"
+ },
+ {
+  "t": 3.9667,
+  "frame": 119,
+  "type": "word",
+  "label": "out"
+ },
+ {
+  "t": 4.1333,
+  "frame": 124,
+  "type": "enter",
+  "label": "there,"
+ },
+ {
+  "t": 4.1333,
+  "frame": 124,
+  "type": "word",
+  "label": "there,"
+ },
+ {
+  "t": 4.7667,
+  "frame": 143,
+  "type": "exit",
+  "label": "#capC"
+ },
+ {
+  "t": 4.8333,
+  "frame": 145,
+  "type": "enter",
+  "label": "my"
+ },
+ {
+  "t": 4.8333,
+  "frame": 145,
+  "type": "word",
+  "label": "my"
+ },
+ {
+  "t": 5.1,
+  "frame": 153,
+  "type": "sfx",
+  "label": "tick: key"
+ },
+ {
+  "t": 5.1667,
+  "frame": 155,
+  "type": "enter",
+  "label": "AI"
+ },
+ {
+  "t": 5.1667,
+  "frame": 155,
+  "type": "word",
+  "label": "AI"
+ },
+ {
+  "t": 5.2333,
+  "frame": 157,
+  "type": "sfx",
+  "label": "tick: key"
+ },
+ {
+  "t": 5.3667,
+  "frame": 161,
+  "type": "sfx",
+  "label": "tick: key"
+ },
+ {
+  "t": 5.5,
+  "frame": 165,
+  "type": "sfx",
+  "label": "tick: key"
+ },
+ {
+  "t": 5.5667,
+  "frame": 167,
+  "type": "enter",
+  "label": "agent"
+ },
+ {
+  "t": 5.5667,
+  "frame": 167,
+  "type": "word",
+  "label": "agent"
+ },
+ {
+  "t": 5.6333,
+  "frame": 169,
+  "type": "sfx",
+  "label": "tick: key"
+ },
+ {
+  "t": 5.7667,
+  "frame": 173,
+  "type": "sfx",
+  "label": "tick: key"
+ },
+ {
+  "t": 5.9,
+  "frame": 177,
+  "type": "sfx",
+  "label": "tick: key"
+ },
+ {
+  "t": 5.9667,
+  "frame": 179,
+  "type": "enter",
+  "label": "is"
+ },
+ {
+  "t": 5.9667,
+  "frame": 179,
+  "type": "word",
+  "label": "is"
+ },
+ {
+  "t": 6.0333,
+  "frame": 181,
+  "type": "sfx",
+  "label": "tick: key"
+ },
+ {
+  "t": 6.1667,
+  "frame": 185,
+  "type": "sfx",
+  "label": "tick: key"
+ },
+ {
+  "t": 6.2333,
+  "frame": 187,
+  "type": "enter",
+  "label": "hard"
+ },
+ {
+  "t": 6.2333,
+  "frame": 187,
+  "type": "word",
+  "label": "hard"
+ },
+ {
+  "t": 6.3,
+  "frame": 189,
+  "type": "sfx",
+  "label": "tick: key"
+ },
+ {
+  "t": 6.4333,
+  "frame": 193,
+  "type": "sfx",
+  "label": "tick: key"
+ },
+ {
+  "t": 6.5333,
+  "frame": 196,
+  "type": "enter",
+  "label": "at"
+ },
+ {
+  "t": 6.5333,
+  "frame": 196,
+  "type": "word",
+  "label": "at"
+ },
+ {
+  "t": 6.5667,
+  "frame": 197,
+  "type": "sfx",
+  "label": "tick: key"
+ },
+ {
+  "t": 6.6333,
+  "frame": 199,
+  "type": "enter",
+  "label": "work."
+ },
+ {
+  "t": 6.6333,
+  "frame": 199,
+  "type": "word",
+  "label": "work."
+ },
+ {
+  "t": 6.7,
+  "frame": 201,
+  "type": "sfx",
+  "label": "tick: key"
+ },
+ {
+  "t": 6.8333,
+  "frame": 205,
+  "type": "sfx",
+  "label": "tick: key"
+ },
+ {
+  "t": 6.9667,
+  "frame": 209,
+  "type": "sfx",
+  "label": "tick: key"
+ },
+ {
+  "t": 7.1,
+  "frame": 213,
+  "type": "sfx",
+  "label": "tick: key"
+ },
+ {
+  "t": 7.2333,
+  "frame": 217,
+  "type": "sfx",
+  "label": "tick: key"
+ },
+ {
+  "t": 7.3667,
+  "frame": 221,
+  "type": "exit",
+  "label": "#capB"
+ },
+ {
+  "t": 7.3667,
+  "frame": 221,
+  "type": "sfx",
+  "label": "tick: key"
+ },
+ {
+  "t": 7.5,
+  "frame": 225,
+  "type": "sfx",
+  "label": "tick: key"
+ },
+ {
+  "t": 7.5,
+  "frame": 225,
+  "type": "enter",
+  "label": "In"
+ },
+ {
+  "t": 7.5,
+  "frame": 225,
+  "type": "word",
+  "label": "In"
+ },
+ {
+  "t": 7.6333,
+  "frame": 229,
+  "type": "sfx",
+  "label": "tick: key"
+ },
+ {
+  "t": 7.7,
+  "frame": 231,
+  "type": "enter",
+  "label": "someone"
+ },
+ {
+  "t": 7.7,
+  "frame": 231,
+  "type": "word",
+  "label": "someone"
+ },
+ {
+  "t": 7.7667,
+  "frame": 233,
+  "type": "sfx",
+  "label": "tick: key"
+ },
+ {
+  "t": 7.9,
+  "frame": 237,
+  "type": "sfx",
+  "label": "tick: key"
+ },
+ {
+  "t": 8.0333,
+  "frame": 241,
+  "type": "sfx",
+  "label": "tick: key"
+ },
+ {
+  "t": 8.1333,
+  "frame": 244,
+  "type": "enter",
+  "label": "else's"
+ },
+ {
+  "t": 8.1333,
+  "frame": 244,
+  "type": "word",
+  "label": "else's"
+ },
+ {
+  "t": 8.1667,
+  "frame": 245,
+  "type": "sfx",
+  "label": "tick: key"
+ },
+ {
+  "t": 8.3,
+  "frame": 249,
+  "type": "sfx",
+  "label": "tick: key"
+ },
+ {
+  "t": 8.4333,
+  "frame": 253,
+  "type": "sfx",
+  "label": "tick: key"
+ },
+ {
+  "t": 8.5333,
+  "frame": 256,
+  "type": "enter",
+  "label": "cloud."
+ },
+ {
+  "t": 8.5333,
+  "frame": 256,
+  "type": "word",
+  "label": "cloud."
+ },
+ {
+  "t": 8.5667,
+  "frame": 257,
+  "type": "sfx",
+  "label": "tick: key"
+ },
+ {
+  "t": 8.7,
+  "frame": 261,
+  "type": "sfx",
+  "label": "tick: key"
+ },
+ {
+  "t": 8.8333,
+  "frame": 265,
+  "type": "sfx",
+  "label": "tick: key"
+ },
+ {
+  "t": 8.9667,
+  "frame": 269,
+  "type": "sfx",
+  "label": "tick: key"
+ },
+ {
+  "t": 9.0667,
+  "frame": 272,
+  "type": "show",
+  "label": "#chip0"
+ },
+ {
+  "t": 9.1,
+  "frame": 273,
+  "type": "sfx",
+  "label": "tick: key"
+ },
+ {
+  "t": 9.1333,
+  "frame": 274,
+  "type": "exit",
+  "label": "#capD"
+ },
+ {
+  "t": 9.2,
+  "frame": 276,
+  "type": "show",
+  "label": "#chip1"
+ },
+ {
+  "t": 9.2333,
+  "frame": 277,
+  "type": "sfx",
+  "label": "tick: key"
+ },
+ {
+  "t": 9.3333,
+  "frame": 280,
+  "type": "enter",
+  "label": "Holding"
+ },
+ {
+  "t": 9.3333,
+  "frame": 280,
+  "type": "word",
+  "label": "Holding"
+ },
+ {
+  "t": 9.3333,
+  "frame": 280,
+  "type": "show",
+  "label": "#chip2"
+ },
+ {
+  "t": 9.3667,
+  "frame": 281,
+  "type": "sfx",
+  "label": "tick: key"
+ },
+ {
+  "t": 9.5,
+  "frame": 285,
+  "type": "sfx",
+  "label": "tick: key"
+ },
+ {
+  "t": 9.6333,
+  "frame": 289,
+  "type": "sfx",
+  "label": "tick: key"
+ },
+ {
+  "t": 9.7333,
+  "frame": 292,
+  "type": "enter",
+  "label": "my"
+ },
+ {
+  "t": 9.7333,
+  "frame": 292,
+  "type": "word",
+  "label": "my"
+ },
+ {
+  "t": 9.7667,
+  "frame": 293,
+  "type": "sfx",
+  "label": "tick: key"
+ },
+ {
+  "t": 9.9,
+  "frame": 297,
+  "type": "sfx",
+  "label": "tick: key"
+ },
+ {
+  "t": 9.9333,
+  "frame": 298,
+  "type": "enter",
+  "label": "passwords."
+ },
+ {
+  "t": 9.9333,
+  "frame": 298,
+  "type": "word",
+  "label": "passwords."
+ },
+ {
+  "t": 10.0333,
+  "frame": 301,
+  "type": "sfx",
+  "label": "tick: key"
+ },
+ {
+  "t": 10.0333,
+  "frame": 301,
+  "type": "sfx",
+  "label": "pop: password taken"
+ },
+ {
+  "t": 10.0667,
+  "frame": 302,
+  "type": "show",
+  "label": "#pip0"
+ },
+ {
+  "t": 10.1667,
+  "frame": 305,
+  "type": "sfx",
+  "label": "tick: key"
+ },
+ {
+  "t": 10.2,
+  "frame": 306,
+  "type": "sfx",
+  "label": "pop: password taken"
+ },
+ {
+  "t": 10.2333,
+  "frame": 307,
+  "type": "show",
+  "label": "#pip1"
+ },
+ {
+  "t": 10.3,
+  "frame": 309,
+  "type": "sfx",
+  "label": "tick: key"
+ },
+ {
+  "t": 10.3667,
+  "frame": 311,
+  "type": "sfx",
+  "label": "pop: password taken"
+ },
+ {
+  "t": 10.4,
+  "frame": 312,
+  "type": "show",
+  "label": "#pip2"
+ },
+ {
+  "t": 10.4333,
+  "frame": 313,
+  "type": "sfx",
+  "label": "tick: key"
+ },
+ {
+  "t": 10.5667,
+  "frame": 317,
+  "type": "sfx",
+  "label": "tick: key"
+ },
+ {
+  "t": 10.7,
+  "frame": 321,
+  "type": "sfx",
+  "label": "tick: key"
+ },
+ {
+  "t": 10.8333,
+  "frame": 325,
+  "type": "sfx",
+  "label": "tick: key"
+ },
+ {
+  "t": 10.9667,
+  "frame": 329,
+  "type": "sfx",
+  "label": "tick: key"
+ },
+ {
+  "t": 11.1,
+  "frame": 333,
+  "type": "sfx",
+  "label": "tick: key"
+ },
+ {
+  "t": 11.2333,
+  "frame": 337,
+  "type": "sfx",
+  "label": "tick: key"
+ },
+ {
+  "t": 11.2333,
+  "frame": 337,
+  "type": "exit",
+  "label": "#capE"
+ },
+ {
+  "t": 11.3667,
+  "frame": 341,
+  "type": "sfx",
+  "label": "tick: key"
+ },
+ {
+  "t": 11.4,
+  "frame": 342,
+  "type": "enter",
+  "label": "On"
+ },
+ {
+  "t": 11.4,
+  "frame": 342,
+  "type": "word",
+  "label": "On"
+ },
+ {
+  "t": 11.5,
+  "frame": 345,
+  "type": "sfx",
+  "label": "tick: key"
+ },
+ {
+  "t": 11.5,
+  "frame": 345,
+  "type": "enter",
+  "label": "a"
+ },
+ {
+  "t": 11.5,
+  "frame": 345,
+  "type": "word",
+  "label": "a"
+ },
+ {
+  "t": 11.6,
+  "frame": 348,
+  "type": "enter",
+  "label": "model"
+ },
+ {
+  "t": 11.6,
+  "frame": 348,
+  "type": "word",
+  "label": "model"
+ },
+ {
+  "t": 11.6333,
+  "frame": 349,
+  "type": "sfx",
+  "label": "tick: key"
+ },
+ {
+  "t": 11.7667,
+  "frame": 353,
+  "type": "sfx",
+  "label": "tick: key"
+ },
+ {
+  "t": 11.9,
+  "frame": 357,
+  "type": "sfx",
+  "label": "tick: key"
+ },
+ {
+  "t": 12,
+  "frame": 360,
+  "type": "press",
+  "label": "#sel"
+ },
+ {
+  "t": 12.0333,
+  "frame": 361,
+  "type": "sfx",
+  "label": "tick: key"
+ },
+ {
+  "t": 12.0333,
+  "frame": 361,
+  "type": "sfx",
+  "label": "switch: click"
+ },
+ {
+  "t": 12.0667,
+  "frame": 362,
+  "type": "enter",
+  "label": "I"
+ },
+ {
+  "t": 12.0667,
+  "frame": 362,
+  "type": "word",
+  "label": "I"
+ },
+ {
+  "t": 12.1,
+  "frame": 363,
+  "type": "sfx",
+  "label": "snap: locked"
+ },
+ {
+  "t": 12.1667,
+  "frame": 365,
+  "type": "sfx",
+  "label": "tick: key"
+ },
+ {
+  "t": 12.3,
+  "frame": 369,
+  "type": "sfx",
+  "label": "tick: key"
+ },
+ {
+  "t": 12.3,
+  "frame": 369,
+  "type": "enter",
+  "label": "don't"
+ },
+ {
+  "t": 12.3,
+  "frame": 369,
+  "type": "word",
+  "label": "don't"
+ },
+ {
+  "t": 12.3667,
+  "frame": 371,
+  "type": "press",
+  "label": "#sel"
+ },
+ {
+  "t": 12.4,
+  "frame": 372,
+  "type": "sfx",
+  "label": "switch: click"
+ },
+ {
+  "t": 12.4333,
+  "frame": 373,
+  "type": "sfx",
+  "label": "tick: key"
+ },
+ {
+  "t": 12.4667,
+  "frame": 374,
+  "type": "sfx",
+  "label": "snap: locked"
+ },
+ {
+  "t": 12.5667,
+  "frame": 377,
+  "type": "sfx",
+  "label": "tick: key"
+ },
+ {
+  "t": 12.6,
+  "frame": 378,
+  "type": "enter",
+  "label": "control."
+ },
+ {
+  "t": 12.6,
+  "frame": 378,
+  "type": "word",
+  "label": "control."
+ },
+ {
+  "t": 12.7,
+  "frame": 381,
+  "type": "sfx",
+  "label": "tick: key"
+ },
+ {
+  "t": 12.8333,
+  "frame": 385,
+  "type": "sfx",
+  "label": "tick: key"
+ },
+ {
+  "t": 12.9667,
+  "frame": 389,
+  "type": "sfx",
+  "label": "tick: key"
+ },
+ {
+  "t": 13.1,
+  "frame": 393,
+  "type": "sfx",
+  "label": "tick: key"
+ },
+ {
+  "t": 13.2333,
+  "frame": 397,
+  "type": "sfx",
+  "label": "tick: key"
+ },
+ {
+  "t": 13.3667,
+  "frame": 401,
+  "type": "sfx",
+  "label": "tick: key"
+ },
+ {
+  "t": 13.3667,
+  "frame": 401,
+  "type": "exit",
+  "label": "#capF"
+ },
+ {
+  "t": 13.4667,
+  "frame": 404,
+  "type": "hide",
+  "label": "#cursor"
+ },
+ {
+  "t": 13.5,
+  "frame": 405,
+  "type": "sfx",
+  "label": "tick: key"
+ },
+ {
+  "t": 13.6,
+  "frame": 408,
+  "type": "enter",
+  "label": "#capG1"
+ },
+ {
+  "t": 13.6333,
+  "frame": 409,
+  "type": "sfx",
+  "label": "tick: key"
+ },
+ {
+  "t": 13.8333,
+  "frame": 415,
+  "type": "enter",
+  "label": "#capG2"
+ },
+ {
+  "t": 14.3333,
+  "frame": 430,
+  "type": "sfx",
+  "label": "tick: printing"
+ },
+ {
+  "t": 14.4333,
+  "frame": 433,
+  "type": "sfx",
+  "label": "tick: printing"
+ },
+ {
+  "t": 14.5667,
+  "frame": 437,
+  "type": "sfx",
+  "label": "tick: printing"
+ },
+ {
+  "t": 14.6,
+  "frame": 438,
+  "type": "hide",
+  "label": "#capG1"
+ },
+ {
+  "t": 14.6,
+  "frame": 438,
+  "type": "hide",
+  "label": "#capG2"
+ },
+ {
+  "t": 14.6667,
+  "frame": 440,
+  "type": "sfx",
+  "label": "snap: the bill"
+ },
+ {
+  "t": 16.2,
+  "frame": 486,
+  "type": "enter",
+  "label": "Every"
+ },
+ {
+  "t": 16.2,
+  "frame": 486,
+  "type": "word",
+  "label": "Every"
+ },
+ {
+  "t": 16.2333,
+  "frame": 487,
+  "type": "sfx",
+  "label": "tick: another month"
+ },
+ {
+  "t": 16.8667,
+  "frame": 506,
+  "type": "enter",
+  "label": "single"
+ },
+ {
+  "t": 16.8667,
+  "frame": 506,
+  "type": "word",
+  "label": "single"
+ },
+ {
+  "t": 16.9,
+  "frame": 507,
+  "type": "sfx",
+  "label": "tick: another month"
+ },
+ {
+  "t": 17.5667,
+  "frame": 527,
+  "type": "enter",
+  "label": "month."
+ },
+ {
+  "t": 17.5667,
+  "frame": 527,
+  "type": "word",
+  "label": "month."
+ },
+ {
+  "t": 17.6,
+  "frame": 528,
+  "type": "sfx",
+  "label": "tick: another month"
+ },
+ {
+  "t": 18.0667,
+  "frame": 542,
+  "type": "sfx",
+  "label": "tick: another month"
+ },
+ {
+  "t": 18.3,
+  "frame": 549,
+  "type": "sfx",
+  "label": "tick: another month"
+ },
+ {
+  "t": 18.5,
+  "frame": 555,
+  "type": "sfx",
+  "label": "tick: another month"
+ },
+ {
+  "t": 18.5333,
+  "frame": 556,
+  "type": "cut",
+  "label": "end of scene 1"
+ },
+ {
+  "t": 18.6667,
+  "frame": 560,
+  "type": "sfx",
+  "label": "tick: another month"
+ },
+ {
+  "t": 18.8,
+  "frame": 564,
+  "type": "sfx",
+  "label": "tick: another month"
+ },
+ {
+  "t": 18.9333,
+  "frame": 568,
+  "type": "sfx",
+  "label": "tick: another month"
+ },
+ {
+  "t": 19.0667,
+  "frame": 572,
+  "type": "sfx",
+  "label": "tick: another month"
+ },
+ {
+  "t": 19.2,
+  "frame": 576,
+  "type": "exit",
+  "label": "#capH"
+ }
+]
