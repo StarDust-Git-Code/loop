@@ -1,0 +1,72 @@
+[
+{
+"tag": "sarcastic",
+"start": 0.0,
+"end": 0.067
+},
+{
+"tag": "sighs",
+"start": 7.88,
+"end": 8.533
+},
+{
+"tag": "annoyed",
+"start": 13.44,
+"end": 14.021
+},
+{
+"tag": "excited",
+"start": 17.761,
+"end": 18.061
+},
+{
+"tag": "proud",
+"start": 27.481,
+"end": 27.821
+},
+{
+"tag": "fast paced",
+"start": 33.561,
+"end": 33.821
+},
+{
+"tag": "satisfied",
+"start": 46.121,
+"end": 46.781
+},
+{
+"tag": "curious",
+"start": 49.521,
+"end": 50.241
+},
+{
+"tag": "whispers",
+"start": 63.561,
+"end": 63.927
+},
+{
+"tag": "surprised",
+"start": 67.407,
+"end": 68.14
+},
+{
+"tag": "confident",
+"start": 73.967,
+"end": 74.607
+},
+{
+"tag": "warm",
+"start": 82.367,
+"end": 82.769
+},
+{
+"tag": "mischievous",
+"start": 85.889,
+"end": 86.393
+},
+{
+"tag": "laughs",
+"start": 87.889,
+"end": 88.276
+}
+]

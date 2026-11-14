@@ -1,0 +1,132 @@
+[
+{
+"tag": "tired",
+"start": 0.0,
+"end": 0.12
+},
+{
+"tag": "short pause",
+"start": 1.56,
+"end": 2.06
+},
+{
+"tag": "deadpan",
+"start": 4.72,
+"end": 5.34
+},
+{
+"tag": "sighs",
+"start": 8.92,
+"end": 10.0
+},
+{
+"tag": "curious",
+"start": 14.62,
+"end": 14.94
+},
+{
+"tag": "annoyed",
+"start": 15.96,
+"end": 16.445
+},
+{
+"tag": "thoughtful",
+"start": 20.813,
+"end": 20.869
+},
+{
+"tag": "excited",
+"start": 24.885,
+"end": 25.185
+},
+{
+"tag": "proud",
+"start": 29.245,
+"end": 29.825
+},
+{
+"tag": "calm",
+"start": 35.445,
+"end": 35.769
+},
+{
+"tag": "fast paced",
+"start": 39.848,
+"end": 40.408
+},
+{
+"tag": "satisfied",
+"start": 48.088,
+"end": 48.695
+},
+{
+"tag": "amused",
+"start": 49.255,
+"end": 49.655
+},
+{
+"tag": "curious",
+"start": 51.655,
+"end": 52.175
+},
+{
+"tag": "reassuring",
+"start": 53.135,
+"end": 53.791
+},
+{
+"tag": "thoughtful",
+"start": 57.575,
+"end": 58.235
+},
+{
+"tag": "warm",
+"start": 60.175,
+"end": 60.628
+},
+{
+"tag": "short pause",
+"start": 61.975,
+"end": 62.351
+},
+{
+"tag": "hushed",
+"start": 66.095,
+"end": 66.715
+},
+{
+"tag": "surprised",
+"start": 70.455,
+"end": 70.959
+},
+{
+"tag": "whispers",
+"start": 74.055,
+"end": 74.795
+},
+{
+"tag": "confident",
+"start": 77.355,
+"end": 77.675
+},
+{
+"tag": "relieved",
+"start": 81.095,
+"end": 81.595
+},
+{
+"tag": "warm",
+"start": 85.655,
+"end": 86.335
+},
+{
+"tag": "mischievous",
+"start": 89.455,
+"end": 90.143
+},
+{
+"tag": "laughs",
+"start": 91.455,
+"end": 91.908
+}
+]

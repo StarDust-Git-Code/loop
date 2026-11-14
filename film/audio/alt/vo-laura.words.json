@@ -1,0 +1,233 @@
+[
+ {
+  "word": "It's",
+  "start": 0.03,
+  "end": 0.232,
+  "raw_start": 0.0,
+  "raw_end": 0.232
+ },
+ {
+  "word": "2",
+  "start": 0.302,
+  "end": 0.453,
+  "raw_start": 0.302,
+  "raw_end": 0.453
+ },
+ {
+  "word": "AM.",
+  "start": 0.522,
+  "end": 0.834,
+  "raw_start": 0.522,
+  "raw_end": 0.906
+ },
+ {
+  "word": "My",
+  "start": 1.089,
+  "end": 1.207,
+  "raw_start": 1.08,
+  "raw_end": 1.207
+ },
+ {
+  "word": "AI",
+  "start": 1.277,
+  "end": 1.533,
+  "raw_start": 1.277,
+  "raw_end": 1.533
+ },
+ {
+  "word": "agent",
+  "start": 1.625,
+  "end": 1.881,
+  "raw_start": 1.625,
+  "raw_end": 1.881
+ },
+ {
+  "word": "is",
+  "start": 1.916,
+  "end": 1.985,
+  "raw_start": 1.916,
+  "raw_end": 1.985
+ },
+ {
+  "word": "working.",
+  "start": 2.032,
+  "end": 2.435,
+  "raw_start": 2.032,
+  "raw_end": 2.519
+ },
+ {
+  "word": "Not",
+  "start": 2.645,
+  "end": 2.821,
+  "raw_start": 2.635,
+  "raw_end": 2.821
+ },
+ {
+  "word": "on",
+  "start": 2.856,
+  "end": 2.902,
+  "raw_start": 2.856,
+  "raw_end": 2.902
+ },
+ {
+  "word": "my",
+  "start": 2.949,
+  "end": 3.03,
+  "raw_start": 2.949,
+  "raw_end": 3.03
+ },
+ {
+  "word": "computer.",
+  "start": 3.1,
+  "end": 3.58,
+  "raw_start": 3.1,
+  "raw_end": 3.68
+ },
+ {
+  "word": "Somewhere",
+  "start": 3.831,
+  "end": 4.191,
+  "raw_start": 3.831,
+  "raw_end": 4.191
+ },
+ {
+  "word": "in",
+  "start": 4.214,
+  "end": 4.261,
+  "raw_start": 4.214,
+  "raw_end": 4.261
+ },
+ {
+  "word": "the",
+  "start": 4.296,
+  "end": 4.365,
+  "raw_start": 4.296,
+  "raw_end": 4.365
+ },
+ {
+  "word": "cloud.",
+  "start": 4.389,
+  "end": 4.783,
+  "raw_start": 4.389,
+  "raw_end": 4.83
+ },
+ {
+  "word": "With",
+  "start": 4.928,
+  "end": 5.062,
+  "raw_start": 4.888,
+  "raw_end": 5.062
+ },
+ {
+  "word": "my",
+  "start": 5.108,
+  "end": 5.19,
+  "raw_start": 5.108,
+  "raw_end": 5.19
+ },
+ {
+  "word": "passwords.",
+  "start": 5.248,
+  "end": 5.894,
+  "raw_start": 5.248,
+  "raw_end": 6.037
+ },
+ {
+  "word": "On",
+  "start": 6.459,
+  "end": 6.56,
+  "raw_start": 6.42,
+  "raw_end": 6.56
+ },
+ {
+  "word": "a",
+  "start": 6.606,
+  "end": 6.629,
+  "raw_start": 6.606,
+  "raw_end": 6.629
+ },
+ {
+  "word": "model",
+  "start": 6.664,
+  "end": 6.943,
+  "raw_start": 6.664,
+  "raw_end": 6.943
+ },
+ {
+  "word": "I",
+  "start": 7.024,
+  "end": 7.07,
+  "raw_start": 7.024,
+  "raw_end": 7.07
+ },
+ {
+  "word": "don't",
+  "start": 7.152,
+  "end": 7.326,
+  "raw_start": 7.152,
+  "raw_end": 7.326
+ },
+ {
+  "word": "control.",
+  "start": 7.372,
+  "end": 7.887,
+  "raw_start": 7.372,
+  "raw_end": 7.953
+ },
+ {
+  "word": "And",
+  "start": 8.017,
+  "end": 8.092,
+  "raw_start": 7.976,
+  "raw_end": 8.092
+ },
+ {
+  "word": "the",
+  "start": 8.139,
+  "end": 8.208,
+  "raw_start": 8.139,
+  "raw_end": 8.208
+ },
+ {
+  "word": "bill?",
+  "start": 8.243,
+  "end": 8.519,
+  "raw_start": 8.243,
+  "raw_end": 8.545
+ },
+ {
+  "word": "Two",
+  "start": 8.655,
+  "end": 8.777,
+  "raw_start": 8.626,
+  "raw_end": 8.777
+ },
+ {
+  "word": "hundred",
+  "start": 8.835,
+  "end": 9.067,
+  "raw_start": 8.835,
+  "raw_end": 9.067
+ },
+ {
+  "word": "dollars.",
+  "start": 9.091,
+  "end": 9.59,
+  "raw_start": 9.091,
+  "raw_end": 9.59
+ },
+ {
+  "word": "Every",
+  "start": 9.636,
+  "end": 9.938,
+  "raw_start": 9.636,
+  "raw_end": 9.938
+ },
+ {
+  "word": "month.",
+  "start": 9.996,
+  "end": 10.287,
+  "raw_start": 9.996,
+  "raw_end": 10.495
+ }
+]

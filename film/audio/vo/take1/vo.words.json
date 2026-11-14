@@ -1,0 +1,857 @@
+[
+{
+"word": "It's",
+"start": 0.133,
+"end": 0.24
+},
+{
+"word": "2",
+"start": 0.4,
+"end": 0.56
+},
+{
+"word": "a.m.",
+"start": 0.64,
+"end": 1.12
+},
+{
+"word": "My",
+"start": 2.067,
+"end": 2.08
+},
+{
+"word": "AI",
+"start": 2.213,
+"end": 2.48
+},
+{
+"word": "agent",
+"start": 2.547,
+"end": 2.88
+},
+{
+"word": "is",
+"start": 3.013,
+"end": 3.28
+},
+{
+"word": "hard",
+"start": 3.344,
+"end": 3.6
+},
+{
+"word": "at",
+"start": 3.653,
+"end": 3.76
+},
+{
+"word": "work.",
+"start": 3.84,
+"end": 4.16
+},
+{
+"word": "Not",
+"start": 5.345,
+"end": 5.36
+},
+{
+"word": "on",
+"start": 5.413,
+"end": 5.52
+},
+{
+"word": "my",
+"start": 5.573,
+"end": 5.68
+},
+{
+"word": "computer.",
+"start": 5.742,
+"end": 6.72
+},
+{
+"word": "Somewhere",
+"start": 6.84,
+"end": 7.36
+},
+{
+"word": "in",
+"start": 7.44,
+"end": 7.6
+},
+{
+"word": "the",
+"start": 7.62,
+"end": 7.68
+},
+{
+"word": "cloud.",
+"start": 7.76,
+"end": 8.32
+},
+{
+"word": "With",
+"start": 10.016,
+"end": 10.08
+},
+{
+"word": "my",
+"start": 10.133,
+"end": 10.24
+},
+{
+"word": "passwords.",
+"start": 10.328,
+"end": 11.64
+},
+{
+"word": "On",
+"start": 11.813,
+"end": 12.16
+},
+{
+"word": "a",
+"start": 12.2,
+"end": 12.24
+},
+{
+"word": "model",
+"start": 12.307,
+"end": 12.64
+},
+{
+"word": "I",
+"start": 12.72,
+"end": 12.8
+},
+{
+"word": "don't",
+"start": 12.86,
+"end": 13.12
+},
+{
+"word": "control.",
+"start": 13.21,
+"end": 14.36
+},
+{
+"word": "And",
+"start": 14.945,
+"end": 14.96
+},
+{
+"word": "the",
+"start": 14.98,
+"end": 15.04
+},
+{
+"word": "bill?",
+"start": 15.12,
+"end": 15.52
+},
+{
+"word": "Two",
+"start": 16.455,
+"end": 16.485
+},
+{
+"word": "hundred",
+"start": 16.535,
+"end": 16.885
+},
+{
+"word": "dollars.",
+"start": 16.975,
+"end": 18.085
+},
+{
+"word": "Every.",
+"start": 18.165,
+"end": 19.005
+},
+{
+"word": "Single.",
+"start": 19.068,
+"end": 19.805
+},
+{
+"word": "Month.",
+"start": 19.865,
+"end": 20.805
+},
+{
+"word": "I",
+"start": 20.877,
+"end": 20.885
+},
+{
+"word": "didn't",
+"start": 20.917,
+"end": 21.125
+},
+{
+"word": "want",
+"start": 21.205,
+"end": 21.525
+},
+{
+"word": "another",
+"start": 21.575,
+"end": 21.925
+},
+{
+"word": "assistant.",
+"start": 21.989,
+"end": 22.645
+},
+{
+"word": "I",
+"start": 22.925,
+"end": 23.205
+},
+{
+"word": "wanted",
+"start": 23.262,
+"end": 23.605
+},
+{
+"word": "a",
+"start": 23.685,
+"end": 23.765
+},
+{
+"word": "second",
+"start": 23.811,
+"end": 24.085
+},
+{
+"word": "brain.",
+"start": 24.165,
+"end": 24.645
+},
+{
+"word": "So,",
+"start": 25.192,
+"end": 25.285
+},
+{
+"word": "we",
+"start": 25.312,
+"end": 25.365
+},
+{
+"word": "built",
+"start": 25.418,
+"end": 25.685
+},
+{
+"word": "Loopmates!",
+"start": 25.749,
+"end": 26.685
+},
+{
+"word": "Nineteen",
+"start": 26.755,
+"end": 27.285
+},
+{
+"word": "Mates.",
+"start": 27.325,
+"end": 27.845
+},
+{
+"word": "One",
+"start": 27.965,
+"end": 28.325
+},
+{
+"word": "computer.",
+"start": 28.387,
+"end": 28.965
+},
+{
+"word": "Mine.",
+"start": 29.845,
+"end": 30.005
+},
+{
+"word": "Each",
+"start": 30.149,
+"end": 30.725
+},
+{
+"word": "one",
+"start": 30.805,
+"end": 31.045
+},
+{
+"word": "a",
+"start": 31.125,
+"end": 31.205
+},
+{
+"word": "brain",
+"start": 31.285,
+"end": 31.685
+},
+{
+"word": "of",
+"start": 31.712,
+"end": 31.765
+},
+{
+"word": "its",
+"start": 31.805,
+"end": 31.925
+},
+{
+"word": "own,",
+"start": 32.025,
+"end": 32.405
+},
+{
+"word": "with",
+"start": 32.485,
+"end": 32.805
+},
+{
+"word": "a",
+"start": 32.845,
+"end": 32.885
+},
+{
+"word": "name,",
+"start": 32.965,
+"end": 33.445
+},
+{
+"word": "a",
+"start": 33.485,
+"end": 33.525
+},
+{
+"word": "voice,",
+"start": 33.618,
+"end": 34.165
+},
+{
+"word": "and",
+"start": 34.185,
+"end": 34.245
+},
+{
+"word": "a",
+"start": 34.285,
+"end": 34.325
+},
+{
+"word": "skill.",
+"start": 34.405,
+"end": 35.125
+},
+{
+"word": "I",
+"start": 35.808,
+"end": 35.848
+},
+{
+"word": "say",
+"start": 35.908,
+"end": 36.088
+},
+{
+"word": "it",
+"start": 36.115,
+"end": 36.168
+},
+{
+"word": "once.",
+"start": 36.264,
+"end": 37.008
+},
+{
+"word": "\"Add",
+"start": 37.188,
+"end": 37.528
+},
+{
+"word": "dark",
+"start": 37.592,
+"end": 37.848
+},
+{
+"word": "mode.",
+"start": 37.912,
+"end": 38.488
+},
+{
+"word": "Run",
+"start": 38.568,
+"end": 38.808
+},
+{
+"word": "the",
+"start": 38.828,
+"end": 38.888
+},
+{
+"word": "tests.\"",
+"start": 38.981,
+"end": 39.528
+},
+{
+"word": "Planner",
+"start": 40.418,
+"end": 40.488
+},
+{
+"word": "breaks",
+"start": 40.534,
+"end": 40.808
+},
+{
+"word": "it",
+"start": 40.861,
+"end": 40.968
+},
+{
+"word": "down.",
+"start": 41.032,
+"end": 41.688
+},
+{
+"word": "Research",
+"start": 41.732,
+"end": 42.088
+},
+{
+"word": "finds",
+"start": 42.155,
+"end": 42.488
+},
+{
+"word": "the",
+"start": 42.508,
+"end": 42.568
+},
+{
+"word": "way.",
+"start": 42.648,
+"end": 42.968
+},
+{
+"word": "Code",
+"start": 43.128,
+"end": 43.768
+},
+{
+"word": "makes",
+"start": 43.821,
+"end": 44.088
+},
+{
+"word": "the",
+"start": 44.108,
+"end": 44.168
+},
+{
+"word": "changes.",
+"start": 44.248,
+"end": 45.128
+},
+{
+"word": "Ops",
+"start": 45.228,
+"end": 45.528
+},
+{
+"word": "checks",
+"start": 45.585,
+"end": 45.928
+},
+{
+"word": "the",
+"start": 45.948,
+"end": 46.008
+},
+{
+"word": "build.",
+"start": 46.075,
+"end": 46.808
+},
+{
+"word": "Tests",
+"start": 46.875,
+"end": 47.208
+},
+{
+"word": "green.",
+"start": 47.275,
+"end": 47.688
+},
+{
+"word": "Nice.",
+"start": 48.735,
+"end": 48.975
+},
+{
+"word": "I",
+"start": 49.675,
+"end": 49.695
+},
+{
+"word": "wasn't",
+"start": 49.743,
+"end": 50.015
+},
+{
+"word": "even",
+"start": 50.047,
+"end": 50.175
+},
+{
+"word": "in",
+"start": 50.228,
+"end": 50.335
+},
+{
+"word": "the",
+"start": 50.355,
+"end": 50.415
+},
+{
+"word": "loop.",
+"start": 50.495,
+"end": 51.375
+},
+{
+"word": "Something",
+"start": 52.183,
+"end": 52.255
+},
+{
+"word": "risky?",
+"start": 52.335,
+"end": 52.736
+},
+{
+"word": "Halo",
+"start": 53.804,
+"end": 53.855
+},
+{
+"word": "asks",
+"start": 53.951,
+"end": 54.335
+},
+{
+"word": "first.",
+"start": 54.415,
+"end": 55.135
+},
+{
+"word": "I",
+"start": 55.295,
+"end": 55.455
+},
+{
+"word": "approve.",
+"start": 55.515,
+"end": 56.015
+},
+{
+"word": "Done.",
+"start": 56.191,
+"end": 56.975
+},
+{
+"word": "What",
+"start": 58.239,
+"end": 58.255
+},
+{
+"word": "did",
+"start": 58.295,
+"end": 58.415
+},
+{
+"word": "I",
+"start": 58.495,
+"end": 58.575
+},
+{
+"word": "decide",
+"start": 58.644,
+"end": 59.055
+},
+{
+"word": "last",
+"start": 59.119,
+"end": 59.375
+},
+{
+"word": "week?",
+"start": 59.439,
+"end": 59.775
+},
+{
+"word": "Mimo",
+"start": 60.642,
+"end": 60.895
+},
+{
+"word": "remembers.",
+"start": 60.967,
+"end": 61.695
+},
+{
+"word": "\"Shorter,",
+"start": 62.367,
+"end": 62.575
+},
+{
+"word": "please.\"",
+"start": 62.632,
+"end": 63.135
+},
+{
+"word": "Said",
+"start": 63.295,
+"end": 63.935
+},
+{
+"word": "once.",
+"start": 64.031,
+"end": 64.495
+},
+{
+"word": "Remembered.",
+"start": 64.584,
+"end": 65.535
+},
+{
+"word": "It's",
+"start": 66.722,
+"end": 66.815
+},
+{
+"word": "11",
+"start": 66.895,
+"end": 67.135
+},
+{
+"word": "p.m.",
+"start": 67.255,
+"end": 67.695
+},
+{
+"word": "The",
+"start": 67.835,
+"end": 68.255
+},
+{
+"word": "garage",
+"start": 68.335,
+"end": 68.815
+},
+{
+"word": "is",
+"start": 68.895,
+"end": 69.055
+},
+{
+"word": "still",
+"start": 69.122,
+"end": 69.455
+},
+{
+"word": "open.",
+"start": 69.551,
+"end": 70.015
+},
+{
+"word": "Mimo",
+"start": 70.967,
+"end": 71.295
+},
+{
+"word": "calls",
+"start": 71.362,
+"end": 71.695
+},
+{
+"word": "my",
+"start": 71.722,
+"end": 71.775
+},
+{
+"word": "phone.",
+"start": 71.855,
+"end": 72.335
+},
+{
+"word": "\"Close",
+"start": 72.655,
+"end": 73.295
+},
+{
+"word": "it?\"",
+"start": 73.375,
+"end": 73.615
+},
+{
+"word": "Yes.",
+"start": 74.82,
+"end": 74.975
+},
+{
+"word": "Lights",
+"start": 75.101,
+"end": 75.855
+},
+{
+"word": "off,",
+"start": 75.935,
+"end": 76.375
+},
+{
+"word": "too.",
+"start": 76.425,
+"end": 77.095
+},
+{
+"word": "My",
+"start": 77.682,
+"end": 77.695
+},
+{
+"word": "models.",
+"start": 77.786,
+"end": 78.415
+},
+{
+"word": "My",
+"start": 78.522,
+"end": 78.735
+},
+{
+"word": "keys.",
+"start": 78.847,
+"end": 79.375
+},
+{
+"word": "My",
+"start": 79.588,
+"end": 80.015
+},
+{
+"word": "machine.",
+"start": 80.085,
+"end": 80.655
+},
+{
+"word": "By",
+"start": 81.602,
+"end": 81.615
+},
+{
+"word": "morning,",
+"start": 81.685,
+"end": 82.415
+},
+{
+"word": "the",
+"start": 82.435,
+"end": 82.495
+},
+{
+"word": "work",
+"start": 82.559,
+"end": 82.815
+},
+{
+"word": "is",
+"start": 82.868,
+"end": 82.975
+},
+{
+"word": "done.",
+"start": 83.055,
+"end": 83.735
+},
+{
+"word": "The",
+"start": 83.825,
+"end": 84.095
+},
+{
+"word": "summary's",
+"start": 84.155,
+"end": 84.655
+},
+{
+"word": "waiting.",
+"start": 84.705,
+"end": 85.135
+},
+{
+"word": "Loopmates.",
+"start": 86.351,
+"end": 87.375
+},
+{
+"word": "Working",
+"start": 87.435,
+"end": 87.855
+},
+{
+"word": "while",
+"start": 87.908,
+"end": 88.175
+},
+{
+"word": "I",
+"start": 88.255,
+"end": 88.335
+},
+{
+"word": "don't.",
+"start": 88.415,
+"end": 88.895
+},
+{
+"word": "Oh,",
+"start": 90.154,
+"end": 90.335
+},
+{
+"word": "and",
+"start": 90.355,
+"end": 90.415
+},
+{
+"word": "the",
+"start": 90.455,
+"end": 90.575
+},
+{
+"word": "subscription?",
+"start": 90.618,
+"end": 91.215
+},
+{
+"word": "There",
+"start": 91.926,
+"end": 92.015
+},
+{
+"word": "isn't",
+"start": 92.055,
+"end": 92.255
+},
+{
+"word": "one.",
+"start": 92.335,
+"end": 92.895
+}
+]
