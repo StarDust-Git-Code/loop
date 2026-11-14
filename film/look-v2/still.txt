@@ -1,0 +1,4 @@
+# stretches >= 0.60s with no picture change (start end duration)
+108.000	109.000	1.00
+117.867	118.767	0.90
+180.667	181.300	0.63

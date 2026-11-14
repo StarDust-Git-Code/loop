@@ -1,0 +1,47 @@
+# cuts from detected scene>=0.3 | scene>=0.12+structure | pixel spike (time s, frame, timecode, source)
+16.100	frame 483	0:16.10	scene 0.31
+22.733	frame 682	0:22.73	scene 0.20 + corr 0.65 spike x5.8
+27.267	frame 818	0:27.27	scene 0.41
+31.333	frame 940	0:31.33	scene 0.31
+31.933	frame 958	0:31.93	scene 0.15 + corr 0.08 spike x2.0
+35.433	frame 1063	0:35.43	scene 0.45
+37.767	frame 1133	0:37.77	scene 0.57
+39.233	frame 1177	0:39.23	scene 0.41
+41.300	frame 1239	0:41.30	scene 0.37
+41.967	frame 1259	0:41.97	scene 0.32
+47.767	frame 1433	0:47.77	scene 0.21 + corr -0.08 spike x2.2
+53.067	frame 1592	0:53.07	scene 0.46
+53.900	frame 1617	0:53.90	pixel spike x2.9 diff 5.4 corr 0.59 scene 0.05
+56.500	frame 1695	0:56.50	scene 0.32
+60.833	frame 1825	1:00.83	scene 0.42
+65.533	frame 1966	1:05.53	scene 0.56
+69.833	frame 2095	1:09.83	scene 0.31
+75.700	frame 2271	1:15.70	scene 0.35
+83.033	frame 2491	1:23.03	scene 0.37
+86.400	frame 2592	1:26.40	scene 0.37
+89.433	frame 2683	1:29.43	scene 0.35
+91.167	frame 2735	1:31.17	pixel spike x7.2 diff 16.5 corr 0.01 scene 0.11
+93.900	frame 2817	1:33.90	pixel spike x3.3 diff 18.2 corr 0.49 scene 0.01
+99.367	frame 2981	1:39.37	scene 0.37
+107.567	frame 3227	1:47.57	scene 0.26 + corr 0.13 spike x2.9
+115.833	frame 3475	1:55.83	scene 0.45
+118.767	frame 3563	1:58.77	scene 0.30
+123.733	frame 3712	2:03.73	scene 0.32
+126.133	frame 3784	2:06.13	scene 0.26 + corr 0.47 spike x2.5
+126.767	frame 3803	2:06.77	scene 0.34
+127.033	frame 3811	2:07.03	scene 0.14 + corr -0.08 spike x3.0
+130.133	frame 3904	2:10.13	scene 0.14 + corr 0.51 spike x2.5
+131.333	frame 3940	2:11.33	scene 1.00
+136.533	frame 4096	2:16.53	scene 0.51
+139.133	frame 4174	2:19.13	scene 0.37
+146.133	frame 4384	2:26.13	scene 0.47
+151.967	frame 4559	2:31.97	scene 0.34
+171.700	frame 5151	2:51.70	scene 1.00
+181.333	frame 5440	3:01.33	scene 0.53
+184.000	frame 5520	3:04.00	scene 0.53
+196.267	frame 5888	3:16.27	scene 1.00
+201.067	frame 6032	3:21.07	scene 0.35
+209.500	frame 6285	3:29.50	scene 0.18 + corr 0.11 spike x1.9
+214.900	frame 6447	3:34.90	scene 0.20 + corr -0.03 spike x2.5
+216.733	frame 6502	3:36.73	scene 0.31
+217.833	frame 6535	3:37.83	scene 0.44

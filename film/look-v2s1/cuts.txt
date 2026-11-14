@@ -1,0 +1,16 @@
+# cuts from events renders/v2-s1-problem.mp4.events.json (time s, frame, timecode, source)
+0.800	frame 24	0:00.80	event hide '#dOld'
+2.433	frame 73	0:02.43	event show '#z0'
+2.633	frame 79	0:02.63	event show '#z1'
+2.833	frame 85	0:02.83	event show '#z2'
+9.067	frame 272	0:09.07	event show '#chip0'
+9.200	frame 276	0:09.20	event show '#chip1'
+9.333	frame 280	0:09.33	event show '#chip2'
+10.067	frame 302	0:10.07	event show '#pip0'
+10.233	frame 307	0:10.23	event show '#pip1'
+10.400	frame 312	0:10.40	event show '#pip2'
+13.467	frame 404	0:13.47	event hide '#cursor'
+14.600	frame 438	0:14.60	event hide '#capG1'
+18.533	frame 556	0:18.53	event cut 'end of scene 1'
+# detected but not in events:
+16.100	frame 483	0:16.10	scene 0.31
