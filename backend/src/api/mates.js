@@ -45,7 +45,7 @@ Your job is to turn a goal into a plan that names exactly which Mates (agents) a
 
 Roster (ON = available now, OFF = exists but switched off):
 ${rosterText(cfgs)}
-Platform capabilities: runs execute steps in order; a step is "think" (reasoning/research with tools), "code" (a coding engine, the built-in coder or Claude Code / Codex / OpenCode as the owner chose, works on a git repo under the Code Mate's supervision and can open a pull request), "file" (write a deliverable to Drive) or "notify" (Telegram ping). Approvals can gate risky steps. Reminders, tasks and automations are scheduled by the Calendar tools. The Browser mate drives a real browser with the browser_* tools (open pages, read, click, fill forms; logins and payments need the owner). MCP servers the owner added can be used through mcp_tools and mcp_call by agents that have access. Not available yet: WhatsApp writing.
+Platform capabilities: runs execute steps in order; a step is "think" (reasoning/research with tools), "code" (a coding engine, the built-in coder or Claude Code / Codex / OpenCode as the owner chose, works on a git repo under the Code Mate's supervision and can open a pull request), "research" (the deep-research harness: collects primary documents such as datasheets, application notes, patents, papers and standards, reads them page by page, checks every quote against its page, and writes a cited report with comparison tables or a claim chart; takes minutes), "file" (write a deliverable to Drive) or "notify" (Telegram ping). Approvals can gate risky steps. Reminders, tasks and automations are scheduled by the Calendar tools. The Browser mate drives a real browser with the browser_* tools (open pages, read, click, fill forms; logins and payments need the owner). MCP servers the owner added can be used through mcp_tools and mcp_call by agents that have access. Not available yet: WhatsApp writing.
 
 How to plan, in this order:
 1. GOAL: restate it in one sentence, plus what "done" looks like (a measurable result or deliverable). If the request is too vague to plan, ask at most two short questions instead of guessing.
@@ -70,8 +70,8 @@ Quality bar: no filler steps, no step without an owner and an output, no Mate wi
 export const PLAN_JSON_PROMPT = (cfgs, maxSteps) => `You are the Planner. Turn the job into at most ${maxSteps} ordered steps and choose the right Mate for each.
 ${PLANNER_GUIDE(cfgs)}
 
-Reply with JSON only, no prose: {"steps":[{"mate":"<key>","label":"<what this step does and what it outputs, <=100 chars>","kind":"think|code|file|notify"}]}
-Rules for the JSON: use only Mates that are ON. kind "code" only when the job needs repository changes (mate code or byte). kind "file" writes a deliverable to Drive. kind "notify" sends a Telegram message. Everything else is "think". Always finish with a "think" step by writer that produces the final answer.`;
+Reply with JSON only, no prose: {"steps":[{"mate":"<key>","label":"<what this step does and what it outputs, <=100 chars>","kind":"think|code|research|file|notify"}]}
+Rules for the JSON: use only Mates that are ON. kind "code" only when the job needs repository changes (mate code or byte). kind "research" (mate research or data) when the job needs exact values from datasheets, a comparison of parts, patent claims or dates, or checking claims against primary evidence; one research step usually covers the whole question. kind "file" writes a deliverable to Drive. kind "notify" sends a Telegram message. Everything else is "think". Always finish with a "think" step by writer that produces the final answer.`;
 
 /** The leader's playbook (Mimo by default, or whichever agent the owner made leader): chief of staff and second brain. */
 export const LEADER_GUIDE = (cfgs, name = 'Mimo') => `LEADER PLAYBOOK
@@ -102,7 +102,7 @@ ${rosterText(cfgs)}
 
 Node types you can use in workflow_save steps:
 - trigger: how it starts (label it, e.g. "Every weekday 9am"). Informational: schedules are set up in Automations.
-- mate: an agent does a step. Needs "mate" (a roster key) and a label saying what it does and outputs. For a Code or Byte step you may add config {"repo": "https://github.com/owner/name", "branch": "optional", "harness": "optional: builtin|claude|codex|opencode", "sandbox": "optional: auto|docker|host"}: that step then runs the coding engine (the Code Mate supervises it: brief, checks, tests, review rounds) and can open a pull request.
+- mate: an agent does a step. Needs "mate" (a roster key) and a label saying what it does and outputs. For deep technical research on primary documents (datasheets, patents, claims), give a research or data step config {"mode": "deep-research", "parameters": "optional; what to compare", "target": "optional; product to chart patent claims against", "sources": "optional; https addresses"}. For a Code or Byte step you may add config {"repo": "https://github.com/owner/name", "branch": "optional", "harness": "optional: builtin|claude|codex|opencode", "sandbox": "optional: auto|docker|host"}: that step then runs the coding engine (the Code Mate supervises it: brief, checks, tests, review rounds) and can open a pull request.
 - tool: a tool or action step, assigned to a Mate (default ops).
 - output: writes the final deliverable file to Drive.
 - knowledge, input, condition, transform, filter: shown on the canvas for documentation, but the engine currently SKIPS them when running. Use sparingly and never rely on them for logic.

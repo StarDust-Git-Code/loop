@@ -48,6 +48,7 @@ async function claim(ref, t) { // exactly one instance fires a job, even across 
     } else if (j.kind === 'watch') tx.update(ref, { nextAt: t + (j.every || 15 * 60_000) });
     else if (j.kind === 'briefing') tx.update(ref, { nextAt: t + 23 * 3_600_000 }); // re-aligned to the exact time after it fires
     else if (j.kind === 'standup') tx.update(ref, { nextAt: t + 6 * 86_400_000 }); // re-aligned after it fires, like the briefing
+    else if (j.kind === 'reflect') tx.update(ref, { nextAt: t + 23 * 3_600_000 }); // postponed while busy, re-aligned after it runs
     else tx.delete(ref);
     return j;
   });
@@ -65,6 +66,7 @@ async function fire(j, t = Date.now()) {
   } else if (j.kind === 'watch') await runWatch(j.uid, j.refId);
   else if (j.kind === 'briefing') { await sendBriefing(j.uid); await briefingHook(j.uid, await getSettings(j.uid)); }
   else if (j.kind === 'standup') { await runStandup(j.uid); await standupHook(j.uid, await getSettings(j.uid)); }
+  else if (j.kind === 'reflect') await (await import('./reflect.js')).fireReflect(j); // the nightly review, once the team is idle
   else if (j.kind === 'call') { // a Mate's call timer: ring as that Mate, with the context it saved when it set the timer
     const { ringCall, getCall } = await import('./calls.js'); const c = await getCall(j.uid, j.refId);
     if (c?.status === 'scheduled') { const r = await ringCall(j.uid, j.refId, { urgent: !!c.urgent }); if (late && r.delivered !== 'held') await notify(j.uid, `${c.mateName}'s call was due ${hhmm(j.nextAt)} UTC while your computer was off.`); }

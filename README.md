@@ -4,6 +4,18 @@
 
 The agent server runs on **your** Windows or Linux machine: your model keys, your files, your home network. The web dashboard and the phone app are thin clients that find your server by themselves. Everything is built to run on free tiers.
 
+**Built with Gemini and Claude.** Loopmates was designed and coded with Google Gemini and Anthropic Claude working side by side. Gemini also powers the Mates' voices (Gemini Live) and is one of the default model providers.
+
+**Works with any OpenAI-compatible API.** The Mates aren't tied to one vendor. Any service that speaks the OpenAI `/chat/completions` format works as a model provider: OpenAI, Gemini, OpenRouter, Groq, Cerebras, NVIDIA NIM, Together, DeepSeek, Mistral, or a local server such as Ollama, LM Studio, vLLM or LiteLLM. Add as many as you like in **Settings → Providers** with a base URL, a key and a model. If one fails or hits a rate limit, the next one takes over automatically. Each Mate can use a different provider and model. Native tool calling is used when the provider supports it; otherwise a text tool protocol is used instead.
+
+```
+Base URL:  https://openrouter.ai/api/v1      (or http://localhost:11434/v1 for Ollama)
+API key:   sk-...
+Model:     any model the router offers
+```
+
+You can also set platform providers in `backend/.env`: `GEMINI_API_KEY`, `OPENROUTER_API_KEY`, `GROQ_API_KEY`, `CEREBRAS_API_KEY` and `NVIDIA_API_KEY`, each with an optional `*_MODEL` override.
+
 > **Status:** an active personal project. The backend test suite passes end to end. Several parts have not been run against real accounts yet: live voice calls, Slack, WhatsApp, Spotify and Home Assistant were tested only against fakes. See [Status](#status).
 
 ---
@@ -111,14 +123,14 @@ The agents' system prompt is one Markdown template, [backend/prompts/agent-syste
 
 ## Landing page
 
-The repository root is the landing page: Next.js App Router, TypeScript and GSAP (ScrollSmoother, SplitText, Draggable + Inertia, Flip, MotionPath).
+The repository root is the landing page: Next.js App Router, TypeScript and GSAP (ScrollTrigger, ScrollSmoother, SplitText). It is a dark, single-accent page; the colours and type are tokens at the top of `app/globals.css`, and each section is one component in `components/`.
 
 ```bash
 npm install
 npm run dev      # http://localhost:3000
 ```
 
-`prefers-reduced-motion` turns the animations off. The sign-up form in `components/Cta.tsx` does not save anything yet, and the demo content is sample copy. GSAP 3.13+ plugins are free to use under GSAP's [standard licence](https://gsap.com/standard-license).
+`prefers-reduced-motion` turns the animations off. The example run and the call transcript on the page are sample copy, and the links to the repository and the dashboard live in `lib/site.ts`. GSAP 3.13+ plugins are free to use under GSAP's [standard licence](https://gsap.com/standard-license).
 
 ## Status
 

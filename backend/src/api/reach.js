@@ -66,6 +66,8 @@ export function filterByAccess(tools, acc, { mcpCount = 1, skillCount = 1 } = {}
     if (t.name === 'graph_link' && acc.graph !== 'write') return false;
     if (t.name.startsWith('mcp_') && (acc.mcp === 'none' || !mcpCount)) return false;
     if (t.name === 'skill_load' && (acc.skills === 'none' || !skillCount)) return false;
+    if (t.name === 'skill_save' && acc.skills === 'none') return false;
+    if (t.name === 'lessons_list' && !acc.memory.personal) return false;
     if (t.name === 'knowledge_search' && !acc.knowledge) return false;
     return true;
   });

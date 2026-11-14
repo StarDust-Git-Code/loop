@@ -1,5 +1,5 @@
 // Dynamic system prompt: rebuilt on every turn from the Mate, the owner's settings, memories, skills and knowledge.
-import { recall } from './memory.js';
+import { recall, lessonsFor } from './memory.js';
 import { readFileSync } from 'node:fs';
 import { env } from '../lib/env.js';
 import { MATE, PLANNER_GUIDE, FLOW_GUIDE, LEADER_GUIDE, rosterText } from './mates.js';
@@ -18,10 +18,11 @@ function clock(tz) {
 }
 
 /** A few memories stay inline every turn: pinned shared ones (max 5) and the top `autoRecall` hits for this message. */
+// Lessons have their own block ({{lessons}}), so they are left out here.
 async function memoriesFor(uid, query, mateKey, access, n) {
-  if (!n && n !== undefined) return (await recall(uid, '', { k: 0, pinned: 5, mate: mateKey, access })).map((m) => `- (${m.kind}) ${clip(m.text, 300)}`);
-  const hits = await recall(uid, query, { k: n ?? 3, pinned: 5, mate: mateKey, access });
-  return hits.map((m) => `- (${m.kind}${m.scope === 'personal' ? ', your note' : ''}) ${clip(m.text, 300)}`);
+  if (!n && n !== undefined) return (await recall(uid, '', { k: 0, pinned: 5, mate: mateKey, access })).filter((m) => m.kind !== 'lesson').map((m) => `- (${m.kind}) ${clip(m.text, 300)}`);
+  const hits = await recall(uid, query, { k: (n ?? 3) + 2, pinned: 5, mate: mateKey, access });
+  return hits.filter((m) => m.kind !== 'lesson').slice(0, 5 + (n ?? 3)).map((m) => `- (${m.kind}${m.scope === 'personal' ? ', your note' : ''}) ${clip(m.text, 300)}`);
 }
 
 export function toolBlock(tools) {
@@ -139,10 +140,11 @@ export async function buildSystem({ uid, mateKey, cfg = {}, mode = 'chat', query
   const prov = (await providerSummary(uid).catch(() => []))[0];
   const toolList = tools.map((t) => t.name);
   const memOk = access.memory.shared !== 'none' || access.memory.personal;
-  const [mem, reach, connections] = await Promise.all([
+  const [mem, reach, connections, lessons] = await Promise.all([
     memOk ? memoriesFor(uid, query, mateKey, access, settings.autoRecall).catch(() => []) : [],
     catalog(uid, mateKey, access, { tools: toolList }).catch(() => ''),
     connectionsFor(uid),
+    access.memory.personal ? lessonsFor(uid, mateKey, query, 4).catch(() => []) : [],
   ]);
   const guards = [];
   if (settings.guardPurchases) guards.push('Never buy, pay for, or subscribe to anything.');
@@ -159,7 +161,7 @@ export async function buildSystem({ uid, mateKey, cfg = {}, mode = 'chat', query
     roster: playbook ? '' : rosterText(ro), playbook,
     tools: toolNames.join(', '), connections, 'connections.push': ', and app push to the dashboard and phone', server: serverLine(),
     'runtime.provider': prov?.name ?? '', 'runtime.model': prov?.model ?? '',
-    reach, memories: mem.join('\n'),
+    reach, memories: mem.join('\n'), lessons: lessons.map((l) => `- ${clip(l.text, 240)}`).join('\n'),
     guards: guards.map((g) => `- ${g}`).join('\n'), run, call,
   };
   const full = renderTemplate(vars, { mode, surface, tools: toolNames });

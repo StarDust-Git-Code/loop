@@ -30,6 +30,7 @@ let pass = 0; const ok = (name) => { pass++; console.log('  ✓', name); };
 
 /* ---- fakes ---- */
 const body = (req) => new Promise((r) => { const c = []; req.on('data', (d) => c.push(d)); req.on('end', () => r(Buffer.concat(c))); });
+let verifyN = 0;
 const llmCalls = []; const llmSys = []; let toolsOff = false; const llmTools = []; const llmMsgs = []; const llmMax = [];
 const llm = http.createServer(async (req, res) => {
   const send = (o) => { res.setHeader('content-type', 'application/json'); res.end(JSON.stringify(o)); };
@@ -44,8 +45,20 @@ const llm = http.createServer(async (req, res) => {
     text = said.includes('Priya reports to Arun') ? JSON.stringify({ ops: [{ op: 'add', text: 'Priya reports to Arun in the design team', kind: 'fact', scope: 'shared' }], entities: [{ name: 'Priya', type: 'person' }, { name: 'Arun', type: 'person' }, { name: 'Design team', type: 'team' }], relations: [{ from: 'Priya', rel: 'reports_to', to: 'Arun' }, { from: 'Priya', rel: 'member_of', to: 'Design team' }] })
       : said.includes('Priya now reports to Meena') ? JSON.stringify({ ops: [], entities: [{ name: 'Meena', type: 'person' }], relations: [{ from: 'Priya', rel: 'reports to', to: 'Meena' }] }) : '{"ops":[]}';
   }
+  // the nightly review: every agent writes a lesson; Writer also drafts a skill
+  if (sys.startsWith('You are reviewing your own recent work')) { const who = /Who you are:\nYou are (\w+)/.exec(sys)?.[1] ?? 'Mate'; text = JSON.stringify({ lessons: [{ text: `When ${who} hands over a table, include the units in every row.`, evidence: 'item 1' }], skill: who === 'Writer' ? { name: 'Tables with units', description: 'How to write a comparison table', instructions: '1. One row per item.\n2. Units in every cell.\n3. Cite the source page.', why: 'the checker sent a table back for missing units' } : null }); }
+  if (sys.startsWith("You check whether a work step's output") && b.messages.at(-1).content.includes('Step: Draft the units table')) text = verifyN++ === 0 ? '{"ok":false,"issue":"The table has no units."}' : '{"ok":true}';
+  // the deep-research harness
+  if (sys.startsWith('You write the research brief')) text = JSON.stringify({ mode: 'datasheet', question: 'What are the quiescent current and maximum input voltage of the TPS7A02?', subjects: ['TPS7A02'], parameters: ['quiescent current', 'input voltage', 'dropout'], searches: [] });
+  if (sys.startsWith('You extract values from technical documents')) {
+    const retry = b.messages.at(-1).content.includes('could not be found');
+    text = JSON.stringify({ values: retry ? [{ subject: 'TPS7A02', parameter: 'Input voltage', value: '6.0', unit: 'V', kind: 'rating', page: 2, table: '', quote: 'Input voltage | 6.0 V' }, { subject: 'TPS7A02', parameter: 'Dropout', value: '200', unit: 'mV', kind: 'max', page: 1, quote: 'Dropout 200 mV' }]
+      : [{ subject: 'TPS7A02', parameter: 'Quiescent current', value: '25', unit: 'nA', conditions: 'VIN = 3.3 V, TA = 25 C', kind: 'typ', page: 1, table: 'Table 7-1', quote: 'Quiescent current | 25 | nA | VIN = 3.3 V, TA = 25 C' }, { subject: 'TPS7A02', parameter: 'Input voltage', value: '6.0', unit: 'V', kind: 'rating', page: 1, quote: 'Input voltage 6.0 V' }, { subject: 'TPS7A02', parameter: 'Dropout', value: '200', unit: 'mV', kind: 'max', page: 1, quote: 'Dropout 200 mV' }], gaps: retry ? [] : ['PSRR is not given'], notes: [] });
+  }
+  if (sys.startsWith('You review a research analysis')) text = '{"ok":true,"issues":[]}';
+  if (sys.startsWith('You write the answer section of a research report')) text = 'The TPS7A02 draws 25 nA typical at VIN = 3.3 V (D1 p.1) and is rated to 6.0 V input (D1 p.2).';
   if (sys.includes('You are the Planner')) text = JSON.stringify({ steps: [{ mate: 'research', label: 'Gather facts', kind: 'think' }, { mate: 'code', label: 'Make hello file', kind: 'code' }, { mate: 'writer', label: 'Write summary', kind: 'file' }] });
-  else if (sys.includes('coding agent') && !sys.startsWith('You are the Code Mate') && !sys.startsWith('You review')) {
+  else if (sys.includes('coding agent') && !sys.startsWith('You are the Code Mate') && !sys.startsWith('You review') && !sys.startsWith('You are reviewing')) {
     const n = b.messages.filter((m) => m.role === 'assistant').length;
     text = n === 0 ? '{"tool":"write_file","args":{"path":"out/hello.txt","content":"hi from coder"}}' : n === 1 ? '```json\n{"tool":"run","args":{"cmd":"ls","args":["out"]}}\n```' : '{"tool":"finish","args":{"summary":"Created out/hello.txt"}}';
   }
@@ -311,6 +324,27 @@ try {
   assert.equal((await call('DELETE', `/v1/files/${up.json.id}`)).status, 204); assert.equal((await call('GET', `/v1/files/${up.json.id}/content`)).status, 404);
   ok('files: upload, download, delete removes Drive copy');
 
+  /* deep research: an uploaded datasheet, values checked against their page, a wrong quote re-checked, one dropped */
+  {
+    const { makePdf } = await import('./fixtures/makepdf.mjs');
+    const pdf = makePdf([[[50, 60, 'TPS7A02 Ultra-low-Iq LDO datasheet'], [50, 100, 'Table 7-1. Electrical Characteristics'], [50, 120, 'Quiescent current'], [260, 120, '25'], [300, 120, 'nA'], [380, 120, 'VIN = 3.3 V, TA = 25 C']], [[50, 60, 'Absolute maximum ratings'], [50, 80, 'Input voltage'], [320, 80, '6.0 V']]]);
+    const f = new FormData(); f.append('file', new Blob([pdf], { type: 'application/pdf' }), 'tps7a02.pdf');
+    const doc = (await call('POST', '/v1/files', f)).json;
+    const rr = (await call('POST', '/v1/runs', { prompt: 'What is the quiescent current and max input voltage of the TPS7A02?', mode: 'research', fileIds: [doc.id] })).json;
+    assert.equal(rr.plan?.[0]?.kind, 'research');
+    const rd = await until(async () => { const r = (await call('GET', `/v1/runs/${rr.id}`)).json; return ['done', 'failed'].includes(r.status) ? r : null; }, 30000);
+    assert.equal(rd.status, 'done', rd.error); assert.ok(rd.log.some((l) => /did not match their page; checking again \(round 2\/3\)/.test(l.text)), 'a wrong quote is sent back');
+    const files = await Promise.all(rd.fileIds.map((id) => call('GET', `/v1/files/${id}`).then((x) => x.json)));
+    const rep = files.find((x) => x.name?.endsWith('.md')); assert.ok(rep, `report file ${JSON.stringify(files)}`);
+    const md = (await call('GET', `/v1/files/${rep.id}/content`)).text;
+    assert.ok(md.includes('| TPS7A02 | Quiescent current | 25 | nA | typ | VIN = 3.3 V, TA = 25 C | D1 p.1, Table 7-1 |'), md);
+    assert.ok(md.includes('| TPS7A02 | Input voltage | 6.0 | V | rating | — | D1 p.2 |'), 'the corrected value is kept with its real page');
+    assert.ok(/## Dropped[\s\S]*Dropout = 200 mV/.test(md) && !/\| Dropout \|/.test(md), 'a value never found on its page is dropped, not reported');
+    assert.ok(md.includes('Not in the documents: D1: PSRR is not given') && md.includes('**D1** tps7a02.pdf') && md.includes('sha256'));
+    assert.ok(rd.notes.includes('25 nA typical'), 'the answer reaches the run notes for the final report');
+  }
+  ok('deep research: uploaded datasheet read page by page, quotes checked by the program, a wrong page corrected, an unverifiable value dropped, cited report');
+
   /* knowledge + mcp */
   await call('POST', '/v1/knowledge', { kind: 'note', name: 'Plan', text: 'The launch is on Friday.\n\nBudget is small.', status: 'pending' });
   const hit = await until(async () => { const h = (await call('GET', '/v1/knowledge/search?q=launch%20friday')).json; return h.length ? h : null; }); assert.equal(hit[0].name, 'Plan');
@@ -468,6 +502,33 @@ try {
   const pv = await call('GET', '/v1/voice/preview?mate=research&voice=Kore');
   assert.ok([200, 501, 502].includes(pv.status), 'voice preview answers (501 without a Gemini key)');
   ok('integrations: registry, link codes, signed webhooks, health ingest key + CSV, stand-up, settings, voice preview');
+
+  /* the nightly review: a step the checker sent back becomes a lesson in that agent's next prompt; a drafted skill waits */
+  {
+    await call('PATCH', '/v1/settings', { retriesOnFailure: 1, permissionMode: 'ask', askBeforeRisky: true });
+    const wf = (await call('POST', '/v1/workflows', { name: 'Units table', nodes: [{ id: 'n1', type: 'mate', mate: 'writer', label: 'Draft the units table', x: 0, y: 0 }], edges: [] })).json;
+    const rr = (await call('POST', '/v1/runs', { prompt: 'Make a table of LDO specs', workflowId: wf.id })).json;
+    const rd = await until(async () => { const r = (await call('GET', `/v1/runs/${rr.id}`)).json; return ['done', 'failed'].includes(r.status) ? r : null; });
+    const st = rd.steps.find((x) => x.label === 'Draft the units table');
+    assert.equal(st.status, 'done'); assert.equal(st.attempt, 2); assert.deepEqual(st.checks, ['The table has no units.'], 'the checker\'s reason is kept on the step');
+    const rv = (await call('POST', '/v1/reflect', {})).json;
+    const w = rv.mates.find((m) => m.mate === 'writer');
+    assert.ok(w?.lessons.length && w.evidence.some((e) => /no units/.test(e.text)), JSON.stringify(rv).slice(0, 800));
+    assert.equal(w.skill?.status, 'draft', 'in ask mode a self-written skill is a draft');
+    const sk = (await call('GET', '/v1/skills')).json.find((s) => s.name === 'Tables with units');
+    assert.equal(sk.enabled, false); assert.equal(sk.origin, 'self'); assert.equal(sk.by, 'writer'); assert.equal(sk.review, 'pending');
+    const q = (await call('GET', '/v1/questions')).json.find((x) => /Tables with units/.test(x.question)); assert.ok(q, 'the owner is asked');
+    await call('POST', `/v1/questions/${q.id}/answer`, { answer: q.options[0] });
+    assert.equal((await call('GET', `/v1/skills/${sk.id}`)).json.enabled, true, 'answering "Switch it on" enables it');
+    assert.ok((await call('GET', '/v1/memories')).json.some((m) => m.kind === 'lesson' && m.mate === 'writer' && m.scope === 'personal'));
+    assert.equal((await call('GET', '/v1/reflections')).json[0].id, rv.id);
+    const conv = (await call('POST', '/v1/conversations', { title: 'Tables', mate: 'writer', messages: [] })).json; const before = llmSys.length;
+    await call('POST', `/v1/conversations/${conv.id}/messages`, { text: 'Make me a table of the three LDOs', mate: 'writer' });
+    assert.ok(llmSys.slice(before).some((s) => s.includes('Lessons from your own past work') && s.includes('include the units in every row')), 'next time, the lesson is in front of Writer');
+    assert.ok(!llmSys.slice(before).some((s) => s.includes('When Ops hands over')), 'and only Writer\'s own lessons');
+    assert.equal((await call('PATCH', '/v1/settings', { reflectAt: '27:00' })).json.reflectAt, '03:00', 'a bad review time is ignored');
+  }
+  ok('nightly review: a sent-back step becomes a lesson, the lesson reaches only that agent\'s next prompt, a self-written skill waits for the owner\'s OK');
   console.log(`\nALL ${pass} CHECKS PASSED`);
 } catch (e) { console.error('\nFAILED:', e.stack || e); process.exitCode = 1; }
 finally { cleanup(); setTimeout(() => process.exit(process.exitCode ?? 0), 200); }

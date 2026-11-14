@@ -24,6 +24,7 @@ import { verifyMcp } from './mcp.js';
 import { graphSnapshot, deleteNode, mergeNodes } from './graph.js';
 import { watchHook, ensureDefaultWatches, runWatch, briefingHook, sendBriefing, standupHook, runStandup } from './watch.js';
 import { importPeople, inviteCode, sendCheckin, overview, setCompanySender } from './company.js';
+import { reflect, listReflections, reflectHook } from './reflect.js';
 import { putFile, getFileStream, deleteDriveFile } from './files.js';
 import { telegramReady, send as tgSend, linkCode, startPolling } from './telegram.js';
 import { notify as anyNotify } from './notify.js';
@@ -115,6 +116,7 @@ await app.register(async (v1) => {
     invalidateRoster(uid);
     if (['briefingOn', 'briefingAt', 'timezone'].some((k) => k in body)) await briefingHook(uid, out).catch(() => {});
     if (['standupOn', 'standupDay', 'standupAt', 'timezone'].some((k) => k in body)) await standupHook(uid, out).catch(() => {});
+    if (['reflectOn', 'reflectAt', 'timezone'].some((k) => k in body)) await reflectHook(uid, out).catch(() => {});
     return out;
   });
   /* the leader's watch: what it keeps an eye on, and what it raised */
@@ -127,6 +129,9 @@ await app.register(async (v1) => {
   v1.post('/v1/watches/:id/check', async (req) => ({ raised: await runWatch(req.user.uid, req.params.id) }));
   v1.post('/v1/leader/briefing', async (req) => sendBriefing(req.user.uid));
   v1.post('/v1/leader/standup', async (req) => runStandup(req.user.uid));
+  /* the nightly review: what the team learned from its own mistakes (lessons, drafted skills) */
+  v1.get('/v1/reflections', async (req) => listReflections(req.user.uid, Math.min(50, Number(req.query?.limit) || 20)));
+  v1.post('/v1/reflect', async (req) => reflect(req.user.uid, { reason: 'asked by you' }));
   v1.get('/v1/standups', async (req) => (await userCol(req.user.uid, 'standups').limit(100).get()).docs.map((d) => ({ id: d.id, ...d.data() })).sort((a, b) => String(b.at).localeCompare(String(a.at))).slice(0, 12));
   /* company: directory import, employee invites, sending approved check-ins, workload */
   v1.post('/v1/people/import', async (req) => importPeople(req.user.uid, req.body?.csv));

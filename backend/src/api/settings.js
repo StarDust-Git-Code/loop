@@ -11,6 +11,7 @@ export const DEFAULT_SETTINGS = {
   prefersShort: false, shareSchedule: false,
   notifyApp: true, notifyDiscord: true, notifySlack: true, notifyWhatsapp: true, leader: 'mimo',
   standupOn: false, standupDay: 1, standupAt: '09:00', /* weekly team stand-up from the leader (day 0 = Sunday) */
+  reflectOn: true, reflectAt: '03:00', selfSkills: true, /* nightly review of the team's mistakes (reflect.js); agents may draft skills */
   companyCheckinsAuto: false, companyDailyLlmBudget: 200, maxCallsPerDay: 3, urgentBreaksQuiet: true, briefingOn: false, briefingAt: '08:00', briefingCall: false, coderHarness: 'builtin', coderSandbox: 'auto', quietHoursOn: false, quietFrom: '22:00', quietTo: '07:00',
   maxContextTokens: 0, maxOutputTokens: 0, defaultThinking: 'high', showReasoning: true, brainstormRounds: 2, // developer options: 0 = automatic
 };
@@ -29,7 +30,7 @@ export async function patchSettings(uid, patch) {
   range('maxContextTokens', 1000, 2_000_000); range('maxOutputTokens', 64, 64_000);
   range('maxCallsPerDay', 0, 20); range('companyDailyLlmBudget', 0, 100_000);
   range('standupDay', 0, 6);
-  for (const k of ['quietFrom', 'quietTo', 'briefingAt', 'standupAt']) if (k in clean && !/^([01]\d|2[0-3]):[0-5]\d$/.test(clean[k])) delete clean[k];
+  for (const k of ['quietFrom', 'quietTo', 'briefingAt', 'standupAt', 'reflectAt']) if (k in clean && !/^([01]\d|2[0-3]):[0-5]\d$/.test(clean[k])) delete clean[k];
   if (clean.coderHarness && !['builtin', 'claude', 'codex', 'opencode'].includes(clean.coderHarness)) delete clean.coderHarness;
   if (clean.coderSandbox && !['auto', 'docker', 'host'].includes(clean.coderSandbox)) delete clean.coderSandbox;
   if (clean.defaultThinking && !['low', 'medium', 'high', 'xhigh'].includes(clean.defaultThinking)) delete clean.defaultThinking;

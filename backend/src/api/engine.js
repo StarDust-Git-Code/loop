@@ -13,7 +13,7 @@ import { converse } from './agent.js';
 import { getSettings } from './settings.js';
 import { putFile, storageReady as artifactsReady } from './files.js';
 import { notify } from './notify.js';
-import { learnFromTurn } from './memory.js';
+import { learnFromTurn, lessonsFor } from './memory.js';
 
 const live = new Map();      // runId -> state
 const jobWaiters = new Map(); // jobId -> resolve(result)
@@ -54,22 +54,25 @@ async function makePlan(st, wf) {
     const seen = new Set(); const out = [];
     while (cur && !seen.has(cur.id)) {
       seen.add(cur.id);
-      if (cur.type === 'mate' || cur.type === 'tool' || cur.type === 'output') out.push({ mate: cur.mate ?? 'ops', label: cur.label || 'Step', kind: cur.type === 'output' ? 'file' : cur.mate === 'code' || cur.mate === 'byte' ? 'code' : 'think', repo: cur.config?.repo, branch: cur.config?.branch, harness: cur.config?.harness, sandbox: cur.config?.sandbox });
+      const deep = /^(deep|deep-research|research)$/i.test(String(cur.config?.mode ?? ''));
+      if (cur.type === 'mate' || cur.type === 'tool' || cur.type === 'output') out.push({ mate: cur.mate ?? 'ops', label: cur.label || 'Step', kind: cur.type === 'output' ? 'file' : deep ? 'research' : cur.mate === 'code' || cur.mate === 'byte' ? 'code' : 'think', repo: cur.config?.repo, branch: cur.config?.branch, harness: cur.config?.harness, sandbox: cur.config?.sandbox, ...(deep ? { research: { sources: cur.config?.sources, parameters: cur.config?.parameters, target: cur.config?.target } } : {}) });
       cur = byId.get(next.get(cur.id));
     }
     if (out.length) return out.slice(0, st.settings.maxSteps);
   }
   try {
+    // The Planner's own lessons from past runs (reflect.js), so a plan that went wrong before is not planned again.
+    const lessons = await lessonsFor(st.uid, 'planner', st.run.prompt, 4).catch(() => []);
     const r = await chat(st.uid, {
       model: st.settings.model, json: true, maxTokens: 900, temperature: 0.2, effort: effortOf(st.mates.planner?.thinking),
       messages: [
-        { role: 'system', content: PLAN_JSON_PROMPT(st.ro, Math.min(st.settings.maxSteps, 8)) },
+        { role: 'system', content: `${PLAN_JSON_PROMPT(st.ro, Math.min(st.settings.maxSteps, 8))}${lessons.length ? `\n\nLessons you wrote after reviewing your past plans (apply them):\n${lessons.map((l) => `- ${l.text}`).join('\n')}` : ''}` },
         { role: 'user', content: st.run.prompt },
       ],
     });
     const j = extractJson(r.text);
     const steps = (j?.steps ?? []).filter((s) => s && typeof s.label === 'string').slice(0, st.settings.maxSteps)
-      .map((s) => ({ mate: st.ro.on(s.mate) ? s.mate : st.ro.on('ops') ? 'ops' : st.ro.leader, label: s.label.slice(0, 120), kind: ['think', 'code', 'file', 'notify'].includes(s.kind) ? s.kind : 'think' }));
+      .map((s) => ({ mate: st.ro.on(s.mate) ? s.mate : st.ro.on('ops') ? 'ops' : st.ro.leader, label: s.label.slice(0, 120), kind: ['think', 'code', 'file', 'notify', 'research'].includes(s.kind) ? s.kind : 'think' }));
     if (steps.length) return steps;
   } catch (e) { log(st, 'planner', `Planning failed (${e.message.slice(0, 160)}). Using a simple plan.`); }
   return [{ mate: 'research', label: 'Work on the request', kind: 'think' }, { mate: 'writer', label: 'Write the final answer', kind: 'think' }];
@@ -90,7 +93,8 @@ function ask(st, step, text) {
   return new Promise((resolve) => { st.approvals.set(approval.id, resolve); });
 }
 
-const needsApproval = (st, kind) => kind !== 'think' && (st.run.askFirst || (st.settings.askBeforeRisky && st.settings.permissionMode !== 'auto'));
+// Research only reads public documents and writes its own report, so it is not a risky step (like "think").
+const needsApproval = (st, kind) => !['think', 'research'].includes(kind) && (st.run.askFirst || (st.settings.askBeforeRisky && st.settings.permissionMode !== 'auto'));
 
 /* ------------------------------------------------------------------ steps */
 const runLine = (st, step) => `Run "${st.run.title}". Your step: ${step.label}. Steps: ${st.run.steps.map((x) => `${x.label} (${x.mate}, ${x.status})`).join('; ').slice(0, 900)}`;
@@ -158,6 +162,23 @@ async function stepFile(st, step) {
   log(st, step.mate, `Saved ${name} to Drive.`);
 }
 
+/** Deep research on primary documents (research/index.js): collected, extracted page by page, every quote checked. */
+async function stepResearch(st, step, idx) {
+  const { runResearch } = await import('../research/index.js');
+  const { getFileStream } = await import('./files.js');
+  const r = await runResearch({
+    uid: st.uid, runId: st.run.id, idx, prompt: st.run.prompt, label: step.label, notes: st.run.notes, mate: step.mate, fileIds: st.run.fileIds ?? [], config: step.research ?? {}, settings: st.settings,
+    chat: (req) => chat(st.uid, req), persona: (k) => briefPersona(k, st.mates?.[k] ?? {}, st.ro.byKey[k]),
+    getFile: async (id) => { const { file, body } = await getFileStream(st.uid, id); return { name: file.name, buf: Buffer.from(await new Response(body).arrayBuffer()) }; },
+    log: (t) => log(st, step.mate, t), gate: () => gate(st),
+  });
+  const name = `${step.label.replace(/[^\w\- ]+/g, '').trim().replace(/\s+/g, '-').slice(0, 50) || 'research'}.md`;
+  try { const f = await putFile(st.uid, { name, mime: 'text/markdown', buf: Buffer.from(r.report, 'utf8'), source: 'run', runId: st.run.id }); emit(st, { type: 'file', fileId: f.id }); log(st, step.mate, `Saved the report as ${name}.`); }
+  catch (e) { log(st, step.mate, `Could not save the report file (${String(e.message).slice(0, 120)}); it is in the run notes.`); }
+  for (const u of r.sources) if (!st.run.sources.includes(u)) st.run.sources.push(u);
+  st.run.notes = (st.run.notes + `\n\n## ${step.label}\n${r.summary}\n\n${r.report.slice(0, 6000)}`).slice(-NOTES_CAP);
+}
+
 async function stepNotify(st, step) {
   const sent = await notify(st.uid, `${st.run.title}\n${step.label}\n\n${st.run.notes.slice(-600)}`);
   log(st, step.mate, sent ? `Sent to ${sent} Telegram chat(s).` : 'No Telegram chat is linked, nothing sent.');
@@ -173,7 +194,7 @@ async function execute(st) {
       log(st, 'planner', 'Planning…');
       let wf; if (st.run.workflowId) wf = (await userCol(st.uid, 'workflows').doc(st.run.workflowId).get()).data();
       st.run.plan = (await makePlan(st, wf)).map((p, i) => ({ ...p, id: `s${i + 1}` }));
-    } else log(st, 'planner', 'Resuming from where it stopped.');
+    } else log(st, 'planner', st.run.steps?.length ? 'Resuming from where it stopped.' : st.run.mode === 'research' ? 'Deep research: no planning needed.' : 'Using the given plan.');
     const steps = st.run.plan.map((p) => ({ id: p.id, mate: p.mate, label: p.label, status: st.run.steps.find((x) => x.id === p.id)?.status === 'done' ? 'done' : 'waiting', _p: p }));
     for (const s of steps) if (s.status !== 'done') emit(st, { type: 'step', step: { id: s.id, mate: s.mate, label: s.label, status: 'waiting' } });
     await save(st);
@@ -192,26 +213,29 @@ async function execute(st) {
       }
       const maxTries = Math.max(0, Number(st.settings.retriesOnFailure) || 0);
       let tries = 0, feedback = '';
+      const checks = []; // why the checker sent this step back: the evidence the nightly review (reflect.js) learns from
+      const withChecks = (extra) => (checks.length ? { ...extra, checks: [...checks] } : extra);
       emit(st, { type: 'step', step: view('running', { startedAt: started, attempt: 1 }) });
       for (;;) {
         try {
           if (p.kind === 'code') await stepCode(st, p, i);
           else if (p.kind === 'file') await stepFile(st, p);
           else if (p.kind === 'notify') await stepNotify(st, p);
+          else if (p.kind === 'research') await stepResearch(st, p, i);
           else {
             const out = await stepThink(st, p, feedback);
             const v = await verifyStep(st, p, out);
-            if (!v.ok && tries < maxTries) { feedback = v.issue || 'The output did not accomplish the step.'; tries++; log(st, 'ops', `Checked "${s.label}": ${feedback} Trying again (${tries}/${maxTries}).`); emit(st, { type: 'step', step: view('running', { startedAt: started, attempt: tries + 1 }) }); continue; }
+            if (!v.ok && tries < maxTries) { feedback = v.issue || 'The output did not accomplish the step.'; checks.push(feedback.slice(0, 300)); tries++; log(st, 'ops', `Checked "${s.label}": ${feedback} Trying again (${tries}/${maxTries}).`); emit(st, { type: 'step', step: view('running', withChecks({ startedAt: started, attempt: tries + 1 })) }); continue; }
             log(st, s.mate, out.slice(0, 600));
             st.run.notes = (st.run.notes + `\n\n## ${s.label}\n${out}`).slice(-NOTES_CAP);
           }
-          emit(st, { type: 'step', step: view('done', { startedAt: started, finishedAt: now(), attempt: tries + 1 }) });
+          emit(st, { type: 'step', step: view('done', withChecks({ startedAt: started, finishedAt: now(), attempt: tries + 1 })) });
           break;
         } catch (e) {
           if (e instanceof Stopped || st.stopped) throw new Stopped();
           attempts = tries + 1;
-          if (tries++ < maxTries) { feedback = `It crashed with: ${String(e.message).slice(0, 200)}`; log(st, 'ops', `"${s.label}" failed (${String(e.message).slice(0, 160)}). Retrying ${tries}/${maxTries}…`); emit(st, { type: 'step', step: view('running', { startedAt: started, attempt: tries + 1 }) }); await sleep(1500 * tries); continue; }
-          emit(st, { type: 'step', step: view('failed', { startedAt: started, finishedAt: now(), attempt: attempts, error: String(e.message).slice(0, 400) }) });
+          if (tries++ < maxTries) { feedback = `It crashed with: ${String(e.message).slice(0, 200)}`; checks.push(feedback.slice(0, 300)); log(st, 'ops', `"${s.label}" failed (${String(e.message).slice(0, 160)}). Retrying ${tries}/${maxTries}…`); emit(st, { type: 'step', step: view('running', withChecks({ startedAt: started, attempt: tries + 1 })) }); await sleep(1500 * tries); continue; }
+          emit(st, { type: 'step', step: view('failed', withChecks({ startedAt: started, finishedAt: now(), attempt: attempts, error: String(e.message).slice(0, 400) })) });
           failed = s;
           throw e;
         }
@@ -242,13 +266,23 @@ async function execute(st) {
 }
 
 /* ------------------------------------------------------------------ public API */
-export async function startRun(uid, { prompt, workflowId, askFirst = false, fileIds = [], title, unattended = false } = {}) {
+/**
+ * mode 'research': skip planning and run one deep-research step (by Research, else Data, else the leader). `research`
+ * = optional hints for it: { parameters, target, sources }.
+ */
+export async function startRun(uid, { prompt, workflowId, askFirst = false, fileIds = [], title, unattended = false, mode = '', research = null } = {}) {
   if (typeof prompt !== 'string' || !prompt.trim()) throw Object.assign(new Error('prompt is required'), { statusCode: 400 });
   const settings = await getSettings(uid);
-  const mates = (await loadRoster(uid)).cfgs;
+  const ro = await loadRoster(uid); const mates = ro.cfgs;
   const ref = userCol(uid, 'runs').doc();
   const ts = now();
-  const run = { id: ref.id, createdAt: ts, updatedAt: ts, title: (title || prompt.trim().split('\n')[0]).slice(0, 80), prompt: prompt.trim().slice(0, 8000), workflowId, askFirst: !!askFirst, status: 'queued', steps: [], log: [], approvals: [], fileIds, sources: [], report: '', notes: '' };
+  const files = (Array.isArray(fileIds) ? fileIds : []).map(String).slice(0, 20);
+  const run = { id: ref.id, createdAt: ts, updatedAt: ts, title: (title || prompt.trim().split('\n')[0]).slice(0, 80), prompt: prompt.trim().slice(0, 8000), workflowId, askFirst: !!askFirst, status: 'queued', steps: [], log: [], approvals: [], fileIds: files, sources: [], report: '', notes: '' };
+  if (mode === 'research') {
+    const who = ['research', 'data'].find((k) => ro.on(k)) ?? ro.leader;
+    const hints = research && typeof research === 'object' ? { parameters: research.parameters, target: research.target, sources: research.sources } : {};
+    run.mode = 'research'; run.plan = [{ id: 's1', mate: who, label: `Deep research: ${run.title}`.slice(0, 120), kind: 'research', research: hints }];
+  }
   return launch(uid, run, settings, mates, unattended, true);
 }
 

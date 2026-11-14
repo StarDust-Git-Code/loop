@@ -18,6 +18,8 @@ import { WATCH_TOOLS } from './watch.js';
 import { COMPANY_TOOLS } from './company.js';
 import { INTEGRATION_TOOLS, bindFeedFetch } from '../integrations/index.js';
 import { PYTHON_TOOLS } from './python.js';
+import { REFLECT_TOOLS } from './reflect.js';
+import { bindResearch } from '../research/index.js';
 export { setToolHooks };
 
 const cap = (s, n = 4000) => (s.length > n ? `${s.slice(0, n)}\n…[truncated]` : s);
@@ -142,6 +144,17 @@ const WF_TOOLS = {
 
 bindWeb({ safeFetch });
 bindFeedFetch(safeFetch);
+bindResearch({ safeFetch, search });
+
+const RESEARCH_TOOLS = {
+  deep_research: { group: 'Deep Research', write: true, desc: 'Start a DEEP research run on primary documents: datasheets and application notes (exact ratings, comparisons of parts), patents (claims, priority dates, families, a claim chart against a product) or claims in general (is this vendor/paper claim backed by evidence?). It collects the documents (the owner\'s uploads, addresses you give, patent records, PDFs found by search), reads them page by page, checks every quote against its page and writes a cited report. Takes minutes, so use web_search for quick facts. Returns the run id; the report lands in the run\'s files.', args: '{"question": "what to find out, with part or patent numbers", "parameters?": ["for datasheets: what to compare"], "target?": "for patents: product or document to chart against", "sources?": ["https://... primary documents you already know"], "fileIds?": ["ids of uploaded files to use"]}', run: async (c, a) => {
+    if (!hooks.startRun) throw bad('Runs are unavailable right now.');
+    const q = String(a.question ?? '').trim(); if (q.length < 8) throw bad('question is required');
+    const arr = (v) => (Array.isArray(v) ? v : v ? String(v).split(/[\n;]+/) : []).map((x) => String(x).trim()).filter(Boolean).slice(0, 20);
+    const run = await hooks.startRun(c.uid, { prompt: q.slice(0, 4000), mode: 'research', title: `Research: ${q.split('\n')[0]}`.slice(0, 80), fileIds: arr(a.fileIds), research: { parameters: arr(a.parameters), target: String(a.target ?? '').slice(0, 300), sources: arr(a.sources).filter((u) => /^https?:\/\//.test(u)) }, unattended: true });
+    return `Started deep research run ${run.id} ("${run.title}"). It collects and reads the primary documents, checks every quote against its page, and saves a cited report in the run's files. The owner can follow it in Runs.`;
+  } },
+};
 
 /** name -> { group, desc, args, run(ctx, args) }  ctx = { uid, settings } */
 export const TOOLS = {
@@ -155,6 +168,8 @@ export const TOOLS = {
   ...COMPANY_TOOLS,
   ...INTEGRATION_TOOLS,
   ...PYTHON_TOOLS,
+  ...REFLECT_TOOLS,
+  ...RESEARCH_TOOLS,
   web_search: { group: 'Web Search', net: true, desc: 'Search the web (Google-grounded). Fast: use this for specs, prices, facts and news instead of opening a browser. Returns an answer with source links.', args: '{"query": "text"}', run: async (_c, a) => cap(await search(String(a.query ?? '').slice(0, 200))) },
   fetch_url: { group: 'Web Search', net: true, desc: 'Open a public web page and read its text.', args: '{"url": "https://..."}', run: async (_c, a) => {
     const res = await safeFetch(String(a.url));
@@ -220,13 +235,13 @@ const DELEGATORS = ['Delegation', 'Run Control'];
 // Their tools only show up once the integration is set up (each tool's ready()), so an unlinked app costs nothing.
 const EXTRA_GROUPS = {
   '*': ['Utilities'],
-  mimo: ['Delegation', 'Web Search', 'Vector Search', 'File System', 'Browser', 'Notes', 'Google', 'Task Apps', 'Home'],
+  mimo: ['Delegation', 'Web Search', 'Vector Search', 'File System', 'Browser', 'Notes', 'Google', 'Task Apps', 'Home', 'Deep Research'],
   ops: [...DELEGATORS, 'Home', 'Team Chat'], halo: DELEGATORS, planner: [...DELEGATORS, 'Task Apps', 'Google'], flow: ['Delegation'],
-  research: ['Delegation', 'Feeds', 'Notes'], scout: ['Feeds'], writer: ['Notes', 'Google'], recall: ['Notes'],
+  research: ['Delegation', 'Feeds', 'Notes', 'Deep Research'], scout: ['Feeds', 'Deep Research'], writer: ['Notes', 'Google'], recall: ['Notes'],
   orbit: ['Google', 'Task Apps'], zen: ['Google', 'Health', 'Home'], luna: ['Health', 'Notes'], chef: ['Task Apps'], tune: ['Music'],
-  data: ['Health'], byte: ['Task Apps'], code: ['Task Apps'],
+  data: ['Health', 'Deep Research'], byte: ['Task Apps'], code: ['Task Apps'],
 };
-const LEAD_GROUPS = ['Delegation', 'Run Control', 'Web Search', 'Vector Search', 'Memory', 'Calendar', 'Company', 'Notes', 'Google', 'Task Apps', 'Home', 'Team Chat'];
+const LEAD_GROUPS = ['Delegation', 'Run Control', 'Web Search', 'Vector Search', 'Memory', 'Calendar', 'Company', 'Notes', 'Google', 'Task Apps', 'Home', 'Team Chat', 'Deep Research'];
 /** leader = the roster's leader key: it always gets the delegation and planning tools. */
 export function toolsFor(groups = [], settings = {}, mateKey = '', leader = '') {
   const g = new Set([...groups, ...EXTRA_GROUPS['*'], ...(EXTRA_GROUPS[mateKey] ?? []), ...(mateKey && mateKey === leader ? LEAD_GROUPS : [])]);

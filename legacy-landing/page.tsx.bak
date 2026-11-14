@@ -1,0 +1,39 @@
+import SmoothSetup from "@/components/SmoothSetup";
+import Nav from "@/components/Nav";
+import Hero from "@/components/Hero";
+import Marquee from "@/components/Marquee";
+import Roster from "@/components/Roster";
+import Runs from "@/components/Runs";
+import Calls from "@/components/Calls";
+import AlwaysOn from "@/components/AlwaysOn";
+import Integrations from "@/components/Integrations";
+import Safety from "@/components/Safety";
+import Install from "@/components/Install";
+import Footer from "@/components/Footer";
+
+export default function Home() {
+  return (
+    <>
+      <div className="progress" aria-hidden="true" />
+      <Nav />
+      <div id="smooth-wrapper">
+        <div id="smooth-content">
+          {/* SmoothSetup renders first so ScrollSmoother exists before any ScrollTrigger below */}
+          <SmoothSetup />
+          <main>
+            <Hero />
+            <Marquee />
+            <Roster />
+            <Runs />
+            <Calls />
+            <AlwaysOn />
+            <Integrations />
+            <Safety />
+            <Install />
+          </main>
+          <Footer />
+        </div>
+      </div>
+    </>
+  );
+}

@@ -38,6 +38,8 @@ export async function ensureDefaultWatches(uid) {
     const ref = col.doc(); const doc = { kind, label, config: {}, everyMinutes: 5, enabled: true, createdAt: now(), updatedAt: now(), createdBy: 'default' };
     await ref.set(doc); await watchHook(uid, ref.id, doc, 'set');
   }
+  // The nightly review is on by default too: make sure its job exists (without resetting a postponed one).
+  if (!(await jobs.doc(`${uid}_reflect_daily`).get()).exists) await (await import('./reflect.js')).reflectHook(uid).catch(() => {});
 }
 export async function addWatch(uid, { kind, label, config = {}, everyMinutes, by = 'owner' }) {
   if (!WATCH_KINDS.includes(kind)) throw Object.assign(new Error(`kind must be one of ${WATCH_KINDS.join(', ')}`), { tool: true, statusCode: 400 });
@@ -220,7 +222,9 @@ export async function sendBriefing(uid) {
   const tasks = (await userCol(uid, 'tasks').limit(300).get()).docs.map((d) => d.data()).filter((k) => k.status !== 'done');
   const overdue = tasks.filter((k) => k.dueAt && Date.parse(k.dueAt) < t);
   const alerts = (await userCol(uid, 'alerts').limit(200).get()).docs.map((d) => ({ ref: d.ref, ...d.data() })).filter((a) => a.delivered === 'digest' && !a.briefed);
-  const facts = `Today's calendar:\n${evs.map((e) => `- ${e.start.slice(11, 16)} ${e.title}`).join('\n') || '(nothing)'}\n\nOpen tasks: ${tasks.length}; overdue:\n${overdue.map((k) => `- ${k.title}`).join('\n') || '(none)'}\n\nSince the last briefing:\n${alerts.map((a) => `- ${a.title}`).join('\n') || '(nothing new)'}`;
+  const dayAgo = new Date(t - 20 * 3_600_000).toISOString();
+  const review = (await userCol(uid, 'reflections').limit(60).get()).docs.map((d) => d.data()).filter((r) => r.at > dayAgo && (r.lessons || r.skills)).sort((a, b) => String(b.at).localeCompare(String(a.at)))[0];
+  const facts = `Today's calendar:\n${evs.map((e) => `- ${e.start.slice(11, 16)} ${e.title}`).join('\n') || '(nothing)'}\n\nOpen tasks: ${tasks.length}; overdue:\n${overdue.map((k) => `- ${k.title}`).join('\n') || '(none)'}\n\nSince the last briefing:\n${alerts.map((a) => `- ${a.title}`).join('\n') || '(nothing new)'}${review ? `\n\nThe team's overnight review: ${clip(review.summary, 600)}` : ''}`;
   let text = facts;
   try { const r = await chat(uid, { model: settings.fastModel || '', maxTokens: 400, temperature: 0.3, effort: 'low', messages: [{ role: 'system', content: `You are ${ro.name(ro.leader)}, the owner's chief of staff. Write a morning briefing: 3-6 short lines, most important first, then one suggested focus for the day. Plain text, no preamble.` }, { role: 'user', content: facts }] }); if (r.text?.trim()) text = r.text.trim(); } catch { /* the facts are enough */ }
   for (const a of alerts) await a.ref.set({ briefed: true }, { merge: true }).catch(() => {});

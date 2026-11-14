@@ -9,7 +9,8 @@ import { embed, embedReady, rank } from './vec.js';
 import { now } from '../lib/env.js';
 import { ingest } from './graph.js';
 
-const KINDS = ['note', 'idea', 'decision', 'fact', 'journal', 'link'];
+// 'lesson' = a rule an agent wrote for itself after reviewing its own mistakes (reflect.js). Always personal.
+const KINDS = ['note', 'idea', 'decision', 'fact', 'journal', 'link', 'lesson'];
 export const scopeOf = (m) => (m.scope === 'personal' ? 'personal' : 'shared');
 /** Can this agent see this memory? access.memory = { personal: bool, shared: 'read'|'write'|'none' }. */
 export const visible = (m, mate, access) => (scopeOf(m) === 'personal' ? !!mate && m.mate === mate && access?.memory?.personal !== false : (access?.memory?.shared ?? 'write') !== 'none');
@@ -47,14 +48,32 @@ export async function recall(uid, query, { k = 6, pinned = 6, mate = '', access 
   return [...pins, ...hits].map((m) => ({ id: m.id, kind: m.kind, text: m.text, scope: scopeOf(m), mate: m.mate ?? '' }));
 }
 
+/**
+ * The lessons an agent wrote for itself (kind 'lesson', personal), most relevant to `query` first. With no query or no
+ * embeddings, the newest come first. They are put in front of the agent on every turn and run step (prompt.js, engine.js).
+ */
+export async function lessonsFor(uid, mate, query = '', n = 4) {
+  if (!mate) return [];
+  const mine = (await allMemories(uid)).filter((m) => m.kind === 'lesson' && scopeOf(m) === 'personal' && m.mate === mate && m.retired !== true);
+  if (!mine.length) return [];
+  const newest = [...mine].sort((a, b) => String(b.updatedAt ?? b.createdAt).localeCompare(String(a.updatedAt ?? a.createdAt)));
+  let ranked = [];
+  const q = String(query).trim() && embedReady() ? await embed([query], { query: true }).catch(() => null) : null;
+  if (q?.vecs[0]) { await ensureVectors(uid, mine, q.vm); ranked = rank(q.vecs[0], q.vm, mine, n).filter((x) => x.sim > 0.3); }
+  else if (String(query).trim()) { const t = words(query).slice(0, 12); ranked = mine.map((m) => ({ ...m, sim: kw(m.text, t) })).filter((x) => x.sim).sort((a, b) => b.sim - a.sim); }
+  const out = []; const seen = new Set();
+  for (const m of [...ranked, ...newest]) { if (seen.has(m.id)) continue; seen.add(m.id); out.push({ id: m.id, text: m.text, evidence: m.evidence ?? '', at: m.updatedAt ?? m.createdAt }); if (out.length >= n) break; }
+  return out;
+}
+
 /** Counts for the prompt catalog: shared items and this agent's personal ones. */
 export async function memoryCounts(uid, mate) {
   const mems = await allMemories(uid);
   return { shared: mems.filter((m) => scopeOf(m) === 'shared').length, personal: mems.filter((m) => scopeOf(m) === 'personal' && m.mate === mate).length, pinned: mems.filter((m) => m.pinned && scopeOf(m) === 'shared').length };
 }
 
-/** Add one memory unless an almost identical one exists. Returns { id, dup }. */
-export async function addMemory(uid, { text, kind = 'fact', by = 'auto', scope = 'shared', mate = '' }) {
+/** Add one memory unless an almost identical one exists. Returns { id, dup }. `extra` = additional plain fields (evidence...). */
+export async function addMemory(uid, { text, kind = 'fact', by = 'auto', scope = 'shared', mate = '', extra = null }) {
   text = String(text).trim().slice(0, 2000); if (!text) return null;
   scope = scope === 'personal' && mate ? 'personal' : 'shared';
   const e = embedReady() ? await embed([text]) : null;
@@ -65,7 +84,8 @@ export async function addMemory(uid, { text, kind = 'fact', by = 'auto', scope =
     if (top && top.sim > 0.92) return { id: top.id, dup: true };
   }
   const ref = userCol(uid, 'memories').doc(); const ts = now();
-  await ref.set({ kind: KINDS.includes(kind) ? kind : 'fact', text, scope, ...(scope === 'personal' ? { mate } : {}), pinned: false, createdAt: ts, updatedAt: ts, by, ...(e?.vecs[0] ? { vec: e.vecs[0], vm: e.vm } : {}) });
+  const more = extra && typeof extra === 'object' ? Object.fromEntries(Object.entries(extra).filter(([k, v]) => !['vec', 'vm', 'text', 'scope', 'mate', 'kind'].includes(k) && v != null).map(([k, v]) => [k, typeof v === 'string' ? v.slice(0, 600) : v])) : {};
+  await ref.set({ ...more, kind: KINDS.includes(kind) ? kind : 'fact', text, scope, ...(scope === 'personal' ? { mate } : {}), pinned: false, createdAt: ts, updatedAt: ts, by, ...(e?.vecs[0] ? { vec: e.vecs[0], vm: e.vm } : {}) });
   return { id: ref.id, dup: false };
 }
 

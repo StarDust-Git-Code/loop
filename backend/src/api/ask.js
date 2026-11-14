@@ -10,14 +10,15 @@ import { loadRoster } from './roster.js';
 const waiters = new Map(); // `${uid}/${id}` -> resolve(answer)
 const bad = (m, statusCode = 400) => Object.assign(new Error(m), { statusCode });
 
-export async function askOwner(uid, { mate = '', question, options = [], fallback, runId = '', convId = '', timeoutMinutes = 30 }) {
+/** action (optional, server-side only): what answering with the FIRST option does, e.g. { kind: 'skill', id } switches a drafted skill on. */
+export async function askOwner(uid, { mate = '', question, options = [], fallback, runId = '', convId = '', timeoutMinutes = 30, action = null }) {
   const opts = [...new Set(options.map((o) => String(o).trim().slice(0, 60)).filter(Boolean))].slice(0, 4);
   if (!String(question ?? '').trim()) throw bad('question is required');
   if (opts.length < 2) throw bad('Give 2 to 4 options');
   const def = opts.includes(fallback) ? fallback : opts[0];
   const ro = await loadRoster(uid); mate = ro.has(mate) ? mate : ro.leader; const who = ro.name(mate);
   const ref = userCol(uid, 'questions').doc();
-  const doc = { mate, mateName: who, question: String(question).slice(0, 400), options: opts, fallback: def, runId, convId, status: 'open', answer: null, createdAt: now(), expiresAt: new Date(Date.now() + timeoutMinutes * 60_000).toISOString() };
+  const doc = { mate, mateName: who, question: String(question).slice(0, 400), options: opts, fallback: def, runId, convId, status: 'open', answer: null, createdAt: now(), expiresAt: new Date(Date.now() + timeoutMinutes * 60_000).toISOString(), ...(action?.kind ? { action: { kind: String(action.kind), id: String(action.id ?? '').slice(0, 60) } } : {}) };
   await ref.set(doc);
   await notify(uid, `${who} asks: ${doc.question}\n${opts.map((o, i) => `${i + 1}. ${o}${o === def ? ' (default)' : ''}`).join('\n')}`, {
     title: `${who} has a question`, url: '/', tag: `ask-${ref.id}`, kind: 'question', urgent: false,
@@ -51,6 +52,12 @@ export async function answerQuestion(uid, id, answer, via = 'app') {
   if (!a) throw bad('answer is required');
   await ref.set({ status: 'answered', answer: a, answeredAt: now(), via }, { merge: true });
   waiters.get(`${uid}/${ref.id}`)?.(a);
+  if (q.action?.kind === 'skill' && q.action.id) { // a skill an agent drafted: the first option switches it on
+    const on = a === q.options?.[0]; const sref = userCol(uid, 'skills').doc(q.action.id);
+    if (!(await sref.get()).exists) return 'Answered, but that skill was deleted in the meantime.';
+    await sref.set({ ...(on ? { enabled: true } : {}), review: on ? 'approved' : 'draft', updatedAt: now() }, { merge: true });
+    return on ? 'Answered: switched the skill on' : 'Answered: the skill stays a draft';
+  }
   return `Answered: ${a}`;
 }
 
