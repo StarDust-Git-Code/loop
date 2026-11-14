@@ -4,14 +4,15 @@ import { gsap, useGSAP, ScrollSmoother, ScrollTrigger, prefersReducedMotion } fr
 
 /**
  * Must be rendered BEFORE any component that creates ScrollTriggers (sibling order),
- * so ScrollSmoother exists first. Also drives the top progress bar and the nav state.
+ * so ScrollSmoother exists first. Also drives the top progress bar, the nav state
+ * and the page-wide [data-reveal] entrance.
  */
 export default function SmoothSetup() {
   useGSAP(() => {
-    if (prefersReducedMotion()) {
-      document.documentElement.classList.add("rm");
-    }
-    const smoother = prefersReducedMotion()
+    const reduced = prefersReducedMotion();
+    if (reduced) document.documentElement.classList.add("rm");
+
+    const smoother = reduced
       ? null
       : ScrollSmoother.create({
           wrapper: "#smooth-wrapper",
@@ -22,14 +23,14 @@ export default function SmoothSetup() {
 
     // anchor links -> smooth scroll
     const onClick = (e: MouseEvent) => {
-      const a = (e.target as HTMLElement).closest<HTMLAnchorElement>('a[href^="#"], [data-scroll]');
+      const a = (e.target as HTMLElement).closest<HTMLAnchorElement>('a[href^="#"]');
       if (!a) return;
-      const sel = a.getAttribute("href") ?? a.getAttribute("data-scroll");
+      const sel = a.getAttribute("href");
       if (!sel || sel === "#") return;
       const target = document.querySelector(sel);
       if (!target) return;
       e.preventDefault();
-      if (smoother) smoother.scrollTo(target, true, "top 90px");
+      if (smoother) smoother.scrollTo(target, true, sel === "#top" ? "top top" : "top 40px");
       else target.scrollIntoView({ behavior: "auto", block: "start" });
     };
     document.addEventListener("click", onClick);
@@ -41,7 +42,7 @@ export default function SmoothSetup() {
       scrollTrigger: { trigger: document.body, start: "top top", end: "bottom bottom", scrub: 0.3 },
     });
 
-    // nav: glass pill after scrolling, hide on scroll down, show on scroll up
+    // nav: stronger glass after scrolling, hide on scroll down, show on scroll up
     const nav = document.querySelector<HTMLElement>(".nav");
     ScrollTrigger.create({
       start: 0,
@@ -49,13 +50,20 @@ export default function SmoothSetup() {
       onUpdate: (self) => {
         if (!nav) return;
         nav.classList.toggle("scrolled", self.scroll() > 40);
-        if (self.scroll() > 400) {
-          gsap.to(nav, { yPercent: self.direction === 1 ? -120 : 0, duration: 0.35, ease: "power3.out", overwrite: "auto" });
-        } else {
-          gsap.to(nav, { yPercent: 0, duration: 0.35, overwrite: "auto" });
-        }
+        if (reduced) return;
+        const hide = self.scroll() > 400 && self.direction === 1;
+        gsap.to(nav, { yPercent: hide ? -130 : 0, duration: 0.35, ease: "power3.out", overwrite: "auto" });
       },
     });
+
+    // every [data-reveal] rises in as it enters; neighbours entering together are staggered
+    if (!reduced) {
+      ScrollTrigger.batch("[data-reveal]", {
+        start: "top 92%",
+        once: true,
+        onEnter: (els) => gsap.to(els, { autoAlpha: 1, y: 0, duration: 1.05, ease: "power3.out", stagger: 0.07 }),
+      });
+    }
 
     return () => document.removeEventListener("click", onClick);
   });

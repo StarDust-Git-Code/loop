@@ -1,44 +1,42 @@
 import type { Metadata, Viewport } from "next";
-import "@fontsource-variable/plus-jakarta-sans";
-import "@fontsource/inter/400.css";
-import "@fontsource/inter/500.css";
-import "@fontsource/inter/600.css";
-import "@fontsource/inter/700.css";
-import "@fontsource/jetbrains-mono/400.css";
-import "@fontsource/jetbrains-mono/500.css";
+import { Fraunces, Inter } from "next/font/google";
 import "./globals.css";
+
+const serif = Fraunces({ subsets: ["latin"], axes: ["opsz"], variable: "--font-serif", display: "swap" });
+const sans = Inter({ subsets: ["latin"], variable: "--font-sans", display: "swap" });
+
+const TITLE = "Loopmates: a house full of AI helpers, living on your computer";
+const DESCRIPTION =
+  "Loopmates is a team of 19 AI Mates that lives on your own computer. Tell them what you need: they plan it, do it, and ask you before anything important goes out. Your keys and files stay home.";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://loopmates.com"),
-  title: "Loop — a workspace for your fluffy agents",
-  description:
-    "Loop is an agentic workspace. Specialist agents (Mates) plan, research, browse and build together while you stay in control.",
+  title: TITLE,
+  description: DESCRIPTION,
   openGraph: {
-    title: "Loop — a workspace for your fluffy agents",
-    description:
-      "Specialist agents plan, research, browse and build together — while you stay in control.",
+    title: TITLE,
+    description: DESCRIPTION,
     url: "https://loopmates.com",
-    siteName: "Loop",
+    siteName: "Loopmates",
     type: "website",
   },
 };
 
-export const viewport: Viewport = { themeColor: "#ffffff" };
+export const viewport: Viewport = { themeColor: "#120e2e", colorScheme: "dark" };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
+    // The inline script adds classes to <html> before React hydrates, hence suppressHydrationWarning.
+    <html lang="en" className={`${serif.variable} ${sans.variable}`} suppressHydrationWarning>
       <head>
-        {/* Marks JS as available so GSAP-controlled elements can start hidden without a flash. */}
+        {/* "film" turns the page into the scroll-driven house before first paint. Without it (no JS, or
+            reduced motion) the same words read as an ordinary page of stacked sections. */}
         <script
           dangerouslySetInnerHTML={{
             __html:
-              "document.documentElement.classList.add('js');if(window.matchMedia('(prefers-reduced-motion: reduce)').matches){document.documentElement.classList.add('rm')}",
+              "var d=document.documentElement;d.classList.add('js');if(!window.matchMedia('(prefers-reduced-motion: reduce)').matches){d.classList.add('film')}",
           }}
         />
-        <noscript>
-          <style>{`.js [data-reveal],.js .hero-h1{opacity:1!important;visibility:visible!important;transform:none!important}`}</style>
-        </noscript>
       </head>
       <body>{children}</body>
     </html>

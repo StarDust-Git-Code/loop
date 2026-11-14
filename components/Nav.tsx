@@ -1,25 +1,20 @@
 import Logo from "./Logo";
-import Magnetic from "./Magnetic";
 
 export default function Nav() {
   return (
     <header className="nav">
-      <div className="nav-inner" data-nav>
-        <a href="#top" className="logo" aria-label="Loopmates home">
+      <div className="nav-inner">
+        <a href="#top" className="logo" aria-label="Loopmates, back to top">
           <Logo />
         </a>
         <nav className="nav-links" aria-label="Sections">
-          <a href="#demo">Demo</a>
-          <a href="#features">Platform</a>
-          <a href="#dots">Mates</a>
-          <a href="#myspace">My Space</a>
-          <a href="#safety">Safety</a>
+          <a className="navlink" href="#mates">Mates</a>
+          <a className="navlink" href="#runs">Runs</a>
+          <a className="navlink" href="#calls">Calls</a>
+          <a className="navlink" href="#integrations">Integrations</a>
+          <a className="navlink" href="#safety">Safety</a>
         </nav>
-        <Magnetic strength={0.25}>
-          <a href="https://dashboard.loopmates.com" className="btn-violet">
-            Get started
-          </a>
-        </Magnetic>
+        <a href="#install" className="btn btn-acc btn-sm">Run your own</a>
       </div>
     </header>
   );

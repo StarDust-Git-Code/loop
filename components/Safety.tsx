@@ -1,16 +1,16 @@
 "use client";
 
 import { useRef } from "react";
-import Image from "next/image";
-import { gsap, useGSAP, ScrollTrigger, prefersReducedMotion } from "@/lib/gsap";
-import SectionHead from "./SectionHead";
-import { TINTS } from "@/lib/dots";
+import { gsap, useGSAP, playInView, prefersReducedMotion } from "@/lib/gsap";
+import { SplitHeading } from "./SectionHead";
+import MateImg from "./MateImg";
 
-const ITEMS = [
-  { title: "Approval before risky actions", text: "File writes outside the workspace and outgoing messages wait for your OK.", tint: TINTS.violet },
-  { title: "Only the chats you choose", text: "Agents read WhatsApp chats you tick, read-only, through an opt-in local bridge.", tint: TINTS.mint },
-  { title: "Everything is logged", text: "Each tool call appears in the run log with a time and the Mate that made it.", tint: TINTS.yellow },
-  { title: "Stop any time", text: "Pause or cancel a run from the dashboard or from Telegram.", tint: TINTS.pink },
+const RULES = [
+  { title: "Sealed on your disk", text: "Model keys, bot tokens and OAuth refresh tokens are sealed on your computer with AES-256-GCM. The dashboard and the phone only hold a sign-in token." },
+  { title: "Allow-list only", text: "Only the email addresses you list can use your server. The setup page answers only on that computer." },
+  { title: "Approvals by default", text: "Deleting, messaging other people, pushing code, spending money, and anything touching locks or alarms waits for you." },
+  { title: "Hard guards", text: "Mates never buy anything or type passwords, card numbers or one-time codes. Gmail can only save drafts." },
+  { title: "Data is not instructions", text: "Text from web pages, email, chats and notes is labelled as outside content. Mates are told never to follow instructions found in it." },
 ];
 
 export default function Safety() {
@@ -18,35 +18,39 @@ export default function Safety() {
 
   useGSAP(
     () => {
-      const halo = root.current!.querySelector(".halo-big");
-      gsap.from(halo, { scale: 0, rotate: -25, duration: 1.1, ease: "elastic.out(1,0.55)", scrollTrigger: { trigger: halo, start: "top 88%", once: true } });
-      if (!prefersReducedMotion()) {
-        gsap.to(halo, { y: -14, duration: 2.2, repeat: -1, yoyo: true, ease: "sine.inOut" });
-      }
-      ScrollTrigger.batch(".safe-card", {
-        start: "top 90%",
-        once: true,
-        onEnter: (b) => gsap.fromTo(b, { rotate: (i: number) => (i % 2 ? 4 : -4) }, { opacity: 1, y: 0, filter: "blur(0px)", rotate: 0, duration: 0.8, stagger: 0.12, ease: "back.out(1.5)" }),
-      });
+      if (prefersReducedMotion()) return;
+      playInView(".seal", [
+        gsap.to(".seal svg", { rotation: 360, transformOrigin: "50% 50%", duration: 44, ease: "none", repeat: -1 }),
+        gsap.to(".seal img", { y: -12, rotation: 4, duration: 2.2, ease: "sine.inOut", yoyo: true, repeat: -1 }),
+      ]);
     },
     { scope: root }
   );
 
   return (
-    <section ref={root} id="safety" className="sec center">
-      <div className="container">
-        <Image className="halo-big" src="/dots/halo.png" alt="Halo, the approvals Mate" width={256} height={256} />
-        <SectionHead tag="Safety" sub="Agents are powerful, so Loop makes their actions visible and puts you in charge of the risky ones.">
-          You stay in the <span className="v">driver’s seat</span>.
-        </SectionHead>
-        <div className="grid-auto" style={{ gridTemplateColumns: "repeat(auto-fit,minmax(min(100%,250px),1fr))", gap: 16 }}>
-          {ITEMS.map((s) => (
-            <div key={s.title} className="tile safe-card" data-reveal style={{ background: s.tint }}>
-              <div style={{ fontSize: 21, fontWeight: 800, letterSpacing: "-.03em" }}>{s.title}</div>
-              <div style={{ fontSize: 15, lineHeight: 1.6, color: "var(--body)", marginTop: 10 }}>{s.text}</div>
-            </div>
-          ))}
+    <section ref={root} id="safety" className="sec">
+      <div className="wrap safe" data-reveal>
+        <div className="safe-left">
+          <div className="lbl">Safety</div>
+          <SplitHeading>Your keys<br />stay home.</SplitHeading>
+          <div className="seal" aria-hidden="true">
+            <svg viewBox="0 0 260 260">
+              <circle cx="130" cy="130" r="124" fill="none" stroke="rgba(244,241,234,0.3)" strokeWidth="1.5" strokeDasharray="2 10" strokeLinecap="round" />
+            </svg>
+            <MateImg k="halo" size={200} />
+          </div>
         </div>
+        <ol className="rules">
+          {RULES.map((r, i) => (
+            <li className="rule" key={r.title}>
+              <i aria-hidden="true">{i + 1}</i>
+              <div>
+                <b>{r.title}</b>
+                <span>{r.text}</span>
+              </div>
+            </li>
+          ))}
+        </ol>
       </div>
     </section>
   );

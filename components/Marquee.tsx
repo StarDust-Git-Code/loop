@@ -1,54 +1,89 @@
 "use client";
 
-import { useRef } from "react";
-import { gsap, useGSAP, ScrollTrigger, prefersReducedMotion } from "@/lib/gsap";
+import { Fragment, useRef } from "react";
+import { gsap, useGSAP, ScrollSmoother, prefersReducedMotion } from "@/lib/gsap";
+import MateImg from "./MateImg";
+import type { MateKey } from "@/lib/mates";
 
-const TOOLS = [
-  "Telegram", "WhatsApp (read-only)", "ChatGPT in your browser", "Google Flow in your browser",
-  "GitHub", "Google Drive", "Notion", "Playwright", "MCP servers",
+const VERBS: [string, MateKey][] = [
+  ["Plan", "planner"], ["Research", "research"], ["Code", "code"], ["Write", "writer"],
+  ["Browse", "browser"], ["Watch", "mimo"], ["Remember", "recall"], ["Call", "tune"],
 ];
+const PLACES = ["Dashboard", "Phone", "Telegram", "Discord", "Slack", "WhatsApp", "Voice"];
 
-/** Infinite marquee whose speed and direction react to scroll velocity. */
+const Star = () => (
+  <svg width="34" height="34" viewBox="0 0 24 24" aria-hidden="true">
+    <path d="M12 0c1 7 5 11 12 12-7 1-11 5-12 12-1-7-5-11-12-12 7-1 11-5 12-12z" fill="currentColor" />
+  </svg>
+);
+
+function Verbs({ hidden }: { hidden?: boolean }) {
+  return (
+    <div className="mq-half" aria-hidden={hidden}>
+      {VERBS.map(([word, k]) => (
+        <Fragment key={word}>
+          <span className="mq-w">{word}</span>
+          <MateImg k={k} size={72} />
+        </Fragment>
+      ))}
+    </div>
+  );
+}
+
+function Places({ hidden }: { hidden?: boolean }) {
+  return (
+    <div className="mq-half" aria-hidden={hidden}>
+      {PLACES.map((word) => (
+        <Fragment key={word}>
+          <span className="mq-w stroke">{word}</span>
+          <Star />
+        </Fragment>
+      ))}
+    </div>
+  );
+}
+
+/** Two rows running in opposite directions. They speed up and lean with the scroll. */
 export default function Marquee() {
   const root = useRef<HTMLElement>(null);
 
   useGSAP(
     () => {
-      const track = root.current!.querySelector<HTMLElement>(".marquee-track")!;
-      gsap.to(root.current!.querySelector(".marquee-label"), {
-        opacity: 1, y: 0, filter: "blur(0px)", duration: 0.7, scrollTrigger: { trigger: root.current, start: "top 90%", once: true },
-      });
-      if (prefersReducedMotion()) return;
-      const loop = gsap.to(track, { xPercent: -50, duration: 28, ease: "none", repeat: -1 });
-      ScrollTrigger.create({
-        onUpdate: (self) => {
-          const v = gsap.utils.clamp(-8, 8, self.getVelocity() / 300);
-          gsap.to(loop, { timeScale: (self.direction === 1 ? 1 : -1) * (1 + Math.abs(v)), duration: 0.2, overwrite: true });
-          gsap.to(loop, { timeScale: 1, delay: 0.25, duration: 1.2, overwrite: false });
-        },
-      });
-      const el = root.current!.querySelector(".marquee")!;
-      const slow = () => gsap.to(loop, { timeScale: 0.2, duration: 0.5 });
-      const fast = () => gsap.to(loop, { timeScale: 1, duration: 0.5 });
-      el.addEventListener("pointerenter", slow);
-      el.addEventListener("pointerleave", fast);
-      return () => { el.removeEventListener("pointerenter", slow); el.removeEventListener("pointerleave", fast); };
+      const el = root.current;
+      if (!el || prefersReducedMotion()) return;
+
+      const rows = gsap.utils.toArray<HTMLElement>(".mq", el);
+      const loops = rows.map((row, i) =>
+        gsap.fromTo(row, { xPercent: i % 2 ? -50 : 0 }, { xPercent: i % 2 ? 0 : -50, duration: i % 2 ? 46 : 38, ease: "none", repeat: -1 })
+      );
+      const skew = gsap.quickTo(el.querySelector(".mq-wrap"), "skewX", { duration: 0.5, ease: "power3.out" });
+
+      const scrollY = () => ScrollSmoother.get()?.scrollTop() ?? window.scrollY;
+      let last = scrollY();
+      let vel = 0;
+      let lean = 0;
+      const tick = () => {
+        const y = scrollY();
+        vel += (y - last - vel) * 0.18;
+        last = y;
+        if (Math.abs(vel) < 0.02) vel = 0;
+        const boost = 1 + Math.min(7, Math.abs(vel) / 5);
+        loops.forEach((t) => t.timeScale(boost));
+        const next = gsap.utils.clamp(-7, 7, vel * -0.12);
+        if (Math.abs(next - lean) > 0.01) { lean = next; skew(next); }
+      };
+      gsap.ticker.add(tick);
+      return () => gsap.ticker.remove(tick);
     },
     { scope: root }
   );
 
-  const row = [...TOOLS, ...TOOLS];
   return (
-    <section ref={root} className="marquee-sec" aria-label="Connects to">
-      <div className="marquee-label" data-reveal>CONNECTS TO THE TOOLS YOU ALREADY USE</div>
-      <div className="marquee">
-        <div className="marquee-track">
-          {[...row, ...row].map((t, i) => (
-            <span className="chip" key={i} aria-hidden={i >= TOOLS.length ? true : undefined}>{t}</span>
-          ))}
-        </div>
+    <section ref={root} className="mq-sec" aria-label="What the Mates do, and where they reach you">
+      <div className="mq-wrap">
+        <div className="mq"><Verbs /><Verbs hidden /></div>
+        <div className="mq"><Places /><Places hidden /></div>
       </div>
-      <p className="fine">Product names belong to their owners. Integrations rely on third-party services and follow their terms.</p>
     </section>
   );
 }

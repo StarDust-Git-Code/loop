@@ -1,37 +1,22 @@
-import SmoothSetup from "@/components/SmoothSetup";
-import Nav from "@/components/Nav";
-import Hero from "@/components/Hero";
-import Marquee from "@/components/Marquee";
-import Demo from "@/components/Demo";
-import Features from "@/components/Features";
-import DotsGrid from "@/components/DotsGrid";
-import MySpace from "@/components/MySpace";
-import Automations from "@/components/Automations";
-import Safety from "@/components/Safety";
-import Cta from "@/components/Cta";
-import Footer from "@/components/Footer";
+import HouseFilm from "@/components/house/HouseFilm";
 
 export default function Home() {
   return (
     <>
-      <div className="progress" aria-hidden="true" />
-      <Nav />
+      <header className="nav">
+        <a href="#top" data-go="hero" className="nav-word" aria-label="Loopmates, back to the top">loopmates</a>
+        <nav aria-label="Sections">
+          <a href="#mates" data-go="inside">The Mates</a>
+          <a href="#how" data-go="how">How it works</a>
+          <a href="#limits" data-go="limits">Limits</a>
+        </nav>
+        <a href="#join" data-go="join" className="nav-join">Join the list</a>
+      </header>
       <div id="smooth-wrapper">
         <div id="smooth-content">
-          {/* SmoothSetup renders first so ScrollSmoother exists before any ScrollTrigger below */}
-          <SmoothSetup />
           <main>
-            <Hero />
-            <Marquee />
-            <Demo />
-            <Features />
-            <DotsGrid />
-            <MySpace />
-            <Automations />
-            <Safety />
-            <Cta />
+            <HouseFilm />
           </main>
-          <Footer />
         </div>
       </div>
     </>
