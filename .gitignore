@@ -47,3 +47,23 @@ backend/node_modules/
 
 # graphify
 graphify-out/
+
+# rendered video stays out of git
+*.mp4
+*.mov
+*.webm
+*.mkv
+*.avi
+
+# film tooling binaries (re-downloadable, over 50 MB each)
+film/tools/bin/
+flim-copy/tools/bin/
+
+# audio stays out of git (the film voice-over, music and sound effects)
+*.wav
+*.mp3
+*.m4a
+*.aac
+*.flac
+*.ogg
+*.aiff
